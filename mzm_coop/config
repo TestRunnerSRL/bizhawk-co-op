@@ -1,0 +1,11 @@
+local config = {}
+
+--This is the port the connection will happen over. Make sure this is the same
+--for both players before trying to sync.
+config.port = 50001
+--This is the ip address or hostname of the player running host.lua (ip
+--addresses should should still be in quotes.) This value is only inportant
+--for the client.
+config.hostname = "localhost"
+
+return config
