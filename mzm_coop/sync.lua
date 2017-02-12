@@ -23,6 +23,7 @@ function sync.initialize()
 end
 
 local messenger = require("mzm_coop\\messenger")
+local ram_controller = require("mzm_coop\\mzm_ram")
 
 --makes sure that configurations are consistent between the two players
 function sync.syncconfig(client_socket, default_player)
@@ -74,19 +75,9 @@ function sync.syncRAM(client_socket)
 
     --Send inputs if not paused
     if (syncStatus == "Play") then
-      local new_RAM = {}
-      local newsend = false
-      for i, address in pairs(addresses) do
-        local value = memory.read_u16_le(address)
-        if (value ~= RAM_Values[address]) then
-          new_RAM[address] = value;
-          newsend = true
-        end
-        RAM_Values[address] = value;
-      end
-
-      if (new_RAM ~= nil and newsend) then
-        messenger.send(client_socket, messenger.MEMORY, new_RAM)
+      local ram_message = ram_controller.getMessage()
+      if ram_message then
+        messenger.send(client_socket, messenger.RAMEVENT, ram_message)
       end
     end
 
@@ -101,6 +92,11 @@ function sync.syncRAM(client_socket)
       for adr, mem in pairs(received_data) do
         memory.write_u16_le(adr, mem)
       end
+    elseif (received_message_type == messenger.RAMEVENT) then
+      --we received memory
+      timeout_frames = 0
+
+      ram_controller.processMessage(received_data)
     elseif (received_message_type == messenger.QUIT) then
       --we received quit
       error("They closed the connection.")

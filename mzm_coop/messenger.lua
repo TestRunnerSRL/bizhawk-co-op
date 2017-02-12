@@ -6,10 +6,12 @@ local messenger = {}
 messenger.MEMORY = 0
 messenger.CONFIG = 1
 messenger.QUIT = 4
+messenger.RAMEVENT = 5
 
 --the first character of the message tells what kind of message was sent
 local message_type_to_char = {
   [messenger.MEMORY] = "m",
+  [messenger.RAMEVENT] = "r",
   [messenger.CONFIG] = "c",
   [messenger.QUIT] = "q",
 }
@@ -31,6 +33,23 @@ local encode_message = {
     message = ""
     for adr, val in pairs(data[1]) do
       message = message .. adr .. ":" .. val .. ","
+    end
+    message = message:sub(1, -2)
+
+    return message
+  end,
+
+  [messenger.RAMEVENT] = function(data)
+    message = ""
+    for i, arr in pairs(data[1]) do
+      for key, val in pairs(arr) do
+        if (val == true) then
+          val = "t"
+        elseif (val == false) then
+          val = "f"
+        end
+        message = message .. i .. ":" .. key .. ":" .. val .. ","
+      end
     end
     message = message:sub(1, -2)
 
@@ -76,12 +95,34 @@ local decode_message = {
 
   [messenger.MEMORY] = function(split_message)
     local memchanges = {}
-    for i, mem in pairs(split_message) do
+    for _, mem in pairs(split_message) do
       local splitmem = bizstring.split(mem, ":")
       memchanges[tonumber(splitmem[0])] = tonumber(splitmem[1])
     end
 
     return memchanges
+  end,
+
+  [messenger.RAMEVENT] = function(split_message)
+    local ramevent = {}
+    for _, event in pairs(split_message) do
+      local splitevent = bizstring.split(event, ":")
+      if not ramevent[splitevent[0]] then
+        ramevent[splitevent[0]] = {}
+      end
+
+      local val
+      if splitevent[2] == 't' then
+        val = true
+      elseif splitevent[2] == 'f' then
+          val = false
+      else
+          val = tonumber(splitevent[2])
+      end
+      ramevent[splitevent[0]][splitevent[1]] = val
+    end
+
+    return ramevent    
   end,
 
   [messenger.CONFIG] = function(split_message)
