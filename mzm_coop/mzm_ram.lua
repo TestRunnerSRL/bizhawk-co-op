@@ -331,14 +331,14 @@ function setTankCollected(prevRAM, newTank)
 		prevRAM.ammo.missileCount = prevRAM.ammo.missileCount + 5
 		writeRAM("IWRAM", 0x1538, 2, prevRAM.ammo.missileCount)
 	elseif (newTank.tankType == 2) then
-		prevRAM.ammo.superCapacity = prevRAM.ammo.superCapacity + 5
+		prevRAM.ammo.superCapacity = prevRAM.ammo.superCapacity + 2
 		writeRAM("IWRAM", 0x1534, 1, prevRAM.ammo.superCapacity)
-		prevRAM.ammo.superCount = prevRAM.ammo.superCount + 5
+		prevRAM.ammo.superCount = prevRAM.ammo.superCount + 2
 		writeRAM("IWRAM", 0x153A, 1, prevRAM.ammo.superCount)
 	elseif (newTank.tankType == 3) then
-		prevRAM.ammo.powerCapacity = prevRAM.ammo.powerCapacity + 5
+		prevRAM.ammo.powerCapacity = prevRAM.ammo.powerCapacity + 2
 		writeRAM("IWRAM", 0x1535, 1, prevRAM.ammo.powerCapacity)
-		prevRAM.ammo.powerCount = prevRAM.ammo.powerCount + 5
+		prevRAM.ammo.powerCount = prevRAM.ammo.powerCount + 2
 		writeRAM("IWRAM", 0x153B, 1, prevRAM.ammo.powerCount)
 	end
 
