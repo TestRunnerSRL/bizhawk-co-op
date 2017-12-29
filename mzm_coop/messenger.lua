@@ -60,7 +60,13 @@ local encode_message = {
   --the hash of the code used in gameplay sync
   [messenger.CONFIG] = function(data)
     local sync_hash = data[1]
-    local message = sync_hash
+    local their_id = data[2]
+    local message
+    if their_id == nil then
+      message = sync_hash
+    else
+      message = sync_hash .. "," .. their_id
+    end
     return message
   end,
 
@@ -111,15 +117,17 @@ local decode_message = {
         ramevent[splitevent[0]] = {}
       end
 
-      local val
+      local key, val
+      key = tonumber(splitevent[1]) or splitevent[1]
+
       if splitevent[2] == 't' then
         val = true
       elseif splitevent[2] == 'f' then
           val = false
       else
-          val = tonumber(splitevent[2])
+          val = tonumber(splitevent[2]) or splitevent[2]
       end
-      ramevent[splitevent[0]][splitevent[1]] = val
+      ramevent[splitevent[0]][key] = val
     end
 
     return ramevent    
@@ -128,7 +136,11 @@ local decode_message = {
   [messenger.CONFIG] = function(split_message)
     --get sync hash from message
     local their_sync_hash = split_message[0]
-    return {their_sync_hash}
+    local their_id = split_message[1]
+    if (their_id ~= nil) then
+      their_id = tonumber(their_id)
+    end
+    return {their_sync_hash, their_id}
   end,
 
   [messenger.QUIT] = function(split_message)

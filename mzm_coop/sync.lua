@@ -2,32 +2,14 @@
 --author: TheOnlyOne and TestRunner
 local sync = {}
 
-local addresses = {}
-addresses.maxHP = 0x1530
-addresses.maxMissiles = 0x1532
-addresses.maxSupers = 0x1534
-addresses.HP = 0x1536
-addresses.Missiles = 0x1538
-addresses.Supers = 0x153A
-addresses.EquipmentA = 0x153C
-addresses.EquipmentB = 0x153E
-
-local RAM_Values = {}
-
---Load required files before attempting to sync
-function sync.initialize() 
-  memory.usememorydomain("IWRAM") 
-  for i, address in pairs(addresses) do
-    RAM_Values[address] = memory.read_u16_le(address)
-  end
-end
-
 local messenger = require("mzm_coop\\messenger")
 local ram_controller = require("mzm_coop\\mzm_ram")
 
+my_ID = nil
+
 --makes sure that configurations are consistent between the two players
-function sync.syncconfig(client_socket, default_player)
-  printOutput("Checking that configurations are consistent (this may take a few seconds...)")
+function sync.syncconfig(client_socket, their_id)
+  printOutput("Checking configuration consistency...")
   
   local sha1 = require("mzm_coop\\sha1")
 
@@ -38,81 +20,100 @@ function sync.syncconfig(client_socket, default_player)
   local sync_hash = sha1.sha1(sync_code)
 
   --send the configuration
-  messenger.send(client_socket, messenger.CONFIG, sync_hash)
+  messenger.send(client_socket, messenger.CONFIG, sync_hash, their_id)
 
   --receive their configuration
   local received_message_type, received_data = messenger.receive(client_socket)
   if (received_message_type ~= messenger.CONFIG) then
-    error("Unexpected message type received.")
+    printOutput("Configuration consistency check failed: Unexpected message type received.")
+    return false
   end
   local their_sync_hash = received_data[1]
+  local my_new_id = received_data[2]
 
   --check consistency of configurations
   --check sync code
   if (sync_hash ~= their_sync_hash) then
+    printOutput("Configuration consistency check failed: Bad hash")
     printOutput("You are not both using the same sync code (perhaps one of you is using an older version?)")
     printOutput("Make sure your sync code is the same and try again.")
-    error("Configuration consistency check failed.")
+    return false
   end
+
+  if my_new_id ~= nil then
+    my_ID = my_new_id
+  elseif their_id ~= nil then
+    my_ID = 1
+  end
+
+  printOutput("Configuration consistency check passed")
+  return true
 end
 
-local received_message_type, received_data
-local timeout_frames = 0
+
+function sync.sendItems(itemlist)
+  for _,client in pairs(host.clients) do
+    messenger.send(client, messenger.RAMEVENT, {["i"]=itemlist})
+  end 
+  ram_controller.processMessage({["i"]=itemlist})
+
+end
+
+
+
 
 --shares the input between two players, making sure that the same input is
 --pressed for both players on every frame. Sends and receives instructions
 --that must be performed simultaneously; such as pausing and saving
-function sync.syncRAM(client_socket)
+function sync.syncRAM(clients)
   while true do
     --Send Quit request
     if sendMessage["Quit"] == true then 
       sendMessage["Quit"] = nil
 
-      syncStatus = "Idle"
-      messenger.send(client_socket, messenger.QUIT)
+      for _,client in pairs(clients) do
+        messenger.send(client, messenger.QUIT)
+      end
       error("You closed the connection.")
     end
 
-    --Send inputs if not paused
-    if (syncStatus == "Play") then
-      local ram_message = ram_controller.getMessage()
-      if ram_message then
-        messenger.send(client_socket, messenger.RAMEVENT, ram_message)
+    local ram_message = ram_controller.getMessage()
+    if ram_message then
+      for _,client in pairs(clients) do
+        messenger.send(client, messenger.RAMEVENT, ram_message)
       end
     end
 
     --receive this frame's input from the other player and other messages
-    
-    received_message_type, received_data = messenger.receive(client_socket, true)
+    for clientID, client in pairs(clients) do
+      local received_message_type, received_data = messenger.receive(client, true)
 
-    if (received_message_type == messenger.MEMORY) then
-      --we received memory
-      timeout_frames = 0
-
-      for adr, mem in pairs(received_data) do
-        memory.write_u16_le(adr, mem)
+      -- echo messages
+      for otherClientID, otherClient in pairs(clients) do
+        if (otherClientID ~= clientID) then
+          messenger.send(otherClient, received_message_type, received_data)
+        end
       end
-    elseif (received_message_type == messenger.RAMEVENT) then
-      --we received memory
-      timeout_frames = 0
 
-      ram_controller.processMessage(received_data)
-    elseif (received_message_type == messenger.QUIT) then
-      --we received quit
-      error("They closed the connection.")
-    elseif (received_message_type == nil) then
-      --If no message if received, then yield and try again
-      --timeout_frames = timeout_frames + 1
-
-      --Timeout the connection if no message in 300 frames
-      if (timeout_frames > 300) then
-        error("Connection Timeout")
+      if (received_message_type == messenger.MEMORY) then
+        --we received memory
+        for adr, mem in pairs(received_data) do
+          memory.write_u16_le(adr, mem)
+        end
+      elseif (received_message_type == messenger.RAMEVENT) then
+        --we received memory
+        ram_controller.processMessage(received_data)
+      elseif (received_message_type == messenger.QUIT) then
+        --we received quit
+        error("They closed the connection.")
+      elseif (received_message_type == nil) then
+        --no message received
+      else
+        error("Unexpected message type received.")
       end
-    else
-      error("Unexpected message type received.")
     end
 
-    coroutine.yield()
+    clients = coroutine.yield()
   end
 end
 

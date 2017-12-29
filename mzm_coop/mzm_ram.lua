@@ -1,35 +1,185 @@
 -- Mapping for the flags of each ability (little endian)
 local AbilityMap = {
 	--longbeam = 0
-	0x00000101, 	
+	0x00000001, 	
 	--icebeam = 1
-	0x00000202,
+	0x00000002,
 	--wavebeam = 2
-	0x00000404,
+	0x00000004,
 	--plasmabeam = 3
 	0x00000008,
 	--chargebeam = 4
-	0x00001010,
+	0x00000010,
 	--bombs = 5
-	0x00008080,
+	0x00000080,
 
 	--hijump = 6
-	0x01010000,
+	0x00010000,
 	--speedbooster = 7
-	0x02020000,
+	0x00020000,
 	--spacejump = 8
 	0x00040000,
 	--screwattack = 9
-	0x08080000,
+	0x00080000,
 	--variasuit = 10
-	0x10100000,
+	0x00100000,
 	--gravitysuit = 11
 	0x00200000,
 	--morphball = 12
-	0x40400000,
+	0x00400000,
 	--powergrip = 13
-	0x80800000
+	0x00800000
 }
+
+local TankName = {
+	[0]="Energy Tank",
+	[1]="Missiles",
+	[2]="Super Missiles",
+	[3]="Power Bombs"
+}
+
+local AreaName = {
+	[0]="Brinstar",
+	"Kraid",
+	"Norfair",
+	"Ridley",
+	"Tourian",
+	"Crateria",
+	"Chozodia",
+	"Area 7"
+}
+
+local AbilityName = {
+	"Long Beam",
+	"Ice Beam",
+	"Wave Beam",
+	"Plasma Beam",
+	"Charge Beam",
+	"Bombs",
+
+	"Hi-Jump",
+	"Speed Booster",
+	"Space Jump",
+	"Screw Attack",
+	"Varia Suit",
+	"Gravity Suit",
+	"Morph Ball",
+	"Power Grip",
+}
+
+local EventName = {
+
+}
+
+itemLocations = {
+	{ ID=00, Area=0, Room=0x00, RoomWidth=0x4F, X=0x0b, Y=0x1b, Width=1, Height=1 },
+	{ ID=01, Area=0, Room=0x01, RoomWidth=0x13, X=0x0d, Y=0x07, Width=1, Height=1 },
+	{ ID=02, Area=0, Room=0x05, RoomWidth=0x13, X=0x07, Y=0x06, Width=2, Height=1 },
+	{ ID=03, Area=0, Room=0x02, RoomWidth=0x40, X=0x1c, Y=0x02, Width=1, Height=1 },
+	{ ID=04, Area=0, Room=0x29, RoomWidth=0x13, X=0x05, Y=0x12, Width=1, Height=1 },
+	{ ID=05, Area=0, Room=0x29, RoomWidth=0x13, X=0x05, Y=0x19, Width=1, Height=1 },
+	{ ID=06, Area=0, Room=0x1D, RoomWidth=0x13, X=0x04, Y=0x0a, Width=1, Height=1 },
+	{ ID=07, Area=0, Room=0x28, RoomWidth=0x13, X=0x07, Y=0x04, Width=1, Height=1 },
+	{ ID=08, Area=0, Room=0x1B, RoomWidth=0x13, X=0x07, Y=0x06, Width=2, Height=1 },
+	{ ID=09, Area=-1, Room=-1 },
+	{ ID=10, Area=0, Room=0x17, RoomWidth=0x40, X=0x12, Y=0x10, Width=1, Height=1 },
+	{ ID=11, Area=0, Room=0x0C, RoomWidth=0x8b, X=0x36, Y=0x06, Width=1, Height=1 },
+	{ ID=12, Area=0, Room=0x0F, RoomWidth=0x40, X=0x04, Y=0x06, Width=1, Height=1 },
+	{ ID=13, Area=0, Room=0x0E, RoomWidth=0x13, X=0x0e, Y=0x17, Width=1, Height=1 },
+	{ ID=14, Area=0, Room=0x13, RoomWidth=0x6d, X=0x0b, Y=0x0a, Width=1, Height=1 },
+	{ ID=15, Area=0, Room=0x15, RoomWidth=0x4f, X=0x27, Y=0x05, Width=1, Height=1 },
+	{ ID=16, Area=0, Room=0x19, RoomWidth=0x22, X=0x0b, Y=0x05, Width=1, Height=1 },
+	{ ID=17, Area=0, Room=0x19, RoomWidth=0x22, X=0x16, Y=0x06, Width=2, Height=1 },
+	{ ID=18, Area=0, Room=0x13, RoomWidth=0x6d, X=0x27, Y=0x06, Width=1, Height=1 },
+	{ ID=19, Area=1, Room=0x1A, RoomWidth=0x13, X=0x07, Y=0x0a, Width=1, Height=1 },
+	{ ID=20, Area=1, Room=0x07, RoomWidth=0x40, X=0x26, Y=0x0e, Width=1, Height=1 },
+	{ ID=21, Area=1, Room=0x0A, RoomWidth=0x22, X=0x09, Y=0x09, Width=1, Height=1 },
+	{ ID=22, Area=1, Room=0x15, RoomWidth=0x4f, X=0x14, Y=0x03, Width=1, Height=1 },
+	{ ID=23, Area=-1, Room=-1 },
+	{ ID=24, Area=1, Room=0x08, RoomWidth=0x4f, X=0x4a, Y=0x14, Width=1, Height=1 },
+	{ ID=25, Area=1, Room=0x22, RoomWidth=0x13, X=0x06, Y=0x06, Width=2, Height=1 },
+	{ ID=26, Area=1, Room=0x26, RoomWidth=0x13, X=0x05, Y=0x04, Width=1, Height=1 },
+	{ ID=27, Area=1, Room=0x01, RoomWidth=0x4f, X=0x18, Y=0x04, Width=1, Height=1 },
+	{ ID=28, Area=1, Room=0x11, RoomWidth=0x40, X=0x02, Y=0x04, Width=1, Height=1 },
+	{ ID=29, Area=1, Room=0x04, RoomWidth=0x22, X=0x16, Y=0x06, Width=1, Height=1 },
+	{ ID=30, Area=1, Room=0x09, RoomWidth=0x40, X=0x3c, Y=0x09, Width=1, Height=1 },
+	{ ID=31, Area=1, Room=0x02, RoomWidth=0x13, X=0x09, Y=0x21, Width=1, Height=1 },
+	{ ID=32, Area=2, Room=0x37, RoomWidth=0x22, X=0x08, Y=0x0e, Width=1, Height=1 },
+	{ ID=33, Area=2, Room=0x37, RoomWidth=0x22, X=0x1e, Y=0x17, Width=1, Height=1 },
+	{ ID=34, Area=2, Room=0x12, RoomWidth=0x13, X=0x07, Y=0x06, Width=2, Height=1 },
+	{ ID=35, Area=2, Room=0x11, RoomWidth=0x22, X=0x11, Y=0x04, Width=1, Height=1 },
+	{ ID=36, Area=2, Room=0x01, RoomWidth=0x7c, X=0x41, Y=0x04, Width=1, Height=1 },
+	{ ID=37, Area=2, Room=0x03, RoomWidth=0x4f, X=0x48, Y=0x04, Width=1, Height=1 },
+	{ ID=38, Area=2, Room=0x1B, RoomWidth=0x13, X=0x07, Y=0x06, Width=2, Height=1 },
+	{ ID=39, Area=2, Room=0x26, RoomWidth=0x22, X=0x05, Y=0x06, Width=1, Height=1 },
+	{ ID=40, Area=2, Room=0x1C, RoomWidth=0x40, X=0x1c, Y=0x03, Width=1, Height=1 },
+	{ ID=41, Area=2, Room=0x1C, RoomWidth=0x40, X=0x36, Y=0x04, Width=1, Height=1 },
+	{ ID=42, Area=2, Room=0x25, RoomWidth=0x5e, X=0x15, Y=0x03, Width=1, Height=1 },
+	{ ID=43, Area=2, Room=0x20, RoomWidth=0x4f, X=0x04, Y=0x05, Width=1, Height=1 },
+	{ ID=44, Area=2, Room=0x20, RoomWidth=0x4f, X=0x2d, Y=0x03, Width=1, Height=1 },
+	{ ID=45, Area=2, Room=0x08, RoomWidth=0x22, X=0x15, Y=0x06, Width=2, Height=1 },
+	{ ID=46, Area=2, Room=0x0A, RoomWidth=0x31, X=0x0b, Y=0x04, Width=1, Height=1 },
+	{ ID=47, Area=2, Room=0x0D, RoomWidth=0x13, X=0x08, Y=0x06, Width=2, Height=1 },
+	{ ID=48, Area=2, Room=0x04, RoomWidth=0x5e, X=0x4a, Y=0x09, Width=1, Height=1 },
+	{ ID=49, Area=2, Room=0x2F, RoomWidth=0x22, X=0x18, Y=0x03, Width=1, Height=1 },
+	{ ID=50, Area=2, Room=0x2A, RoomWidth=0x31, X=0x21, Y=0x05, Width=1, Height=1 },
+	{ ID=51, Area=2, Room=0x05, RoomWidth=0x22, X=0x0e, Y=0x4f, Width=1, Height=1 },
+	{ ID=52, Area=2, Room=0x05, RoomWidth=0x22, X=0x08, Y=0x6f, Width=1, Height=1 },
+	{ ID=53, Area=3, Room=0x1D, RoomWidth=0x22, X=0x18, Y=0x03, Width=1, Height=1 },
+	{ ID=54, Area=3, Room=0x1D, RoomWidth=0x22, X=0x14, Y=0x0f, Width=1, Height=1 },
+	{ ID=55, Area=3, Room=0x06, RoomWidth=0x13, X=0x08, Y=0x21, Width=1, Height=1 },
+	{ ID=56, Area=3, Room=0x0D, RoomWidth=0x22, X=0x08, Y=0x07, Width=1, Height=1 },
+	{ ID=57, Area=-1, Room=-1 },
+	{ ID=58, Area=3, Room=0x04, RoomWidth=0x13, X=0x06, Y=0x08, Width=1, Height=1 },
+	{ ID=59, Area=3, Room=0x17, RoomWidth=0x13, X=0x08, Y=0x04, Width=1, Height=1 },
+	{ ID=60, Area=3, Room=0x17, RoomWidth=0x13, X=0x0d, Y=0x0d, Width=1, Height=1 },
+	{ ID=61, Area=3, Room=0x13, RoomWidth=0x40, X=0x07, Y=0x15, Width=1, Height=1 },
+	{ ID=62, Area=3, Room=0x16, RoomWidth=0x13, X=0x0b, Y=0x06, Width=1, Height=1 },
+	{ ID=63, Area=3, Room=0x16, RoomWidth=0x13, X=0x08, Y=0x10, Width=1, Height=1 },
+	{ ID=64, Area=3, Room=0x12, RoomWidth=0xc7, X=0x48, Y=0x06, Width=1, Height=1 },
+	{ ID=65, Area=3, Room=0x09, RoomWidth=0x13, X=0x09, Y=0x04, Width=1, Height=1 },
+	{ ID=66, Area=3, Room=0x0A, RoomWidth=0x22, X=0x0f, Y=0x0f, Width=1, Height=1 },
+	{ ID=67, Area=3, Room=0x0A, RoomWidth=0x22, X=0x1b, Y=0x06, Width=1, Height=1 },
+	{ ID=68, Area=3, Room=0x11, RoomWidth=0x4f, X=0x1c, Y=0x14, Width=1, Height=1 },
+	{ ID=69, Area=3, Room=0x0E, RoomWidth=0x40, X=0x1b, Y=0x09, Width=1, Height=1 },
+	{ ID=70, Area=3, Room=0x10, RoomWidth=0x40, X=0x36, Y=0x06, Width=1, Height=1 },
+	{ ID=71, Area=3, Room=0x1E, RoomWidth=0x22, X=0x04, Y=0x0d, Width=1, Height=1 },
+	{ ID=72, Area=3, Room=0x1F, RoomWidth=0x31, X=0x2a, Y=0x07, Width=1, Height=1 },
+	{ ID=73, Area=4, Room=0x08, RoomWidth=0x22, X=0x0b, Y=0x6d, Width=1, Height=1 },
+	{ ID=74, Area=4, Room=0x07, RoomWidth=0x13, X=0x0e, Y=0x08, Width=1, Height=1 },
+	{ ID=75, Area=5, Room=0x05, RoomWidth=0x4f, X=0x14, Y=0x25, Width=1, Height=1 },
+	{ ID=76, Area=-1, Room=-1 },
+	{ ID=77, Area=5, Room=0x07, RoomWidth=0x5e, X=0x03, Y=0x1b, Width=1, Height=1 },
+	{ ID=78, Area=5, Room=0x0E, RoomWidth=0x22, X=0x08, Y=0x0a, Width=1, Height=1 },
+	{ ID=79, Area=-1, Room=-1 },
+	{ ID=80, Area=5, Room=0x09, RoomWidth=0x5e, X=0x40, Y=0x22, Width=1, Height=1 },
+	{ ID=81, Area=5, Room=0x09, RoomWidth=0x5e, X=0x5a, Y=0x09, Width=1, Height=1 },
+	{ ID=82, Area=6, Room=0x22, RoomWidth=0x31, X=0x22, Y=0x0e, Width=1, Height=1 },
+	{ ID=83, Area=6, Room=0x42, RoomWidth=0x22, X=0x10, Y=0x0d, Width=1, Height=1 },
+	{ ID=84, Area=6, Room=0x41, RoomWidth=0x13, X=0x09, Y=0x03, Width=1, Height=1 },
+	{ ID=85, Area=6, Room=0x59, RoomWidth=0x13, X=0x06, Y=0x1b, Width=1, Height=1 },
+	{ ID=86, Area=6, Room=0x5A, RoomWidth=0x40, X=0x38, Y=0x18, Width=1, Height=1 },
+	{ ID=87, Area=6, Room=0x5A, RoomWidth=0x40, X=0x38, Y=0x28, Width=1, Height=1 },
+	{ ID=88, Area=6, Room=0x1A, RoomWidth=0x31, X=0x2c, Y=0x08, Width=1, Height=1 },
+	{ ID=89, Area=6, Room=0x18, RoomWidth=0x13, X=0x0a, Y=0x0d, Width=1, Height=1 },
+	{ ID=90, Area=6, Room=0x36, RoomWidth=0x40, X=0x3b, Y=0x14, Width=1, Height=1 },
+	{ ID=91, Area=6, Room=0x2F, RoomWidth=0x13, X=0x09, Y=0x11, Width=1, Height=1 },
+	{ ID=92, Area=6, Room=0x31, RoomWidth=0x13, X=0x0a, Y=0x07, Width=1, Height=1 },
+	{ ID=93, Area=6, Room=0x5F, RoomWidth=0x22, X=0x18, Y=0x06, Width=1, Height=1 },
+	{ ID=94, Area=6, Room=0x4E, RoomWidth=0x31, X=0x2c, Y=0x08, Width=1, Height=1 },
+	{ ID=95, Area=6, Room=0x49, RoomWidth=0x13, X=0x09, Y=0x06, Width=1, Height=1 },
+	{ ID=96, Area=6, Room=0x0E, RoomWidth=0x13, X=0x0d, Y=0x05, Width=1, Height=1 },
+	{ ID=97, Area=6, Room=0x0A, RoomWidth=0x22, X=0x13, Y=0x04, Width=1, Height=1 },
+	{ ID=98, Area=6, Room=0x47, RoomWidth=0x40, X=0x3b, Y=0x13, Width=1, Height=1 },
+	{ ID=99, Area=6, Room=0x57, RoomWidth=0x31, X=0x12, Y=0x12, Width=1, Height=1 },
+}
+
+
+
+
+
+
+
 
 
 -- Writes value to RAM using little endian
@@ -95,7 +245,9 @@ function getAbility()
 	for abilityNum, value in pairs(AbilityMap) do
 		-- if ability flags found add ability
 		if (bit.band(flags, value) > 0) then
-			ability[abilityNum] = true
+			value = bit.lshift(value, 8)
+			active = (bit.band(flags, value) > 0)
+			ability[abilityNum] = active
 		end
 	end
 	return ability
@@ -199,9 +351,11 @@ function eventAbilityCollected(prevRam, newRam)
 	-- Only one ability can be collected at a time
 	-- Only checks for added abilities, not removed (varia)
 	local abilityNum = -1
-	for ability,_ in pairs(newRam.ability) do
-		if (prevRam.ability[ability] == nil) then
+	local abilityActive = true
+	for ability,on in pairs(newRam.ability) do
+		if (prevRam.ability[ability] ~= on) then
 			abilityNum = ability
+			abilityActive = on
 			break
 		end
 	end
@@ -210,6 +364,7 @@ function eventAbilityCollected(prevRam, newRam)
 		-- Return the new ability
 		return {
 			ability = abilityNum,
+			active = abilityActive,
 			areaID = readRAM("IWRAM", 0x0054, 1),
 			roomID = readRAM("IWRAM", 0x0055, 1),
 			minimapX = readRAM("IWRAM", 0x0059, 1),
@@ -255,6 +410,27 @@ function eventAmmoChange(prevRam, newRam)
 	if (prevRam.ammo.energyCount > 0) then
 		-- If alive, send delta changes. Don't check for capacities (handled in tank event)
 		deltaammo.delta = true
+
+		-- Check energy capacity changes
+		if (newRam.ammo.energyCapacity ~= prevRam.ammo.energyCapacity) then
+			deltaammo.energyCapacity = newRam.ammo.energyCapacity - prevRam.ammo.energyCapacity
+			changed = true			
+		end
+		-- Check missile capacity changes
+		if (newRam.ammo.missileCapacity ~= prevRam.ammo.missileCapacity) then
+			deltaammo.missileCapacity = newRam.ammo.missileCapacity - prevRam.ammo.missileCapacity
+			changed = true			
+		end
+		-- Check super capacity changes
+		if (newRam.ammo.superCapacity ~= prevRam.ammo.superCapacity) then
+			deltaammo.superCapacity = newRam.ammo.superCapacity - prevRam.ammo.superCapacity
+			changed = true			
+		end
+		-- Check power capacity changes
+		if (newRam.ammo.powerCapacity ~= prevRam.ammo.powerCapacity) then
+			deltaammo.powerCapacity = newRam.ammo.powerCapacity - prevRam.ammo.powerCapacity
+			changed = true			
+		end		
 
 		-- Check energy count changes
 		if (newRam.ammo.energyCount ~= prevRam.ammo.energyCount) then
@@ -319,29 +495,6 @@ function setTankCollected(prevRAM, newTank)
 	-- New tank found
 	table.insert(prevRAM.tanks, newTank)
 
-	-- Update ammo for new tank
-	if (newTank.tankType == 0) then
-		prevRAM.ammo.energyCapacity = prevRAM.ammo.energyCapacity + 100
-		writeRAM("IWRAM", 0x1530, 2, prevRAM.ammo.energyCapacity)
-		prevRAM.ammo.energyCount = prevRAM.ammo.energyCapacity
-		writeRAM("IWRAM", 0x1536, 2, prevRAM.ammo.energyCapacity)
-	elseif (newTank.tankType == 1) then
-		prevRAM.ammo.missileCapacity = prevRAM.ammo.missileCapacity + 5
-		writeRAM("IWRAM", 0x1532, 2, prevRAM.ammo.missileCapacity)
-		prevRAM.ammo.missileCount = prevRAM.ammo.missileCount + 5
-		writeRAM("IWRAM", 0x1538, 2, prevRAM.ammo.missileCount)
-	elseif (newTank.tankType == 2) then
-		prevRAM.ammo.superCapacity = prevRAM.ammo.superCapacity + 2
-		writeRAM("IWRAM", 0x1534, 1, prevRAM.ammo.superCapacity)
-		prevRAM.ammo.superCount = prevRAM.ammo.superCount + 2
-		writeRAM("IWRAM", 0x153A, 1, prevRAM.ammo.superCount)
-	elseif (newTank.tankType == 3) then
-		prevRAM.ammo.powerCapacity = prevRAM.ammo.powerCapacity + 2
-		writeRAM("IWRAM", 0x1535, 1, prevRAM.ammo.powerCapacity)
-		prevRAM.ammo.powerCount = prevRAM.ammo.powerCount + 2
-		writeRAM("IWRAM", 0x153B, 1, prevRAM.ammo.powerCount)
-	end
-
 	-- Add tank to collected tanks in RAM
 	local addr = 0x036C00 + newTank.areaID * 0x100
 	while readRAM("EWRAM", addr, 1) ~= 0xFF do
@@ -366,10 +519,17 @@ end
 -- Set an ability to be collected
 function setAbilityCollected(prevAbility, newAbility)
 	-- Set ability collected/equipped
-	writeRAM("IWRAM", 0x153C, 4, 
-		bit.bor(readRAM("IWRAM", 0x153C, 4), AbilityMap[newAbility.ability]))
+	if (newAbility.active) then
+		newabilityflag = bit.bor(AbilityMap[newAbility.ability],
+			bit.lshift(AbilityMap[newAbility.ability], 8))
+	else
+		newabilityflag = AbilityMap[newAbility.ability]
+	end
 
-	prevAbility[newAbility.ability] = true
+	writeRAM("IWRAM", 0x153C, 4, 
+		bit.bor(readRAM("IWRAM", 0x153C, 4), newabilityflag))
+
+	prevAbility[newAbility.ability] = newAbility.active
 
 	-- TODO: update VRAM for new beam
 	-- if (abilityNum <= 2) then
@@ -422,28 +582,36 @@ function setAmmo(prevAmmo, deltaAmmo)
 		-- If incremental delta changes, add values to current values
 		-- deltas may be negative to subtract
 		-- bound the updated values with the capacity and 0
+		newAmmo.energyCapacity = math.max(prevAmmo.energyCapacity + 
+			(deltaAmmo.energyCapacity or 0), 0)
+		newAmmo.missileCapacity = math.max(prevAmmo.missileCapacity + 
+			(deltaAmmo.missileCapacity or 0), 0)
+		newAmmo.superCapacity = math.max(prevAmmo.superCapacity + 
+			(deltaAmmo.superCapacity or 0), 0)
+		newAmmo.powerCapacity = math.max(prevAmmo.powerCapacity + 
+			(deltaAmmo.powerCapacity or 0), 0)
+
 		newAmmo.energyCount = math.max(math.min(prevAmmo.energyCount + 
-			(deltaAmmo.energyCount or 0), prevAmmo.energyCapacity), 0)
+			(deltaAmmo.energyCount or 0), newAmmo.energyCapacity), 0)
 		newAmmo.missileCount = math.max(math.min(prevAmmo.missileCount + 
-			(deltaAmmo.missileCount or 0), prevAmmo.missileCapacity), 0)
+			(deltaAmmo.missileCount or 0), newAmmo.missileCapacity), 0)
 		newAmmo.superCount = math.max(math.min(prevAmmo.superCount + 
-			(deltaAmmo.superCount or 0), prevAmmo.superCapacity), 0)
+			(deltaAmmo.superCount or 0), newAmmo.superCapacity), 0)
 		newAmmo.powerCount = math.max(math.min(prevAmmo.powerCount + 
-			(deltaAmmo.powerCount or 0), prevAmmo.powerCapacity), 0)
+			(deltaAmmo.powerCount or 0), newAmmo.powerCapacity), 0)
 	else
 		-- If override changes, set the new value discarding the old value
 		for ammo,value in pairs(prevAmmo) do
 			newAmmo[ammo] = deltaAmmo[ammo] or value
 		end
 
-		-- Capcities are not updated from delta changes
-		writeRAM("IWRAM", 0x1530, 2, newAmmo.energyCapacity)
-		writeRAM("IWRAM", 0x1532, 2, newAmmo.missileCapacity)
-		writeRAM("IWRAM", 0x1534, 1, newAmmo.superCapacity)
-		writeRAM("IWRAM", 0x1535, 1, newAmmo.powerCapacity)
 	end
 
 	-- Update the counts in RAM
+	writeRAM("IWRAM", 0x1530, 2, newAmmo.energyCapacity)
+	writeRAM("IWRAM", 0x1532, 2, newAmmo.missileCapacity)
+	writeRAM("IWRAM", 0x1534, 1, newAmmo.superCapacity)
+	writeRAM("IWRAM", 0x1535, 1, newAmmo.powerCapacity)
 	writeRAM("IWRAM", 0x1536, 2, newAmmo.energyCount)
 	writeRAM("IWRAM", 0x1538, 2, newAmmo.missileCount)
 	writeRAM("IWRAM", 0x153A, 1, newAmmo.superCount)
@@ -473,10 +641,35 @@ local prevRAM = {
 	events = {}
 }
 
+
+
+splitItems = {}
+function removeItems()
+	areaID = readRAM("IWRAM", 0x0054, 1)
+	roomID = readRAM("IWRAM", 0x0055, 1)
+
+	for _,itemLocation in pairs(itemLocations) do
+		if splitItems[itemLocation.ID] ~= my_ID and
+			(itemLocation.Area == areaID and itemLocation.Room == roomID) then
+			for x = itemLocation.X, (itemLocation.X + itemLocation.Width - 1) do
+				for y = itemLocation.Y, (itemLocation.Y + itemLocation.Height - 1) do
+					-- BG1 Data
+					writeRAM("EWRAM", ((x + (y * itemLocation.RoomWidth)) * 2) + 0x2D800, 1, 0x45)
+					-- Clip Data
+					writeRAM("EWRAM", ((x + (y * itemLocation.RoomWidth)) * 2) + 0x27800, 1, 0x10)
+				end
+			end
+		end
+	end
+end
+
+
 -- Gets a message to send to the other player of new changes
 -- Returns the message as a dictionary object
 -- Returns false if no message is to be send
 function mzm_ram.getMessage()
+	removeItems()
+
 	-- Gets the current RAM state
 	local newRAM = {
 		tanks = prevRAM.tanks,
@@ -496,6 +689,9 @@ function mzm_ram.getMessage()
 		-- Add new changes
 		message["t"] = newTank
 		changed = true
+
+		gui.addmessage("> " .. newTank.tankType .. " - " .. 
+			AreaName[newTank.areaID] .. " [" .. newTank.tankX .. "," .. newTank.tankY .. "]")
 	end
 
 	-- Gets the message for a new collected ability
@@ -504,6 +700,9 @@ function mzm_ram.getMessage()
 		-- Add new changes
 		message["a"] = newAbility
 		changed = true
+
+		gui.addmessage("> " .. AbilityName[newAbility.ability] .. " " .. (message["a"].active and "On" or "Off") .. " - " .. 
+			AreaName[newAbility.areaID] .. " [" .. newAbility.minimapX .. "," .. newAbility.minimapY .. "]")
 	end
 
 	-- Gets the message for all changed game events
@@ -512,6 +711,14 @@ function mzm_ram.getMessage()
 		-- Add new changes
 		message["e"] = newEvent
 		changed = true
+
+		for event,active in pairs(newEvent) do
+			if (EventName[event] == nil) then
+				gui.addmessage("> Event #" .. event .. " - " .. (active and "On" or "Off"))
+			else
+				gui.addmessage("> Event " .. EventName[event] .. " - " .. (active and "On" or "Off"))
+			end
+		end
 	end
 
 	-- Gets the message for all updated ammo count/capacity
@@ -540,21 +747,39 @@ function mzm_ram.processMessage(message)
 	-- Does nothing if tank was already collected
 	if message["t"] then
 		prevRAM = setTankCollected(prevRAM, message["t"])
+
+		gui.addmessage("< " .. TankName[message["t"].tankType] .. " - " .. 
+			AreaName[message["t"].areaID] .. " [" .. message["t"].tankX .. "," .. message["t"].tankY .. "]")
 	end
 
 	-- Process new ability collected
 	if message["a"] then
 		prevRAM.ability = setAbilityCollected(prevRAM.ability, message["a"])
+
+		gui.addmessage("< " .. AbilityName[message["a"].ability] .. " " .. (message["a"].active and "On" or "Off") .. " - " .. 
+			AreaName[message["a"].areaID] .. " [" .. message["a"].minimapX .. "," .. message["a"].minimapY .. "]")
 	end
 
 	-- process all changed game events
 	if message["e"] then
 		prevRAM.events = setEvent(prevRAM.events, message["e"])
+
+		for event,active in pairs(message["e"]) do
+			if (EventName[event] == nil) then
+				gui.addmessage("< Event #" .. event .. " - " .. (active and "On" or "Off"))
+			else
+				gui.addmessage("< Event " .. EventName[event] .. " - " .. (active and "On" or "Off"))
+			end
+		end
 	end
 
 	-- process all ammo updates
 	if message["m"] then
 		prevRAM.ammo = setAmmo(prevRAM.ammo, message["m"])
+	end
+
+	if message["i"] then
+		splitItems = message["i"]
 	end
 end
 

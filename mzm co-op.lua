@@ -1,9 +1,10 @@
 local guiClick = {}
 
 form1 = nil
-local text1, btnQuit, btnFrame0, btnHost, btnClient
+local text1, btnQuit, btnClient
 local txbIP, lblIP, txbPort, lblPort
 config = {}
+
 
 --Reloads the config file, overwriting any changes made
 function loadConfig()
@@ -11,6 +12,7 @@ function loadConfig()
 
 	updateGUI()
 end
+
 
 --Saves the config file.
 --dontRead flag will prevent reading changes made in the form
@@ -40,6 +42,7 @@ return config
 	f:close()
 end
 
+
 --Attempt to load config file
 require_status, config = pcall(function()
 	return dofile("mzm_coop\\config")
@@ -53,13 +56,16 @@ if not require_status then
 	saveConfig(true)
 end
 
+
 local sync = require("mzm_coop\\sync")
+
 
 --stringList contains the output text
 local stringList = {last = 1, first = 24}
 for i = stringList.first, stringList.last, -1 do
 	stringList[i] = ""
 end
+
 
 --add a new line to the string list
 function stringList.push(value)
@@ -68,6 +74,7 @@ function stringList.push(value)
   stringList[stringList.last] = nil
   stringList.last = stringList.last + 1
 end
+
 
 --get the entire string list as a single string
 function stringList.tostring()
@@ -79,6 +86,7 @@ function stringList.tostring()
 	return outputstr
 end
 
+
 --Add a line to the output. Inserts a timestamp to the string
 function printOutput(str) 
 	str = string.gsub (str, "\n", "\r\n")
@@ -88,60 +96,44 @@ function printOutput(str)
 	forms.settext(text1, stringList.tostring())
 end
 
+
+host = require("mzm_coop\\host")
+
+
 --Reloads all the info on the form. Disables any inappropriate components
 function updateGUI()
 	forms.settext(txbIP, config.hostname)
 	forms.settext(txbPort, config.port)
 
-	if syncStatus == "Idle" then
-		forms.setproperty(txbIP, "Enabled", true)
-		forms.setproperty(txbPort, "Enabled", true)
-		forms.setproperty(btnHost, "Enabled", true)
-		forms.setproperty(btnClient, "Enabled", true)
-		forms.setproperty(btnLoadConfig, "Enabled", true)
-		forms.settext(btnQuit, "Quit")	
-	else
+	if host.connected() then
 		forms.setproperty(txbIP, "Enabled", false)
 		forms.setproperty(txbPort, "Enabled", false)
-		forms.setproperty(btnHost, "Enabled", false)
 		forms.setproperty(btnClient, "Enabled", false)
 		forms.setproperty(btnLoadConfig, "Enabled", false)
 		forms.settext(btnQuit, "Close Connection")	
+	else
+		forms.setproperty(txbIP, "Enabled", true)
+		forms.setproperty(txbPort, "Enabled", true)
+		forms.setproperty(btnClient, "Enabled", true)
+		forms.setproperty(btnLoadConfig, "Enabled", true)
+		forms.settext(btnQuit, "Quit")	
 	end
 end
 
---Clears pointers when the connection is closed
-function cleanConnection()
-	syncStatus = "Idle"
-	client_socket = nil
-	server = nil
-
-	updateGUI()
-end
-
---when the script finishes, make sure to close the connection
-function close_connection()
-  if (client_socket ~= nil) then
-    client_socket:close()
-  end
-  if (server ~= nil) then
-    server:close()
-  end
-  printOutput("Connection closed.")
-  cleanConnection()
-end
 
 --If the script ends, makes sure the sockets and form are closed
-event.onexit(function () close_connection(); forms.destroy(form1) end)
+event.onexit(function () host.close(); forms.destroy(form1) end)
+
 
 --furthermore, override error with a function that closes the connection
 --before the error is actually thrown
 local old_error = error
 
 error = function(str, level)
-  close_connection()
+  host.close()
   old_error(str, 0)
 end
+
 
 --Load the changes from the form and disable any appropriate components
 function prepareConnection()
@@ -150,18 +142,19 @@ function prepareConnection()
 	
 	forms.setproperty(txbIP, "Enabled", false)
 	forms.setproperty(txbPort, "Enabled", false)
-	forms.setproperty(btnHost, "Enabled", false)
 	forms.setproperty(btnClient, "Enabled", false)
 end
 
+
 --Quit/Disconnect click handle for the quit button
 function quit2P1C()
-	if syncStatus == "Idle" then
-		forms.destroy(form1)
-	else
+	if (host.connected()) then
 		sendMessage["Quit"] = true
+	else
+		forms.destroy(form1)
 	end
 end
+
 
 --Returns a list of files in a given directory
 function os.dir(dir)
@@ -176,8 +169,6 @@ function os.dir(dir)
 	return files
 end
 
-local hostfunc = require("mzm_coop\\host")
-local clientfunc = require("mzm_coop\\client")
 
 --Create the form
 form1 = forms.newform(580, 390, "Metroid: Zero Mission: Co-op")
@@ -188,8 +179,7 @@ forms.setproperty(text1, "ReadOnly", true)
 
 btnQuit = forms.button(form1, "Quit 2P1C", quit2P1C, 145, 10, 125, 30)
 
-btnHost = forms.button(form1, "Host", function() prepareConnection(); guiClick["Host Server"] = hostfunc end, 100, 50, 80, 30)
-btnClient = forms.button(form1, "Join", function() prepareConnection(); guiClick["Join Server"] = clientfunc end, 190, 50, 80, 30)
+btnClient = forms.button(form1, "Join", function() prepareConnection(); guiClick["Join Server"] = host.join end, 190, 50, 80, 30)
 
 txbIP = forms.textbox(form1, "", 140, 20, nil, 10, 110, false, false)
 lblIP = forms.label(form1, "Host IP (Client only):", 15, 95, 120, 20)
@@ -201,15 +191,15 @@ btnLoadConfig = forms.button(form1, "Discard Changes", function() guiClick["Disc
 
 
 sendMessage = {}
-syncStatus = "Idle"
-local prev_syncStatus = "Idle"
-client_socket = nil
-server = nil
 local thread
 
 updateGUI()
 
 local threads = {}
+
+
+host.start()
+
 
 ---------------------
 --    Main loop    --
@@ -220,11 +210,7 @@ while 1 do
 		return
 	end
 
-	--Update form if state has changed
-	if (prev_syncStatus ~= syncStatus) then
-		prev_syncStatus = syncStatus
-		updateGUI()
-	end
+	host.listen()
 
 	--Create threads for the function requests from the form
 	for k,v in pairs(guiClick) do
@@ -249,12 +235,12 @@ while 1 do
 	end
 
 	--If connected, run the syncinputs thread
-	if syncStatus ~= "Idle" then
+	if host.connected() then
 		--If the thread didn't yield, then create a new one
 		if thread == nil or coroutine.status(thread) == "dead" then
 			thread = coroutine.create(sync.syncRAM)
 		end
-		local status, err = coroutine.resume(thread, client_socket)
+		local status, err = coroutine.resume(thread, host.clients)
 
 		if (status == false and err ~= nil) then
 			printOutput("Error during sync inputs: " .. tostring(err))
