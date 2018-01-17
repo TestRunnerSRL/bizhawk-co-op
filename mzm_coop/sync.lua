@@ -89,9 +89,11 @@ function sync.syncRAM(clients)
       local received_message_type, received_data = messenger.receive(client, true)
 
       -- echo messages
-      for otherClientID, otherClient in pairs(clients) do
-        if (otherClientID ~= clientID) then
-          messenger.send(otherClient, received_message_type, received_data)
+      if (received_message_type ~= nil) then
+        for otherClientID, otherClient in pairs(clients) do
+          if (otherClientID ~= clientID) then
+            messenger.send(otherClient, received_message_type, received_data)
+          end
         end
       end
 
