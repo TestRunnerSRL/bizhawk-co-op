@@ -331,11 +331,6 @@ function eventTankCollected(prevRam, newRam)
 				end
 			end
 
-			-- If it's a new tank then don't send new ammo updates
-			for ammo,value in pairs(newRam.ammo) do
-				prevRam.ammo[ammo] = value
-			end
-
 			-- Add tank to list of tanks
 			table.insert(newRam.tanks, newTank)
 			return newTank, prevRam, newRam
