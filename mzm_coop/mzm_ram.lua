@@ -133,7 +133,7 @@ itemLocations = {
 	{ ID=58, Area=3, Room=0x04, RoomWidth=0x13, X=0x06, Y=0x08, Width=1, Height=1 },
 	{ ID=59, Area=3, Room=0x17, RoomWidth=0x13, X=0x08, Y=0x04, Width=1, Height=1 },
 	{ ID=60, Area=3, Room=0x17, RoomWidth=0x13, X=0x0d, Y=0x0d, Width=1, Height=1 },
-	{ ID=61, Area=3, Room=0x13, RoomWidth=0x40, X=0x07, Y=0x15, Width=1, Height=1 },
+	{ ID=61, Area=-1, Room=-1 },
 	{ ID=62, Area=3, Room=0x16, RoomWidth=0x13, X=0x0b, Y=0x06, Width=1, Height=1 },
 	{ ID=63, Area=3, Room=0x16, RoomWidth=0x13, X=0x08, Y=0x10, Width=1, Height=1 },
 	{ ID=64, Area=3, Room=0x12, RoomWidth=0xc7, X=0x48, Y=0x06, Width=1, Height=1 },
