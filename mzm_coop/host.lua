@@ -74,12 +74,13 @@ function host.listen()
 
 	local itemlist = {}
 	math.randomseed(os.time())
+	math.random(100)
 	for i=0,99 do
 		itemlist[i] = clientMap[i % clientCount]
 	end
 
 	for i=1,99 do
-		j = math.random(i)
+		j = math.random(i + 1) - 1 -- 0 to i inclusive
 		itemlist[i], itemlist[j] = itemlist[j], itemlist[i]
 	end
 
