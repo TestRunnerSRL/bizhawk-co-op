@@ -6,7 +6,7 @@ mzm-co-op is a Lua script for BizHawk that allows two people to play a co-op exp
 
 ###You will need the following:
 
-* (1) [BizHawk 1.9.4](http://sourceforge.net/projects/bizhawk/files/BizHawk/BizHawk-1.9.4.zip/download)
+* (1) [BizHawk 1.x.x](https://github.com/TASVideos/BizHawk/releases/tag/1.13.1) - Preferably after 1.12.0
 * (2) [BizHawk prerequisite installer](http://sourceforge.net/projects/bizhawk/files/Prerequisites/bizhawk_prereqs_v1.1.zip/download) (run this)
 * (3) [luasocket](http://files.luaforge.net/releases/luasocket/luasocket/luasocket-2.0.2/luasocket-2.0.2-lua-5.1.2-Win32-vc8.zip)
 * (4) mzm-coop

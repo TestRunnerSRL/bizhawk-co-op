@@ -1,67 +1,34 @@
 local guiClick = {}
 
-form1 = nil
-local text1, btnQuit, btnClient
-local txbIP, lblIP, txbPort, lblPort
+local form1 = nil
+local text1, lblRooms, btnGetRooms, ddRooms, btnQuit, btnJoin, btnHost
+local txtUser, txtPass, lblUser, lblPass, ddRamCode, lblRamCode
 config = {}
 
 
---Reloads the config file, overwriting any changes made
-function loadConfig()
-	config = dofile("mzm_coop\\config")
-
-	updateGUI()
+function strsplit(inputstr, sep, max)
+  if not sep then
+    sep = ","
+  end
+  local t={} ; i=1
+  for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+    if max and i > max then
+      t[i] = (t[i] or '') .. sep .. str
+    else
+      t[i] = str
+      i = i + 1
+    end
+  end
+  return t
 end
 
-
---Saves the config file.
---dontRead flag will prevent reading changes made in the form
-function saveConfig(dontRead)
-	if (dontRead == nil) then
-		config.hostname = forms.gettext(txbIP)
-		config.port = tonumber(forms.gettext(txbPort))
-	end
-
-	local output = [[
-local config = {}
-
---This is the port the connection will happen over. Make sure this is the same
---for both players before trying to sync.
-config.port = ]] .. config.port .. [[
-
---This is the ip address or hostname of the player running host.lua (ip
---addresses should should still be in quotes.) This value is only inportant
---for the client.
-config.hostname = "]] .. config.hostname .. [["
-
-return config
-]]
-
-	f = assert(io.open("mzm_coop\\config", "w"))
-	f:write(output)
-	f:close()
-end
-
-
---Attempt to load config file
-require_status, config = pcall(function()
-	return dofile("mzm_coop\\config")
-end)
---If config file not found, then create a default config file
-if not require_status then
-	config = {}
-	config.port = 54321
-	config.hostname = "localhost"
-
-	saveConfig(true)
-end
 
 
 local sync = require("mzm_coop\\sync")
 
 
 --stringList contains the output text
-local stringList = {last = 1, first = 24}
+local stringList = {last = 1, first = 10}
 for i = stringList.first, stringList.last, -1 do
 	stringList[i] = ""
 end
@@ -100,23 +67,45 @@ end
 host = require("mzm_coop\\host")
 
 
+local roomlist = false
+function refreshRooms() 
+	roomlist = host.getRooms()
+	if roomlist then
+		forms.setdropdownitems(ddRooms, roomlist)
+	else 
+		forms.setdropdownitems(ddRooms, {['(No rooms available)']='(No rooms available)'})
+	end
+
+	updateGUI()
+end
+
+
 --Reloads all the info on the form. Disables any inappropriate components
 function updateGUI()
-	forms.settext(txbIP, config.hostname)
-	forms.settext(txbPort, config.port)
-
-	if host.connected() then
-		forms.setproperty(txbIP, "Enabled", false)
-		forms.setproperty(txbPort, "Enabled", false)
-		forms.setproperty(btnClient, "Enabled", false)
-		forms.setproperty(btnLoadConfig, "Enabled", false)
-		forms.settext(btnQuit, "Close Connection")	
-	else
-		forms.setproperty(txbIP, "Enabled", true)
-		forms.setproperty(txbPort, "Enabled", true)
-		forms.setproperty(btnClient, "Enabled", true)
-		forms.setproperty(btnLoadConfig, "Enabled", true)
-		forms.settext(btnQuit, "Quit")	
+	if host.status == 'Idle' then
+		if forms.setdropdownitems and roomlist then
+			forms.setproperty(ddRooms, 'Enabled', true)
+		else 
+			forms.setproperty(ddRooms, 'Enabled', false)
+		end
+		forms.setproperty(btnGetRooms, "Enabled", true)
+		forms.setproperty(ddRamCode, "Enabled", true)
+		forms.setproperty(txtUser, "Enabled", true)
+		forms.setproperty(txtPass, "Enabled", true)
+		forms.setproperty(btnQuit, "Enabled", false)
+		forms.setproperty(btnJoin, "Enabled", true)
+		forms.setproperty(btnHost, "Enabled", true)
+		forms.settext(btnHost, "Create Room")
+	else 
+		forms.setproperty(btnGetRooms, "Enabled", false)
+		forms.setproperty(ddRamCode, "Enabled", false)
+		forms.setproperty(ddRooms, "Enabled", false)
+		forms.setproperty(txtUser, "Enabled", false)
+		forms.setproperty(txtPass, "Enabled", false)
+		forms.setproperty(btnQuit, "Enabled", true)
+		forms.setproperty(btnJoin, "Enabled", false)
+		forms.setproperty(btnHost, "Enabled", not host.locked)
+		forms.settext(btnHost, "Lock Room")
 	end
 end
 
@@ -137,58 +126,89 @@ end
 
 --Load the changes from the form and disable any appropriate components
 function prepareConnection()
-	config.hostname = forms.gettext(txbIP)
-	config.port = tonumber(forms.gettext(txbPort))
-	
-	forms.setproperty(txbIP, "Enabled", false)
-	forms.setproperty(txbPort, "Enabled", false)
-	forms.setproperty(btnClient, "Enabled", false)
+	if roomlist then
+		config.room = forms.gettext(ddRooms)
+	else 
+		config.room = ''
+	end
+	config.ramcode = forms.gettext(ddRamCode)
+	config.user = forms.gettext(txtUser)
+	config.pass = forms.gettext(txtPass)
+	config.port = 50000
+	--config.hostname = forms.gettext(txtIP)
 end
 
 
 --Quit/Disconnect click handle for the quit button
-function quit2P1C()
+function leaveRoom()
 	if (host.connected()) then
 		sendMessage["Quit"] = true
-	else
-		forms.destroy(form1)
+	else 
+		host.close()
 	end
 end
 
 
 --Returns a list of files in a given directory
 function os.dir(dir)
-	local f = assert(io.popen("dir " .. dir, 'r'))
-	local s = f:read('*all')
-	f:close()
-
-	local matched = string.gmatch(s, "%s(%w+)%.%w+\n")
-
 	local files = {}
-	for file,k in matched do table.insert(files, tostring(file)) end
+	local f = assert(io.popen('dir \"' .. dir .. '\" /b ', 'r'))
+	for file in f:lines() do
+		table.insert(files, file)
+	end
+	f:close()
 	return files
 end
 
 
 --Create the form
-form1 = forms.newform(580, 390, "Metroid: Zero Mission: Co-op")
-forms.setproperty(form1, "ControlBox", false)
+form1 = forms.newform(310, 310, "Metroid: Zero Mission: Co-op")
 
-text1 = forms.textbox(form1, "", 260, 325, nil, 290, 10, true, false)
+text1 = forms.textbox(form1, "", 263, 105, nil, 16, 153, true, false)
 forms.setproperty(text1, "ReadOnly", true)
+forms.setproperty(text1, "MaxLength", 1028)
 
-btnQuit = forms.button(form1, "Quit 2P1C", quit2P1C, 145, 10, 125, 30)
+if forms.setdropdownitems then -- can't update list prior to bizhawk 1.12.0
+	btnGetRooms = forms.button(form1, "Refresh Rooms", refreshRooms, 220, 10, 60, 23)
+	ddRooms = forms.dropdown(form1, {['(Fetching rooms...)']='(Fetching rooms...)'}, 80, 11, 135, 20)
+	forms.setproperty(ddRooms, 'Enabled', false)
+	guiClick["Refresh Rooms"] = refreshRooms;
+else
+	btnGetRooms = forms.button(form1, "", function() end, 15, 10, 60, 23)
+	forms.setproperty(btnGetRooms, 'Enabled', false)
 
-btnClient = forms.button(form1, "Join", function() prepareConnection(); guiClick["Join Server"] = host.join end, 190, 50, 80, 30)
+	roomlist = host.getRooms()
+	if roomlist then
+		ddRooms = forms.dropdown(form1, roomlist, 80, 11, 200, 20)
+		forms.setproperty(ddRooms, 'Enabled', true)
+	else 
+		ddRooms = forms.dropdown(form1, {['(No rooms available)']='(No rooms available)'}, 80, 11, 200, 20)
+		forms.setproperty(ddRooms, 'Enabled', false)
+	end
+end
+lblRooms = forms.label(form1, "Rooms:", 34, 13)
 
-txbIP = forms.textbox(form1, "", 140, 20, nil, 10, 110, false, false)
-lblIP = forms.label(form1, "Host IP (Client only):", 15, 95, 120, 20)
-txbPort = forms.textbox(form1, "", 60, 20, "UNSIGNED", 160, 110, false, false)
-lblPort = forms.label(form1, "Port:", 165, 95, 50, 20)
 
-btnSaveConfig = forms.button(form1, "Save Settings", function() guiClick["Save Settings"] = saveConfig end, 10, 310, 125, 25)
-btnLoadConfig = forms.button(form1, "Discard Changes", function() guiClick["Discard Changes"] = loadConfig end, 145, 310, 125, 25)
+txtUser = forms.textbox(form1, "", 200, 20, nil, 80, 40, false, false)
+txtPass = forms.textbox(form1, "", 200, 20, nil, 80, 66, false, false)
+ddRamCode = forms.dropdown(form1, os.dir("mzm_coop\\ramcontroller"), 80, 93, 200, 10)
+lblUser = forms.label(form1, "Username:", 19, 41)
+lblPass = forms.label(form1, "Password:", 21, 68)
+lblRamCode = forms.label(form1, "RAM Script:", 13, 95)
 
+
+
+
+
+btnQuit = forms.button(form1, "Leave Room", leaveRoom, 
+	15, 120, 85, 25)
+forms.setproperty(btnQuit, 'Enabled', false)
+btnHost = forms.button(form1, "Create Room", 
+	function() prepareConnection(); guiClick["Host Server"] = host.start end, 
+	105, 120, 85, 25)
+btnJoin = forms.button(form1, "Join Room", 
+	function() prepareConnection(); guiClick["Join Server"] = host.join end, 
+	195, 120, 85, 25)
 
 sendMessage = {}
 local thread
@@ -197,9 +217,8 @@ updateGUI()
 
 local threads = {}
 
-
-host.start()
-
+emu.yield()
+emu.yield()
 
 ---------------------
 --    Main loop    --

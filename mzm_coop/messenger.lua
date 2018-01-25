@@ -89,7 +89,7 @@ function messenger.send(client_socket, message_type, ...)
     error("Attempted to send an unknown message type")
   end
   --encode the message
-  local message = message_type_to_char[message_type] .. encoder(data)
+  local message = message_type_to_char[message_type] .. config.user .. ',' .. encoder(data)
   --send the message
   client_socket:send(message .. "\n")
 end
@@ -102,8 +102,8 @@ local decode_message = {
   [messenger.MEMORY] = function(split_message)
     local memchanges = {}
     for _, mem in pairs(split_message) do
-      local splitmem = bizstring.split(mem, ":")
-      memchanges[tonumber(splitmem[0])] = tonumber(splitmem[1])
+      local splitmem = strsplit(mem, ":")
+      memchanges[tonumber(splitmem[1])] = tonumber(splitmem[2])
     end
 
     return memchanges
@@ -112,22 +112,22 @@ local decode_message = {
   [messenger.RAMEVENT] = function(split_message)
     local ramevent = {}
     for _, event in pairs(split_message) do
-      local splitevent = bizstring.split(event, ":")
-      if not ramevent[splitevent[0]] then
-        ramevent[splitevent[0]] = {}
+      local splitevent = strsplit(event, ":")
+      if not ramevent[splitevent[1]] then
+        ramevent[splitevent[1]] = {}
       end
 
       local key, val
-      key = tonumber(splitevent[1]) or splitevent[1]
+      key = tonumber(splitevent[2]) or splitevent[2]
 
-      if splitevent[2] == 't' then
+      if splitevent[3] == 't' then
         val = true
-      elseif splitevent[2] == 'f' then
+      elseif splitevent[3] == 'f' then
           val = false
       else
-          val = tonumber(splitevent[2]) or splitevent[2]
+          val = tonumber(splitevent[3]) or splitevent[3]
       end
-      ramevent[splitevent[0]][key] = val
+      ramevent[splitevent[1]][key] = val
     end
 
     return ramevent    
@@ -135,11 +135,12 @@ local decode_message = {
 
   [messenger.CONFIG] = function(split_message)
     --get sync hash from message
-    local their_sync_hash = split_message[0]
-    local their_id = split_message[1]
+    local their_sync_hash = split_message[1]
+    local their_id = split_message[2]
     if (their_id ~= nil) then
       their_id = tonumber(their_id)
     end
+
     return {their_sync_hash, their_id}
   end,
 
@@ -186,10 +187,13 @@ function messenger.receive(client_socket, nonblocking)
   message = message:sub(2)
   --decode the message
   local decoder = decode_message[message_type]
-  local split_message = bizstring.split(message, ",")
+  local split_message = strsplit(message, ",", 1)
+  local their_user = split_message[1]
+  message = split_message[2]
+  local split_message = strsplit(message, ",")
   local data = decoder(split_message)
   --return info
-  return message_type, data
+  return message_type, their_user, data
 end
 
 

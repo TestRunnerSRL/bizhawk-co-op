@@ -763,7 +763,7 @@ function mzm_ram.getMessage()
 		message["t"] = newTank
 		changed = true
 
-		gui.addmessage("> " .. newTank.tankType .. " - " .. 
+		gui.addmessage(config.user .. ": " .. TankName[newTank.tankType] .. " - " .. 
 			AreaName[newTank.areaID] .. " [" .. newTank.tankX .. "," .. newTank.tankY .. "]")
 	end
 
@@ -774,7 +774,7 @@ function mzm_ram.getMessage()
 		message["a"] = newAbility
 		changed = true
 
-		gui.addmessage("> " .. AbilityName[newAbility.ability] .. " " .. (message["a"].active and "On" or "Off") .. " - " .. 
+		gui.addmessage(config.user .. ": " .. AbilityName[newAbility.ability] .. " " .. (message["a"].active and "On" or "Off") .. " - " .. 
 			AreaName[newAbility.areaID] .. " [" .. newAbility.minimapX .. "," .. newAbility.minimapY .. "]")
 	end
 
@@ -787,9 +787,9 @@ function mzm_ram.getMessage()
 
 		for event,active in pairs(newEvent) do
 			if (EventName[event] == nil) then
-				gui.addmessage("> Event #" .. event .. " - " .. (active and "On" or "Off"))
+				gui.addmessage(config.user .. ": Event #" .. event .. " - " .. (active and "On" or "Off"))
 			else
-				gui.addmessage("> Event " .. EventName[event] .. " - " .. (active and "On" or "Off"))
+				gui.addmessage(config.user .. ": Event " .. EventName[event] .. " - " .. (active and "On" or "Off"))
 			end
 		end
 	end
@@ -815,13 +815,13 @@ function mzm_ram.getMessage()
 end
 
 -- Process a message from another player and update RAM
-function mzm_ram.processMessage(message)
+function mzm_ram.processMessage(their_user, message)
 	-- Process new tank collected
 	-- Does nothing if tank was already collected
 	if message["t"] then
 		prevRAM = setTankCollected(prevRAM, message["t"])
 
-		gui.addmessage("< " .. TankName[message["t"].tankType] .. " - " .. 
+		gui.addmessage(their_user .. ": " .. TankName[message["t"].tankType] .. " - " .. 
 			AreaName[message["t"].areaID] .. " [" .. message["t"].tankX .. "," .. message["t"].tankY .. "]")
 	end
 
@@ -829,7 +829,7 @@ function mzm_ram.processMessage(message)
 	if message["a"] then
 		prevRAM.ability = setAbilityCollected(prevRAM.ability, message["a"])
 
-		gui.addmessage("< " .. AbilityName[message["a"].ability] .. " " .. (message["a"].active and "On" or "Off") .. " - " .. 
+		gui.addmessage(their_user .. ": " .. AbilityName[message["a"].ability] .. " " .. (message["a"].active and "On" or "Off") .. " - " .. 
 			AreaName[message["a"].areaID] .. " [" .. message["a"].minimapX .. "," .. message["a"].minimapY .. "]")
 	end
 
@@ -839,9 +839,9 @@ function mzm_ram.processMessage(message)
 
 		for event,active in pairs(message["e"]) do
 			if (EventName[event] == nil) then
-				gui.addmessage("< Event #" .. event .. " - " .. (active and "On" or "Off"))
+				gui.addmessage(their_user .. ": Event #" .. event .. " - " .. (active and "On" or "Off"))
 			else
-				gui.addmessage("< Event " .. EventName[event] .. " - " .. (active and "On" or "Off"))
+				gui.addmessage(their_user .. ": Event " .. EventName[event] .. " - " .. (active and "On" or "Off"))
 			end
 		end
 	end
@@ -855,5 +855,7 @@ function mzm_ram.processMessage(message)
 		splitItems = message["i"]
 	end
 end
+
+mzm_ram.itemcount = 100
 
 return mzm_ram
