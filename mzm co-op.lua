@@ -262,7 +262,7 @@ while 1 do
 		local status, err = coroutine.resume(thread, host.clients)
 
 		if (status == false and err ~= nil) then
-			printOutput("Error during sync inputs: " .. tostring(err))
+			printOutput("Error during sync: " .. tostring(err))
 		end
 	end
 

@@ -455,7 +455,7 @@ end
 ramItems = {
 	-- INVENTORY_SWAP
 	[0xF412] = {
-		name={"Bird", "Flute", "Shovel", "unknown item", "Magic Powder", "Mushroom", "Magic Boomerang", "Boomerang"},
+		name={[0]="Bird", "Flute", "Shovel", "unknown item", "Magic Powder", "Mushroom", "Magic Boomerang", "Boomerang"},
 		type="bit",
 		receiveFunc=function(newValue, prevValue) 
 			-- If acquired bird, clear flute
@@ -484,7 +484,7 @@ ramItems = {
 
 	-- INVENTORY_SWAP_2
 	[0xF414] = {
-		name={"unknown item", "unknown item", "unknown item", "unknown item", "unknown item", "unknown item", "Silver Arrows", "Bow"},
+		name={[0]="unknown item", "unknown item", "unknown item", "unknown item", "unknown item", "unknown item", "Silver Arrows", "Bow"},
 		type="bit"
 	},
 
@@ -511,12 +511,12 @@ ramItems = {
 	[0xF34C] = {type="num", receiveFunc=zeroRisingOrUpgradeFlute},       -- Shovel flute etc, tracked in INVENTORY_SWAP
 	[0xF34D] = {name="Net", type="bool"},
 	[0xF34E] = {name="Book", type="bool"},
-	[0xF34F] = {type="byte"}, -- Bottle count
+	[0xF34F] = {name="Bottles", type="num"}, -- Bottle count
 	[0xF350] = {name="Red Cane", type="bool"},
 	[0xF351] = {name="Blue Cane", type="bool"},
 	[0xF352] = {name="Cape", type="bool"},
 	[0xF353] = {name="Mirror", type="bool"},
-	[0xF354] = {name="Gloves", type="bool"},
+	[0xF354] = {name={[0]="Bare Hands", "Power Gloves", "Titan's Mitts"}, type="num"},
 	[0xF355] = {name="Boots", type="bool"},
 	[0xF356] = {name="Flippers", type="bool"},
 	[0xF357] = {name="Pearl", type="bool"},
@@ -524,26 +524,31 @@ ramItems = {
 	[0xF416] = {type="num", mask=0xC0}, -- Progressive shield
 	[0xF35A] = {name={[0]="No Shield", "Shield", "Fire Shield", "Mirror Shield"}, type="delta"},
 	[0xF35B] = {name={[0]="Green Mail", "Blue Mail", "Red Mail"}, type="delta"},
-	[0xF35C] = {name="Bottle", type="num"}, 
-	[0xF35D] = {name="Bottle", type="num"},
-	[0xF35E] = {name="Bottle", type="num"},
-	[0xF35F] = {name="Bottle", type="num"},
-	[0xF364] = {name={"unused Compass", "unused Compass", "Ganon's Tower Compass", "Turtle Rock Compass", "Thieves Towen Compass", "Tower of Hera Compass", "Ice Palace Compass", "Skull Woods Compass"}, type="bit"},
-	[0xF365] = {name={"Misery Mire Compass", "Palace of Darkness Compass", "Swamp Palace Compass", "Agahnim's Tower Compass", "Desert Palace Compass", "Eastern Palace Compass", "Hyrule Castle Compass", "Sewer Passage Compass"}, type="bit"},
-	[0xF366] = {name={"unused Boss Key", "unused Boss Key", "Ganon's Tower Boss Key", "Turtle Rock Boss Key", "Thieves Towen Boss Key", "Tower of Hera Boss Key", "Ice Palace Boss Key", "Skull Woods Boss Key"}, type="bit"},
-	[0xF367] = {name={"Misery Mire Boss Key", "Palace of Darkness Boss Key", "Swamp Palace Boss Key", "Agahnim's Tower Boss Key", "Desert Palace Boss Key", "Eastern Palace Boss Key", "Hyrule Castle Boss Key", "Sewer Passage Boss Key"}, type="bit"},
-	[0xF368] = {name={"unused Map", "unused Map", "Ganon's Tower Map", "Turtle Rock Map", "Thieves Towen Map", "Tower of Hera Map", "Ice Palace Map", "Skull Woods Map"}, type="bit"},
-	[0xF369] = {name={"Misery Mire Map", "Palace of Darkness Map", "Swamp Palace Map", "Agahnim's Tower Map", "Desert Palace Map", "Eastern Palace Map", "Hyrule Castle Map", "Sewer Passage Map"}, type="bit"},
-	[0xF379] = {type="bit", mask=0x06}, -- Abilities
-	[0xF374] = {name={"Red Pendant", "Blue Pendant", "Green Pendant"}, type="bit"},
-	[0xF37A] = {name={"Crystal 6", "Crystal 1", "Crystal 5", "Crystal 7", "Crystal 2", "Crystal 4", "Crystal 3", "unused"}, type="bit"},
+	[0xF35C] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"}, 
+	[0xF35D] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
+	[0xF35E] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
+	[0xF35F] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
+	[0xF364] = {name={[0]="unused Compass", "unused Compass", "Ganon's Tower Compass", "Turtle Rock Compass", "Thieves Towen Compass", "Tower of Hera Compass", "Ice Palace Compass", "Skull Woods Compass"}, type="bit"},
+	[0xF365] = {name={[0]="Misery Mire Compass", "Palace of Darkness Compass", "Swamp Palace Compass", "Agahnim's Tower Compass", "Desert Palace Compass", "Eastern Palace Compass", "Hyrule Castle Compass", "Sewer Passage Compass"}, type="bit"},
+	[0xF366] = {name={[0]="unused Boss Key", "unused Boss Key", "Ganon's Tower Boss Key", "Turtle Rock Boss Key", "Thieves Towen Boss Key", "Tower of Hera Boss Key", "Ice Palace Boss Key", "Skull Woods Boss Key"}, type="bit"},
+	[0xF367] = {name={[0]="Misery Mire Boss Key", "Palace of Darkness Boss Key", "Swamp Palace Boss Key", "Agahnim's Tower Boss Key", "Desert Palace Boss Key", "Eastern Palace Boss Key", "Hyrule Castle Boss Key", "Sewer Passage Boss Key"}, type="bit"},
+	[0xF368] = {name={[0]="unused Map", "unused Map", "Ganon's Tower Map", "Turtle Rock Map", "Thieves Towen Map", "Tower of Hera Map", "Ice Palace Map", "Skull Woods Map"}, type="bit"},
+	[0xF369] = {name={[0]="Misery Mire Map", "Palace of Darkness Map", "Swamp Palace Map", "Agahnim's Tower Map", "Desert Palace Map", "Eastern Palace Map", "Hyrule Castle Map", "Sewer Passage Map"}, type="bit"},
+	[0xF379] = {type="bit", mask=0x06, default=0x68}, -- Abilities
+	[0xF374] = {name={[0]="Red Pendant", "Blue Pendant", "Green Pendant"}, type="bit"},
+	[0xF37A] = {name={[0]="Crystal 6", "Crystal 1", "Crystal 5", "Crystal 7", "Crystal 2", "Crystal 4", "Crystal 3", "unused"}, type="bit"},
 	[0xF37B] = {name={[0]="Normal Magic", "1/2 Magic", "1/4 Magic"}, type="num"},
 
 	-- Ammo values
 	[0xF360] = {type="delta", size=2}, -- Current Rupees
 	[0xF36A] = {type="delta"}, -- Wishing Pond Rupees
-	[0xF36C] = {type="delta"}, -- HP Max
-	[0xF36D] = {type="delta"}, -- HP Current
+	[0xF36C] = {type="delta", default=0x18}, -- HP Max
+	[0xF36D] = {type="delta", receiveFunc=function(newValue, prevValue)
+		if newValue == 0 and prevVal ~= 0 then
+			writeRAM("WRAM", 0x0010, 1, 0x12) -- Kill link if 0 HP
+		end
+	end
+	, default=0x18}, -- HP Current
 	[0xF36E] = {type="delta"}, -- MP
 	[0xF370] = {type="delta"}, -- Bomb upgrades
 	[0xF371] = {type="delta"}, -- Arrow upgrades
@@ -566,11 +571,9 @@ function getGUImessage(address, prevVal, newVal, user)
 				gui.addmessage(user .. ": " .. (name[newVal] or (name[0] .. " = " .. newVal)))
 			end
 		elseif ramItems[address].type == "bit" then
-			local bitMask = 0x01
-			for b=1,8 do
-				local newBit = (bit.band(newVal, bitMask) > 0)
-				local prevBit = (bit.band(prevVal, bitMask) > 0)
-				bitMask = bit.lshift(bitMask, 1)
+			for b=0,7 do
+				local newBit = bit.check(newVal, b)
+				local prevBit = bit.check(prevVal, b)
 
 				if (newBit ~= prevBit) then
 					if (type(name) == 'string') then
@@ -629,13 +632,9 @@ function eventRAMchanges(prevRAM, newRAM)
 				changes = true
 			elseif ramItems[address].type == "bit" then
 				local changedBits = {}
-				local bitMask = 0x01
-				for b=1,8 do
-					local prevval = prevRAM[address]
-
-					newBit = (bit.band(val, bitMask) > 0)
-					prevBit = (bit.band(prevval, bitMask) > 0)
-					bitMask = bit.lshift(bitMask, 1)
+				for b=0,7 do
+					local newBit = bit.check(val, b)
+					local prevBit = bit.check(prevRAM[address], b)
 
 					if (newBit ~= prevBit) then
 						changedBits[b] = newBit
@@ -671,12 +670,10 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 		elseif ramItems[address].type == "bit" then
 			newval = prevRAM[address]
 			for b, bitval in pairs(val) do
-				local bitSet = bit.lshift(0x01, b)
-				local bitMask = bit.bxor(0xFF, bitSet)
-
-				newval = bit.band(newval, bitMask)
 				if bitval then
-					newval = bit.bor(newval, bitSet)
+					newval = bit.set(newval, b)
+				else
+					newval = bit.clear(newval, b)
 				end
 			end
 		elseif ramItems[address].type == "delta" then
@@ -696,20 +693,19 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 
 			prevval = bit.band(prevval, xMask)
 			newval = bit.band(newval, ramItems[address].mask)
-			prevRAM[address] = newval
-
 			newval = bit.bor(prevval, newval)
-		else 
-			prevRAM[address] = newval
 		end
+
 		getGUImessage(address, prevRAM[address], newval, their_user)
-		writeRAM("WRAM", address, ramItems[address].size, newval)
+		prevRAM[address] = newval
+		if not gameNotLoaded then
+			writeRAM("WRAM", address, ramItems[address].size, newval)
+		else
+			print("not loaded")
+		end
 	end	
+	return prevRAM
 end
-
-local lttp_ram = {}
-local prevRAM = nil
-
 
 local splitItems = {}
 function removeItems()
@@ -730,19 +726,81 @@ function removeItems()
 	end
 end
 
-
+local lttp_ram = {}
 lttp_ram.itemcount = 0
 for _,_ in pairs(locations) do lttp_ram.itemcount = lttp_ram.itemcount + 1 end
 
+local gameNotLoadedModes = {
+    [0x00]=true,  --Triforce / Zelda startup screens
+    [0x01]=true,  --Game Select screen
+    [0x02]=true,  --Copy Player Mode
+    [0x03]=true,  --Erase Player Mode
+    [0x04]=true,  --Name Player Mode
+    [0x05]=true,  --Loading Game Mode
+--  [0x06],  --Pre Dungeon Mode
+--  [0x07],  --Dungeon Mode
+--  [0x08],  --Pre Overworld Mode
+--  [0x09],  --Overworld Mode
+--  [0x0A],  --Pre Overworld Mode (special overworld)
+--  [0x0B],  --Overworld Mode (special overworld)
+--  [0x0C],  --???? I think we can declare this one unused, almost with complete certainty.
+--  [0x0D],  --Blank Screen
+--  [0x0E],  --Text Mode/Item Screen/Map
+--  [0x0F],  --Closing Spotlight
+--  [0x10],  --Opening Spotlight
+--  [0x11],  --Happens when you fall into a hole from the OW.
+--  [0x12],  --Death Mode
+--  [0x13],  --Boss Victory Mode (refills stats)
+    [0x14]=true,  --History Mode (Title Screen Demo)
+--  [0x15],  --Module for Magic Mirror
+--  [0x16],  --Module for refilling stats after boss.
+    [0x17]=true,  --Restart mode (save and quit)
+--  [0x18],  --Ganon exits from Agahnim's body. Chase Mode.
+    [0x19]=true,  --Triforce Room scene
+    [0x1A]=true,  --End sequence
+    [0x1B]=true,  --Screen to select where to start from (House, sanctuary, etc.)
+}
+
+local prevRAM = nil
+local gameNotLoaded
+local prevGameNotLoaded = nil
 -- Gets a message to send to the other player of new changes
 -- Returns the message as a dictionary object
 -- Returns false if no message is to be send
 function lttp_ram.getMessage()
-	local newRAM = getRAM()
-	if (prevRAM == nil) then
-		prevRAM = newRAM
+	gameNotLoaded = gameNotLoadedModes[readRAM("WRAM", 0x0010, 1)] == true
+	if (prevGameNotLoaded == nil) then
+		prevGameNotLoaded = gameNotLoaded
 	end
 
+	if (prevRAM == nil) then
+		if gameNotLoaded then
+			prevRAM = {}
+			for address, item in pairs(ramItems) do
+				prevRAM[address] = (item.default or 0)
+			end
+		else
+			prevRAM = getRAM()
+		end
+	end
+
+	if gameNotLoaded then
+		prevGameNotLoaded = gameNotLoaded
+		return false
+	end
+
+	if (gameNotLoaded == false and prevGameNotLoaded == true) then
+		printOutput("Game playing")
+		local newRAM = getRAM()
+		local message = eventRAMchanges(newRAM, prevRAM) -- Find changes to apply
+		prevRAM = newRAM
+		if message then
+			lttp_ram.processMessage("[queued]", message)
+		end
+	end
+	prevGameNotLoaded = gameNotLoaded
+
+	local newRAM = getRAM()
 	local message = eventRAMchanges(prevRAM, newRAM)
 
 	-- Update the frame pointer
@@ -759,7 +817,7 @@ function lttp_ram.processMessage(their_user, message)
 		removeItems()
 	end
 
-	setRAMchanges(prevRAM, their_user, message)
+	prevRAM = setRAMchanges(prevRAM, their_user, message)
 end
 
 return lttp_ram

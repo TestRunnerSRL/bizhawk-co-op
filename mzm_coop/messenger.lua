@@ -89,7 +89,7 @@ local encode_message = {
 --client_socket is the socket the message is being sent over
 --message_type is one of the types listed above
 --the remaining arguments are specific to the type of message being sent
-function messenger.send(client_socket, message_type, ...)
+function messenger.send(client_socket, user, message_type, ...)
   --pack message type-specific arguments into a table
   local data = {...}
   --get the function that should encode the message
@@ -98,7 +98,7 @@ function messenger.send(client_socket, message_type, ...)
     error("Attempted to send an unknown message type")
   end
   --encode the message
-  local message = message_type_to_char[message_type] .. config.user .. ',' .. encoder(data)
+  local message = message_type_to_char[message_type] .. user .. ',' .. encoder(data)
   --send the message
   client_socket:send(message .. "\n")
 end

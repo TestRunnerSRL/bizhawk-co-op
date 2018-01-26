@@ -43,7 +43,7 @@ function sync.syncconfig(client_socket, their_id)
   local sync_hash = sha1.sha1(sync_code)
   
   --send the configuration
-  messenger.send(client_socket, messenger.CONFIG, sync_hash, their_id)
+  messenger.send(client_socket, config.user, messenger.CONFIG, sync_hash, their_id)
 
   --receive their configuration
   local received_message_type, their_user, received_data = messenger.receive(client_socket)
@@ -82,7 +82,7 @@ end
 
 function sync.sendItems(itemlist)
   for _,client in pairs(host.clients) do
-    messenger.send(client, messenger.RAMEVENT, {["i"]=itemlist})
+    messenger.send(client, config.user, messenger.RAMEVENT, {["i"]=itemlist})
   end 
   ram_controller.processMessage(config.user, {["i"]=itemlist})
 
@@ -101,7 +101,7 @@ function sync.syncRAM(clients)
       sendMessage["Quit"] = nil
 
       for _,client in pairs(clients) do
-        messenger.send(client, messenger.QUIT)
+        messenger.send(client, config.user, messenger.QUIT)
       end
       error("You closed the connection.")
     end
@@ -109,7 +109,7 @@ function sync.syncRAM(clients)
     local ram_message = ram_controller.getMessage()
     if ram_message then
       for _,client in pairs(clients) do
-        messenger.send(client, messenger.RAMEVENT, ram_message)
+        messenger.send(client, config.user, messenger.RAMEVENT, ram_message)
       end
     end
 
@@ -121,7 +121,7 @@ function sync.syncRAM(clients)
       if (received_message_type ~= nil) then
         for otherClientID, otherClient in pairs(clients) do
           if (otherClientID ~= clientID) then
-            messenger.send(otherClient, received_message_type, received_data)
+            messenger.send(otherClient, their_user, received_message_type, received_data)
           end
         end
       end
