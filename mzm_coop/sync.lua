@@ -13,7 +13,7 @@ function sync.loadramcontroller()
     return dofile("mzm_coop\\ramcontroller\\" .. config.ramcode)
   end)
   if not require_status then
-    printOutput("The RAM controller file could not be loaded.")
+    printOutput("The RAM controller file could not be loaded: " .. ram_controller)
     return false
   end
   if (ram_controller.getMessage == nil) or 
@@ -43,7 +43,7 @@ function sync.syncconfig(client_socket, their_id)
   local sync_hash = sha1.sha1(sync_code)
   
   --send the configuration
-  messenger.send(client_socket, messenger.CONFIG, sync_hash, config.user, their_id)
+  messenger.send(client_socket, messenger.CONFIG, sync_hash, their_id)
 
   --receive their configuration
   local received_message_type, their_user, received_data = messenger.receive(client_socket)

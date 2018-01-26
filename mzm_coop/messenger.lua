@@ -42,13 +42,22 @@ local encode_message = {
   [messenger.RAMEVENT] = function(data)
     message = ""
     for i, arr in pairs(data[1]) do
-      for key, val in pairs(arr) do
-        if (val == true) then
-          val = "t"
-        elseif (val == false) then
-          val = "f"
+      if (type(arr) == 'table') then
+        for key, val in pairs(arr) do
+          if (val == true) then
+            val = "t"
+          elseif (val == false) then
+            val = "f"
+          end
+          message = message .. i .. ":" .. key .. ":" .. val .. ","
         end
-        message = message .. i .. ":" .. key .. ":" .. val .. ","
+      else
+        if (arr == true) then
+          arr = "t"
+        elseif (arr == false) then
+          arr = "f"
+        end
+        message = message .. i .. ":" .. arr .. ","
       end
     end
     message = message:sub(1, -2)
@@ -113,21 +122,36 @@ local decode_message = {
     local ramevent = {}
     for _, event in pairs(split_message) do
       local splitevent = strsplit(event, ":")
-      if not ramevent[splitevent[1]] then
-        ramevent[splitevent[1]] = {}
-      end
+      splitevent[1] = tonumber(splitevent[1]) or splitevent[1]
 
-      local key, val
-      key = tonumber(splitevent[2]) or splitevent[2]
+      if (splitevent[3] == nil) then
+        local val
 
-      if splitevent[3] == 't' then
-        val = true
-      elseif splitevent[3] == 'f' then
-          val = false
+        if splitevent[2] == 't' then
+          val = true
+        elseif splitevent[2] == 'f' then
+            val = false
+        else
+            val = tonumber(splitevent[2]) or splitevent[2]
+        end
+        ramevent[splitevent[1]] = val
       else
-          val = tonumber(splitevent[3]) or splitevent[3]
+        if not ramevent[splitevent[1]] then
+          ramevent[splitevent[1]] = {}
+        end
+
+        local key, val
+        key = tonumber(splitevent[2]) or splitevent[2]
+
+        if splitevent[3] == 't' then
+          val = true
+        elseif splitevent[3] == 'f' then
+            val = false
+        else
+            val = tonumber(splitevent[3]) or splitevent[3]
+        end
+        ramevent[splitevent[1]][key] = val
       end
-      ramevent[splitevent[1]][key] = val
     end
 
     return ramevent    

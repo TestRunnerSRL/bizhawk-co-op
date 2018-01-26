@@ -162,7 +162,7 @@ end
 
 
 --Create the form
-form1 = forms.newform(310, 310, "Metroid: Zero Mission: Co-op")
+form1 = forms.newform(310, 310, "Bizhawk Co-op")
 
 text1 = forms.textbox(form1, "", 263, 105, nil, 16, 153, true, false)
 forms.setproperty(text1, "ReadOnly", true)
