@@ -268,7 +268,7 @@ local locations = {
 	{["address"]=0x180010, ["name"]="Mini Moldorm Cave - NPC",	["type"]="Npc"},
 	{["address"]=0x180012, ["name"]="Library",	["type"]="Dash"},
 	{["address"]=0x180013, ["name"]="Mushroom",	["type"]="Standing"},
-	{["address"]=0x180014, ["name"]="Potion Shop",	["type"]="Npc\Witch"},
+--	{["address"]=0x180014, ["name"]="Potion Shop",	["type"]="Npc\Witch"},
 	{["address"]=0x180142, ["name"]="Maze Race",	["type"]="Standing"},
 	{["address"]=0x180143, ["name"]="Desert Ledge",	["type"]="Standing"},
 	{["address"]=0x180144, ["name"]="Lake Hylia Island",	["type"]="Standing"},
@@ -336,7 +336,7 @@ local locations = {
 	{["address"]=0xE9C2, ["name"]="Desert Palace - Big Key Chest",	["type"]="Chest"},
 	{["address"]=0xE9CB, ["name"]="Desert Palace - Compass Chest",	["type"]="Chest"},
 	{["address"]=0x180151, ["name"]="Desert Palace - Lanmolas'",	["type"]="Drop"},
-	{["address"]=0xF69FA, ["name"]="Old Man",	["type"]="Npc"},
+--	{["address"]=0xF69FA, ["name"]="Old Man",	["type"]="Npc"},
 	{["address"]=0x180002, ["name"]="Spectacle Rock Cave",	["type"]="Standing"},
 	{["address"]=0x180016, ["name"]="Ether Tablet",	["type"]="Drop\Ether"},
 	{["address"]=0x180140, ["name"]="Spectacle Rock",	["type"]="Standing"},
@@ -380,6 +380,13 @@ local locations = {
 	{["address"]=0x18002A, ["name"]="Blacksmith",	["type"]="Npc"},
 	{["address"]=0x3355C, ["name"]="Blacksmith",	["type"]="Npc"},
 }
+
+local prevRAM = nil
+local prevGameNotLoaded = nil
+local gameNotLoaded
+local dying = false
+local prevmode = 0
+local lttp_ram = {}
 
 -- Writes value to RAM using little endian
 local prevDomain = ""
@@ -435,71 +442,44 @@ function readRAM(domain, address, size)
 end
 
 
-
-local function zeroRising(newValue, prevValue) -- "Allow if replacing 'no item', but not if replacing another item"
+-- Return the new value only when changing from 0
+local function zeroRising(newValue, prevValue) 
 	if (newValue ~= 0 and prevValue == 0) then
 		return newValue
 	else
-		return prevVal
+		return prevValue
 	end
 end
 
-local function zeroRisingOrUpgradeFlute(newValue, prevValue) -- "Allow if replacing 'no item', but not if replacing another item"
+
+-- Return the new value only when changing from 0 or upgrading the flut
+local function zeroRisingOrUpgradeFlute(newValue, prevValue)
 	if ( (newValue ~= 0 and prevValue == 0) or (newValue == 3 and prevValue == 2) ) then
 		return newValue
 	else
-		return prevVal
+		return prevValue
 	end
 end
 
+
 ramItems = {
 	-- INVENTORY_SWAP
-	[0xF412] = {
-		name={[0]="Bird", "Flute", "Shovel", "unknown item", "Magic Powder", "Mushroom", "Magic Boomerang", "Boomerang"},
-		type="bit",
-		receiveFunc=function(newValue, prevValue) 
-			-- If acquired bird, clear flute
-			if 0 ~= bit.band(newValue, 0x02) then 
-				newValue = bit.band(newValue, 0xFE) 
-			end 
-
-			-- FIXME: Do not re-set mushroom bit if mushroom is already given to witch
-
-			-- Mushroom/powder byte is a disaster so set it indirectly when this mask changes
-			local mushroomByte = 0xF344
-			-- If powder bit went high and no mushroom type item is being held, place powder in inventory
-			if 0 ~= bit.band(newValue, 0x10) and 0 == bit.band(prevValue, 0x10) 
-			and 0 == readRAM("WRAM", mushroomByte, 1) then
-				writeRAM("WRAM", mushroomByte, 1, 0x02)
-			end
-			-- If mushroom bit went high and no mushroom type item is being held, place mushroom in inventory
-			if 0 ~= bit.band(newValue, 0x20) and 0 == bit.band(prevValue, 0x20) 
-			and 0 == readRAM("WRAM", mushroomByte, 1) then
-				writeRAM("WRAM", mushroomByte, 1, 0x01)
-			end
-
-			return newValue
-		end
-	},
-
+	[0xF38C] = {name={[0]="Bird", "Flute", "Shovel", "unknown item", "Magic Powder", "Mushroom", "Red Boomerang", "Blue Boomerang"}, type="bit"},
 	-- INVENTORY_SWAP_2
-	[0xF414] = {
-		name={[0]="unknown item", "unknown item", "unknown item", "unknown item", "unknown item", "unknown item", "Silver Arrows", "Bow"},
-		type="bit"
-	},
+	[0xF38E] = {name={[0]="unknown item", "unknown item", "unknown item", "unknown item", "unknown item", "unknown item", "Silver Arrows", "Bow"}, type="bit"},
 
 	-- NPC_FLAGS
-	--[0xF410] = {
-	--	name={"an old man home"}, 
-	--	mask=0x01, -- Only sync old man
-	--	type="bit"
-	--},	-- NPC_FLAGS
+	[0xF410] = {
+		name={[0]="Old Man"}, mask=0x01, -- Only sync old man
+		type="bit"
+	},
 
 	[0xF3C5] = {type="num"}, -- "light world progress" needed to activate sword
 
 	[0xF340] = {type="num", receiveFunc=zeroRising}, -- Bows, tracked in INVENTORY_SWAP_2 but must be nonzero to appear in inventory
 	[0xF341] = {type="num", receiveFunc=zeroRising}, -- Boomerangs, tracked in INVENTORY_SWAP
 	[0xF342] = {name="Hookshot", type="bool"},
+	[0xF344] = {type="num", receiveFunc=zeroRising}, -- Mushroom, tracked in INVENTORY_SWAP
 	[0xF345] = {name="Fire Rod", type="bool"},
 	[0xF346] = {name="Ice Rod", type="bool"},
 	[0xF347] = {name="Bombos", type="bool"},
@@ -511,19 +491,43 @@ ramItems = {
 	[0xF34C] = {type="num", receiveFunc=zeroRisingOrUpgradeFlute},       -- Shovel flute etc, tracked in INVENTORY_SWAP
 	[0xF34D] = {name="Net", type="bool"},
 	[0xF34E] = {name="Book", type="bool"},
-	[0xF34F] = {name="Bottles", type="num"}, -- Bottle count
+	[0xF34F] = {type="num", receiveFunc=zeroRising}, -- Selected bottle
 	[0xF350] = {name="Red Cane", type="bool"},
 	[0xF351] = {name="Blue Cane", type="bool"},
 	[0xF352] = {name="Cape", type="bool"},
-	[0xF353] = {name="Mirror", type="bool"},
+	[0xF353] = {name="Mirror", type="num"}, -- 1 = map gfx, 2 = mirror gfx
 	[0xF354] = {name={[0]="Bare Hands", "Power Gloves", "Titan's Mitts"}, type="num"},
-	[0xF355] = {name="Boots", type="bool"},
-	[0xF356] = {name="Flippers", type="bool"},
+	[0xF355] = {name="Boots", type="bool", receiveFunc=function(newValue, prevValue)
+		prevAbility = readRAM("WRAM", 0xF379, 1)
+		if newValue > 0 then
+			prevAbility = bit.set(prevAbility, 2)
+		else
+			prevAbility = bit.clear(prevAbility, 2)
+		end
+		writeRAM("WRAM", 0xF379, 1, prevAbility) -- Set ability to run
+		return newValue end
+	},
+	[0xF356] = {name="Flippers", type="bool", receiveFunc=function(newValue, prevValue)
+		prevAbility = readRAM("WRAM", 0xF379, 1)
+		if newValue > 0 then
+			prevAbility = bit.set(prevAbility, 1)
+		else
+			prevAbility = bit.clear(prevAbility, 1)
+		end
+		writeRAM("WRAM", 0xF379, 1, prevAbility) -- Set ability to swim
+		return newValue end
+	},
 	[0xF357] = {name="Pearl", type="bool"},
-	[0xF359] = {name={[0]="Swordless", "Fighter's Sword", "Master Sword", "Tempered Sword", "Golden Sword"}, type="delta", mask=0x07},
-	[0xF416] = {type="num", mask=0xC0}, -- Progressive shield
-	[0xF35A] = {name={[0]="No Shield", "Shield", "Fire Shield", "Mirror Shield"}, type="delta"},
-	[0xF35B] = {name={[0]="Green Mail", "Blue Mail", "Red Mail"}, type="delta"},
+	[0xF359] = {name={[0]="Swordless", "Fighter's Sword", "Master Sword", "Tempered Sword", "Golden Sword"}, type="delta", receiveFunc=function(newValue, prevValue)
+		if newValue > 0x80 or newValue < 0 then
+			return prevValue
+		end
+		return math.max(math.min(newValue, 4), 0) end},
+	[0xF416] = {type="delta", mask=0xC0}, -- Progressive shield
+	[0xF35A] = {name={[0]="No Shield", "Shield", "Fire Shield", "Mirror Shield"}, type="delta", receiveFunc=function(newValue, prevValue)
+		return math.max(math.min(newValue, 3), 0) end},
+	[0xF35B] = {name={[0]="Green Mail", "Blue Mail", "Red Mail"}, type="delta", receiveFunc=function(newValue, prevValue)
+		return math.max(math.min(newValue, 2), 0) end},
 	[0xF35C] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"}, 
 	[0xF35D] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
 	[0xF35E] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
@@ -534,42 +538,61 @@ ramItems = {
 	[0xF367] = {name={[0]="Misery Mire Boss Key", "Palace of Darkness Boss Key", "Swamp Palace Boss Key", "Agahnim's Tower Boss Key", "Desert Palace Boss Key", "Eastern Palace Boss Key", "Hyrule Castle Boss Key", "Sewer Passage Boss Key"}, type="bit"},
 	[0xF368] = {name={[0]="unused Map", "unused Map", "Ganon's Tower Map", "Turtle Rock Map", "Thieves Towen Map", "Tower of Hera Map", "Ice Palace Map", "Skull Woods Map"}, type="bit"},
 	[0xF369] = {name={[0]="Misery Mire Map", "Palace of Darkness Map", "Swamp Palace Map", "Agahnim's Tower Map", "Desert Palace Map", "Eastern Palace Map", "Hyrule Castle Map", "Sewer Passage Map"}, type="bit"},
-	[0xF379] = {type="bit", mask=0x06, default=0x68}, -- Abilities
 	[0xF374] = {name={[0]="Red Pendant", "Blue Pendant", "Green Pendant"}, type="bit"},
 	[0xF37A] = {name={[0]="Crystal 6", "Crystal 1", "Crystal 5", "Crystal 7", "Crystal 2", "Crystal 4", "Crystal 3", "unused"}, type="bit"},
 	[0xF37B] = {name={[0]="Normal Magic", "1/2 Magic", "1/4 Magic"}, type="num"},
 
 	-- Ammo values
-	[0xF360] = {type="delta", size=2}, -- Current Rupees
-	[0xF36A] = {type="delta"}, -- Wishing Pond Rupees
-	[0xF36C] = {type="delta", default=0x18}, -- HP Max
+	[0xF360] = {type="delta", size=2, receiveFunc=function(newValue, prevValue)
+		return math.max(math.min(newValue, 9999), 0) end}, -- Current Rupees
+	[0xF36A] = {type="delta", receiveFunc=function(newValue, prevValue)
+		return math.max(math.min(newValue, 999), 0) end}, -- Wishing Pond Rupees
+	[0xF36B] = {type="delta", receiveFunc=function(newValue, prevValue)
+		return newValue % 4 end}, -- Heart pieces
+	[0xF36C] = {type="delta", default=0x18, receiveFunc=function(newValue, prevValue)
+		return math.max(math.min(newValue, 0xA0), 0) end}, -- HP Max
 	[0xF36D] = {type="delta", receiveFunc=function(newValue, prevValue)
-		if newValue == 0 and prevVal ~= 0 then
-			writeRAM("WRAM", 0x0010, 1, 0x12) -- Kill link if 0 HP
+		local maxHP = readRAM("WRAM", 0xF36C, 1)
+		newValue = math.max(math.min(newValue, maxHP), 0)
+		if newValue == 0 and prevValue ~= 0 then
+			dying = true
+			gui.addmessage("You are dead.")
 		end
-	end
-	, default=0x18}, -- HP Current
-	[0xF36E] = {type="delta"}, -- MP
-	[0xF370] = {type="delta"}, -- Bomb upgrades
-	[0xF371] = {type="delta"}, -- Arrow upgrades
-	[0xF377] = {type="delta"}, -- Arrows
-	[0xF343] = {type="delta"} -- Bombs
+		return newValue	end
+		, default=0x18}, -- HP Current
+	[0xF36E] = {type="delta", receiveFunc=function(newValue, prevValue)
+		return math.max(math.min(newValue, 0x80), 0) end}, -- MP
+	[0xF370] = {type="delta", receiveFunc=function(newValue, prevValue)
+		return math.max(math.min(newValue, 89), 0) end}, -- Bomb upgrades
+	[0xF371] = {type="delta", receiveFunc=function(newValue, prevValue)
+		return math.max(math.min(newValue, 69), 0) end}, -- Arrow upgrades
+	[0xF377] = {type="delta", receiveFunc=function(newValue, prevValue)
+		local maxArrows = readRAM("WRAM", 0xF371, 1) + 30
+		return math.max(math.min(newValue, maxArrows), 0) end}, -- Arrows
+	[0xF343] = {type="delta", receiveFunc=function(newValue, prevValue)
+		local maxBombs = readRAM("WRAM", 0xF370, 1) + 10
+		return math.max(math.min(newValue, maxBombs), 0) end} -- Bombs
 
 	--TODO Keys
 }
 
 
+-- Display a message of the ram event
 function getGUImessage(address, prevVal, newVal, user)
+	-- Only display the message if there is a name for the address
 	local name = ramItems[address].name
 	if name then
+		-- If boolean, show 'Removed' for false
 		if ramItems[address].type == "bool" then				
 			gui.addmessage(user .. ": " .. name .. (newVal == 0 and 'Removed' or ''))
+		-- If numeric, show the indexed name or name with value
 		elseif ramItems[address].type == "num" then
 			if (type(name) == 'string') then
 				gui.addmessage(user .. ": " .. name .. " = " .. newVal)
 			else
 				gui.addmessage(user .. ": " .. (name[newVal] or (name[0] .. " = " .. newVal)))
 			end
+		-- If bitflag, show each bit: the indexed name or bit index as a boolean
 		elseif ramItems[address].type == "bit" then
 			for b=0,7 do
 				local newBit = bit.check(newVal, b)
@@ -577,12 +600,13 @@ function getGUImessage(address, prevVal, newVal, user)
 
 				if (newBit ~= prevBit) then
 					if (type(name) == 'string') then
-						gui.addmessage(user .. ": " .. name .. " flag " .. b .. (newBit and '' or ' Off'))
+						gui.addmessage(user .. ": " .. name .. " flag " .. b .. (newBit and '' or ' Removed'))
 					else
-						gui.addmessage(user .. ": " .. (name[b] or name[1]) .. (newBit and '' or ' Off'))
+						gui.addmessage(user .. ": " .. (name[b] or name[1]) .. (newBit and '' or ' Removed'))
 					end
 				end
 			end
+		-- if delta, show the indexed name, or the differential
 		elseif ramItems[address].type == "delta" then
 			local delta = newVal - prevVal
 			if (type(name) == 'string') then
@@ -597,15 +621,18 @@ function getGUImessage(address, prevVal, newVal, user)
 end
 
 
+-- Get the list of ram values
 function getRAM() 
 	newRAM = {}
 	for address, item in pairs(ramItems) do
+		-- Default byte length to 1
 		if (not item.size) then
 			item.size = 1
 		end
 
 		local ramval = readRAM("WRAM", address, item.size)
 
+		-- Apply bit mask if it exist
 		if (item.mask) then
 			ramval = bit.band(ramval, item.mask)
 		end
@@ -617,19 +644,25 @@ function getRAM()
 end
 
 
+-- Get a list of changed ram events
 function eventRAMchanges(prevRAM, newRAM)
 	local ramevents = {}
 	local changes = false
 
 	for address, val in pairs(newRAM) do
+		-- If change found
 		if (prevRAM[address] ~= val) then
 			getGUImessage(address, prevRAM[address], val, config.user)
+
+			-- If boolean, get T/F
 			if ramItems[address].type == "bool" then
 				ramevents[address] = (val ~= 0)
 				changes = true
+			-- If numeric, get value
 			elseif ramItems[address].type == "num" then
 				ramevents[address] = val				
 				changes = true
+			-- If bitflag, get the changed bits
 			elseif ramItems[address].type == "bit" then
 				local changedBits = {}
 				for b=0,7 do
@@ -642,6 +675,7 @@ function eventRAMchanges(prevRAM, newRAM)
 				end
 				ramevents[address] = changedBits
 				changes = true
+			-- If delta, get the change from prevRAM frame
 			elseif ramItems[address].type == "delta" then
 				ramevents[address] = val - prevRAM[address]
 				changes = true
@@ -659,14 +693,18 @@ function eventRAMchanges(prevRAM, newRAM)
 end
 
 
+-- set a list of ram events
 function setRAMchanges(prevRAM, their_user, newEvents)
 	for address, val in pairs(newEvents) do
 		local newval
 
+		-- If boolean type value
 		if ramItems[address].type == "bool" then
 			newval = (val and 1 or 0)
+		-- If numeric type value
 		elseif ramItems[address].type == "num" then
 			newval = val
+		-- If bitflag update each bit
 		elseif ramItems[address].type == "bit" then
 			newval = prevRAM[address]
 			for b, bitval in pairs(val) do
@@ -676,6 +714,7 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 					newval = bit.clear(newval, b)
 				end
 			end
+		-- If delta, add to the previous value
 		elseif ramItems[address].type == "delta" then
 			newval = prevRAM[address] + val
 		else 
@@ -683,10 +722,12 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 			newval = prevRAM[address]
 		end
 
+		-- Run the address's reveive function if it exists
 		if (ramItems[address].receiveFunc) then
 			newval = ramItems[address].receiveFunc(newval, prevRAM[address])
 		end
 
+		-- Apply the address's bit mask
 		if (ramItems[address].mask) then
 			local xMask = bit.bxor(ramItems[address].mask, 0xFF)
 			local prevval = readRAM("WRAM", address, ramItems[address].size)
@@ -696,12 +737,11 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 			newval = bit.bor(prevval, newval)
 		end
 
+		-- Write the new value
 		getGUImessage(address, prevRAM[address], newval, their_user)
 		prevRAM[address] = newval
 		if not gameNotLoaded then
 			writeRAM("WRAM", address, ramItems[address].size, newval)
-		else
-			print("not loaded")
 		end
 	end	
 	return prevRAM
@@ -710,13 +750,15 @@ end
 local splitItems = {}
 function removeItems()
 	for ID, location in ipairs(locations) do
-
 		if (location.oldItem) then
+			-- Restore item's original value
 			writeRAM("CARTROM", location.address, 1, location.oldItem)
 		else
+			-- Store the original value
 			location.oldItem = readRAM("CARTROM", location.address, 1)
 		end
 
+		-- Remove item if it's not yours
 		if (items[location.oldItem]) and (splitItems[ID] ~= my_ID) then
 			local prevItem = readRAM("CARTROM", location.address, 1)
 			if items[prevItem] then
@@ -726,7 +768,7 @@ function removeItems()
 	end
 end
 
-local lttp_ram = {}
+
 lttp_ram.itemcount = 0
 for _,_ in pairs(locations) do lttp_ram.itemcount = lttp_ram.itemcount + 1 end
 
@@ -749,7 +791,7 @@ local gameNotLoadedModes = {
 --  [0x0F],  --Closing Spotlight
 --  [0x10],  --Opening Spotlight
 --  [0x11],  --Happens when you fall into a hole from the OW.
---  [0x12],  --Death Mode
+--  [0x12]=true,  --Death Mode
 --  [0x13],  --Boss Victory Mode (refills stats)
     [0x14]=true,  --History Mode (Title Screen Demo)
 --  [0x15],  --Module for Magic Mirror
@@ -761,18 +803,18 @@ local gameNotLoadedModes = {
     [0x1B]=true,  --Screen to select where to start from (House, sanctuary, etc.)
 }
 
-local prevRAM = nil
-local gameNotLoaded
-local prevGameNotLoaded = nil
 -- Gets a message to send to the other player of new changes
 -- Returns the message as a dictionary object
 -- Returns false if no message is to be send
+
 function lttp_ram.getMessage()
+	-- Check if game is playing
 	gameNotLoaded = gameNotLoadedModes[readRAM("WRAM", 0x0010, 1)] == true
 	if (prevGameNotLoaded == nil) then
 		prevGameNotLoaded = gameNotLoaded
 	end
 
+	-- Initilize previous RAM frame if missing
 	if (prevRAM == nil) then
 		if gameNotLoaded then
 			prevRAM = {}
@@ -784,13 +826,14 @@ function lttp_ram.getMessage()
 		end
 	end
 
+	-- Don't check for updated when game is not running
 	if gameNotLoaded then
 		prevGameNotLoaded = gameNotLoaded
 		return false
 	end
 
+	-- Load all queued changes when resuming game
 	if (gameNotLoaded == false and prevGameNotLoaded == true) then
-		printOutput("Game playing")
 		local newRAM = getRAM()
 		local message = eventRAMchanges(newRAM, prevRAM) -- Find changes to apply
 		prevRAM = newRAM
@@ -800,10 +843,22 @@ function lttp_ram.getMessage()
 	end
 	prevGameNotLoaded = gameNotLoaded
 
+	-- Checked for queue death and apply when safe
+	if (dying) then
+		local gamemode = readRAM("WRAM", 0x0010, 2)
+		-- Main mode: 07 = Dungeon, 09 = Overworld, 0B = Special Overworld
+		-- Sub mode: Non 0 = game is paused, transitioning between modes
+		if (gamemode == 0x0007 or gamemode == 0x0009 or gamemode == 0x000B) then -- If link is controllable
+			writeRAM("WRAM", 0x0010, 2, 0x0012) -- Kill link as soon as it's safe
+			dying = false
+		end
+	end
+
+	-- Get current RAM events
 	local newRAM = getRAM()
 	local message = eventRAMchanges(prevRAM, newRAM)
 
-	-- Update the frame pointer
+	-- Update the RAM frame pointer
 	prevRAM = newRAM
 
 	return message
