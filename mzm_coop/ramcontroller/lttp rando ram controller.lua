@@ -37,7 +37,7 @@ local items = {
 	[0x21] = 'Bug Catching Net',
 	[0x22] = 'Blue Mail',
 	[0x23] = 'Red Mail',
---	[0x24] = 'Key',
+	[0x24] = 'Key',
 	[0x25] = 'Compass',
 	[0x26] = 'Heart Container (no animation)',
 	[0x27] = 'Bomb',
@@ -142,20 +142,20 @@ local items = {
 	[0x9D] = 'Eastern Palace Big Key',
 	[0x9E] = 'Hyrule Castle Big Key',
 	[0x9F] = 'Sewers Big Key',
---	[0xA0] = 'Sewers Key',
---	[0xA1] = 'Hyrule Castle Key',
---	[0xA2] = 'Eastern Palace Key',
---	[0xA3] = 'Desert Palace Key',
---	[0xA4] = 'Agahnims Tower Key',
---	[0xA5] = 'Swamp Palace Key',
---	[0xA6] = 'Palace of Darkness Key',
---	[0xA7] = 'Misery Mire Key',
---	[0xA8] = 'Skull Woods Key',
---	[0xA9] = 'Ice Palace Key',
---	[0xAA] = 'Tower of Hera Key',
---	[0xAB] = 'Thieves Town Key',
---	[0xAC] = 'Turtle Rock Key',
---	[0xAD] = 'Ganons Tower Key',
+	[0xA0] = 'Sewers Key',
+	[0xA1] = 'Hyrule Castle Key',
+	[0xA2] = 'Eastern Palace Key',
+	[0xA3] = 'Desert Palace Key',
+	[0xA4] = 'Agahnims Tower Key',
+	[0xA5] = 'Swamp Palace Key',
+	[0xA6] = 'Palace of Darkness Key',
+	[0xA7] = 'Misery Mire Key',
+	[0xA8] = 'Skull Woods Key',
+	[0xA9] = 'Ice Palace Key',
+	[0xAA] = 'Tower of Hera Key',
+	[0xAB] = 'Thieves Town Key',
+	[0xAC] = 'Turtle Rock Key',
+	[0xAD] = 'Ganons Tower Key',
 }
 
 local locations = {
@@ -322,8 +322,8 @@ local locations = {
 	{["address"]=0xEB00, ["name"]="Ganon's Tower - Mini Helmasaur Room - Right",	["type"]="Chest"},
 	{["address"]=0xEB03, ["name"]="Ganon's Tower - Pre-Moldorm Chest",	["type"]="Chest"},
 	{["address"]=0xEB06, ["name"]="Ganon's Tower - Moldorm Chest",	["type"]="Chest"},
-	{["address"]=0x348FF, ["name"]="Waterfall Bottle",	["type"]="Fountain"},
-	{["address"]=0x3493B, ["name"]="Pyramid Bottle",	["type"]="Fountain"},
+--	{["address"]=0x348FF, ["name"]="Waterfall Bottle",	["type"]="Fountain"},
+--	{["address"]=0x3493B, ["name"]="Pyramid Bottle",	["type"]="Fountain"},
 	{["address"]=0xE977, ["name"]="Eastern Palace - Compass Chest",	["type"]="Chest"},
 	{["address"]=0xE97D, ["name"]="Eastern Palace - Big Chest",	["type"]="BigChest"},
 	{["address"]=0xE9B3, ["name"]="Eastern Palace - Cannonball Chest",	["type"]="Chest"},
@@ -336,7 +336,7 @@ local locations = {
 	{["address"]=0xE9C2, ["name"]="Desert Palace - Big Key Chest",	["type"]="Chest"},
 	{["address"]=0xE9CB, ["name"]="Desert Palace - Compass Chest",	["type"]="Chest"},
 	{["address"]=0x180151, ["name"]="Desert Palace - Lanmolas'",	["type"]="Drop"},
---	{["address"]=0xF69FA, ["name"]="Old Man",	["type"]="Npc"},
+	{["address"]=0xF69FA, ["name"]="Old Man",	["type"]="Npc"},
 	{["address"]=0x180002, ["name"]="Spectacle Rock Cave",	["type"]="Standing"},
 	{["address"]=0x180016, ["name"]="Ether Tablet",	["type"]="Drop\Ether"},
 	{["address"]=0x180140, ["name"]="Spectacle Rock",	["type"]="Standing"},
@@ -379,11 +379,46 @@ local locations = {
 
 	{["address"]=0x18002A, ["name"]="Blacksmith",	["type"]="Npc"},
 	{["address"]=0x3355C, ["name"]="Blacksmith",	["type"]="Npc"},
+
+    {["address"]=0x4DA21, ["address2"]=0x4DA21,  ["type"]="Key"},
+    {["address"]=0x4DA5D, ["address2"]=0x4DA66,  ["type"]="Key"},
+    {["address"]=0x4DB80, ["address2"]=0x4DB9E,  ["type"]="Key"},
+    {["address"]=0x4DD74, ["address2"]=0x4DD80,  ["type"]="Key"},
+    {["address"]=0x4DDC4, ["address2"]=0x4DDE5,  ["type"]="Key"},
+    {["address"]=0x4DE08, ["address2"]=0x4DE0E,  ["type"]="Key"},
+    {["address"]=0x4E204, ["address2"]=0x4E204,  ["type"]="Key"},
+    {["address"]=0x4E20C, ["address2"]=0x4E20F,  ["type"]="Key"},
+    {["address"]=0x4E327, ["address2"]=0x4E327,  ["type"]="Key"},
+    {["address"]=0x4E4F8, ["address2"]=0x4E50A,  ["type"]="Key"},
+    {["address"]=0x4E688, ["address2"]=0x4E68E,  ["type"]="Key"},
+    {["address"]=0x4E70D, ["address2"]=0x4E716,  ["type"]="Key"},
+    {["address"]=0x4E7C9, ["address2"]=0x4E7D5,  ["type"]="Key"},
+    {["address"]=0x4E7FB, ["address2"]=0x4E7FE,  ["type"]="Key"},
+
+    {["address"]=0xDE5A, ["type"]="Pot"},
+    {["address"]=0xDF50, ["type"]="Pot"},
+    {["address"]=0xDF76, ["type"]="Pot"},
+    {["address"]=0xDF7B, ["type"]="Pot"},
+    {["address"]=0xDF89, ["type"]="Pot"},
+    {["address"]=0xDFEA, ["type"]="Pot"},
+    {["address"]=0xE009, ["type"]="Pot"},
+    {["address"]=0xE084, ["type"]="Pot"},
+    {["address"]=0xE0C0, ["type"]="Pot"},
+    {["address"]=0xE148, ["type"]="Pot"},
+    {["address"]=0xE22E, ["type"]="Pot"},
+    {["address"]=0xE28A, ["type"]="Pot"},
+    {["address"]=0xE2E8, ["type"]="Pot"},
+    {["address"]=0xE306, ["type"]="Pot"},
+    {["address"]=0xE314, ["type"]="Pot"},
+    {["address"]=0xE35A, ["type"]="Pot"},
+    {["address"]=0xE397, ["type"]="Pot"},
+    {["address"]=0xE3E7, ["type"]="Pot"},
+    {["address"]=0xE3FE, ["type"]="Pot"},
+
 }
 
 local prevRAM = nil
-local prevGameNotLoaded = nil
-local gameNotLoaded
+local gameLoaded
 local dying = false
 local prevmode = 0
 local lttp_ram = {}
@@ -443,21 +478,51 @@ end
 
 
 -- Return the new value only when changing from 0
-local function zeroRising(newValue, prevValue) 
-	if (newValue ~= 0 and prevValue == 0) then
+local function zeroChange(newValue, prevValue) 
+	if (newValue == 0 or (newValue ~= 0 and prevValue == 0)) then
 		return newValue
 	else
 		return prevValue
 	end
 end
 
+local function clamp(newValue, prevValue, address, item)
+	if item.min then
+		newValue = math.max(newValue, item.min)
+	end
+	if item.max then
+		newValue = math.min(newValue, item.max)
+	end
+	return newValue
+end
 
--- Return the new value only when changing from 0 or upgrading the flut
-local function zeroRisingOrUpgradeFlute(newValue, prevValue)
-	if ( (newValue ~= 0 and prevValue == 0) or (newValue == 3 and prevValue == 2) ) then
-		return newValue
-	else
+local function recieveKey(newValue, prevValue, address, item)
+	if newValue < prevValue then
 		return prevValue
+	end
+
+	if (newValue >= 0xFF) then
+		return prevValue
+	end
+
+	local dungeon = readRAM("WRAM", 0x040C, 1) / 2
+	if (dungeon == (address - 0xF37C)) then
+		local delta = newValue - prevValue
+		local curKeys = readRAM("WRAM", 0xF36F, 1)
+		curKeys = curKeys + delta
+		writeRAM("WRAM", 0xF36F, 1, curKeys)
+	end
+
+	return newValue
+end
+
+
+local function updateKey()
+	local dungeon = readRAM("WRAM", 0x040C, 1) / 2
+	local curKeys = readRAM("WRAM", 0xF36F, 1)
+
+	if curKeys ~= 0xFF and dungeon <= 13 then
+		writeRAM("WRAM", 0xF37C + dungeon, 1, curKeys)
 	end
 end
 
@@ -468,36 +533,34 @@ ramItems = {
 	-- INVENTORY_SWAP_2
 	[0xF38E] = {name={[0]="unknown item", "unknown item", "unknown item", "unknown item", "unknown item", "unknown item", "Silver Arrows", "Bow"}, type="bit"},
 
-	-- NPC_FLAGS
-	[0xF410] = {
-		name={[0]="Old Man"}, mask=0x01, -- Only sync old man
-		type="bit"
-	},
-
 	[0xF3C5] = {type="num"}, -- "light world progress" needed to activate sword
 
-	[0xF340] = {type="num", receiveFunc=zeroRising}, -- Bows, tracked in INVENTORY_SWAP_2 but must be nonzero to appear in inventory
-	[0xF341] = {type="num", receiveFunc=zeroRising}, -- Boomerangs, tracked in INVENTORY_SWAP
+	[0xF340] = {type="num", receiveFunc=zeroChange}, -- Bows, tracked in INVENTORY_SWAP_2 but must be nonzero to appear in inventory
+	[0xF341] = {type="num", receiveFunc=zeroChange}, -- Boomerangs, tracked in INVENTORY_SWAP
 	[0xF342] = {name="Hookshot", type="bool"},
-	[0xF344] = {type="num", receiveFunc=zeroRising}, -- Mushroom, tracked in INVENTORY_SWAP
+	[0xF344] = {type="num"}, -- Mushroom, tracked in INVENTORY_SWAP
 	[0xF345] = {name="Fire Rod", type="bool"},
 	[0xF346] = {name="Ice Rod", type="bool"},
-	[0xF347] = {name="Bombos", type="bool"},
-	[0xF348] = {name="Ether", type="bool"},
-	[0xF349] = {name="Quake", type="bool"},
+	[0xF347] = {name="Bombos Medallion", type="bool"},
+	[0xF348] = {name="Ether Medallion", type="bool"},
+	[0xF349] = {name="Quake Medallion", type="bool"},
 	[0xF34A] = {name="Lantern", type="bool"},
-	[0xF34B] = {name="Hammer", type="bool"},
-	-- Note this doesn't need to happen in INVENTORY_SWAP receiveTrigger bc you can only upgrade the flute while holding it
-	[0xF34C] = {type="num", receiveFunc=zeroRisingOrUpgradeFlute},       -- Shovel flute etc, tracked in INVENTORY_SWAP
-	[0xF34D] = {name="Net", type="bool"},
-	[0xF34E] = {name="Book", type="bool"},
-	[0xF34F] = {type="num", receiveFunc=zeroRising}, -- Selected bottle
-	[0xF350] = {name="Red Cane", type="bool"},
-	[0xF351] = {name="Blue Cane", type="bool"},
-	[0xF352] = {name="Cape", type="bool"},
-	[0xF353] = {name="Mirror", type="num"}, -- 1 = map gfx, 2 = mirror gfx
+	[0xF34B] = {name="Magic Hammer", type="bool"},
+	[0xF34C] = {type="num", receiveFunc=function(newValue, prevValue)
+		if (newValue == 0 or (newValue ~= 0 and prevValue == 0) or (newValue == 3 and prevValue == 2)) then
+			return newValue
+		else
+			return prevValue
+		end end},       -- Shovel flute etc, tracked in INVENTORY_SWAP
+	[0xF34D] = {name="Bug Net", type="bool"},
+	[0xF34E] = {name="Book of Mudora", type="bool"},
+	[0xF34F] = {type="num", receiveFunc=zeroChange}, -- Selected bottle
+	[0xF350] = {name="Cane of Somaria", type="bool"},
+	[0xF351] = {name="Cane of Bryna", type="bool"},
+	[0xF352] = {name="Magic Cape", type="bool"},
+	[0xF353] = {name={[0]"Magic Mirror Removed","Magic Letter","Magic Mirror"}, type="num"}, -- 1 = map gfx, 2 = mirror gfx
 	[0xF354] = {name={[0]="Bare Hands", "Power Gloves", "Titan's Mitts"}, type="num"},
-	[0xF355] = {name="Boots", type="bool", receiveFunc=function(newValue, prevValue)
+	[0xF355] = {name="Pegasus Boots", type="bool", receiveFunc=function(newValue, prevValue)
 		prevAbility = readRAM("WRAM", 0xF379, 1)
 		if newValue > 0 then
 			prevAbility = bit.set(prevAbility, 2)
@@ -507,7 +570,7 @@ ramItems = {
 		writeRAM("WRAM", 0xF379, 1, prevAbility) -- Set ability to run
 		return newValue end
 	},
-	[0xF356] = {name="Flippers", type="bool", receiveFunc=function(newValue, prevValue)
+	[0xF356] = {name="Zora Flippers", type="bool", receiveFunc=function(newValue, prevValue)
 		prevAbility = readRAM("WRAM", 0xF379, 1)
 		if newValue > 0 then
 			prevAbility = bit.set(prevAbility, 1)
@@ -517,17 +580,15 @@ ramItems = {
 		writeRAM("WRAM", 0xF379, 1, prevAbility) -- Set ability to swim
 		return newValue end
 	},
-	[0xF357] = {name="Pearl", type="bool"},
+	[0xF357] = {name="Moon Pearl", type="bool"},
 	[0xF359] = {name={[0]="Swordless", "Fighter's Sword", "Master Sword", "Tempered Sword", "Golden Sword"}, type="delta", receiveFunc=function(newValue, prevValue)
 		if newValue > 0x80 or newValue < 0 then
 			return prevValue
 		end
 		return math.max(math.min(newValue, 4), 0) end},
-	[0xF416] = {type="delta", mask=0xC0}, -- Progressive shield
-	[0xF35A] = {name={[0]="No Shield", "Shield", "Fire Shield", "Mirror Shield"}, type="delta", receiveFunc=function(newValue, prevValue)
-		return math.max(math.min(newValue, 3), 0) end},
-	[0xF35B] = {name={[0]="Green Mail", "Blue Mail", "Red Mail"}, type="delta", receiveFunc=function(newValue, prevValue)
-		return math.max(math.min(newValue, 2), 0) end},
+	[0xF416] = {type="delta", mask=0xC0, receiveFunc=clamp, min=0, max=0xC0}, -- Progressive shield
+	[0xF35A] = {name={[0]="No Shield", "Fighter's Shield", "Fire Shield", "Mirror Shield"}, type="delta", receiveFunc=clamp, min=0, max=3},
+	[0xF35B] = {name={[0]="Green Mail", "Blue Mail", "Red Mail"}, type="delta", receiveFunc=clamp, min=0, max=2},
 	[0xF35C] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"}, 
 	[0xF35D] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
 	[0xF35E] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
@@ -540,17 +601,14 @@ ramItems = {
 	[0xF369] = {name={[0]="Misery Mire Map", "Palace of Darkness Map", "Swamp Palace Map", "Agahnim's Tower Map", "Desert Palace Map", "Eastern Palace Map", "Hyrule Castle Map", "Sewer Passage Map"}, type="bit"},
 	[0xF374] = {name={[0]="Red Pendant", "Blue Pendant", "Green Pendant"}, type="bit"},
 	[0xF37A] = {name={[0]="Crystal 6", "Crystal 1", "Crystal 5", "Crystal 7", "Crystal 2", "Crystal 4", "Crystal 3", "unused"}, type="bit"},
-	[0xF37B] = {name={[0]="Normal Magic", "1/2 Magic", "1/4 Magic"}, type="num"},
+	[0xF37B] = {name={[0]="Normal Magic", "1/2 Magic", "1/4 Magic"}, type="delta", receiveFunc=clamp, min=0, max=2},
 
 	-- Ammo values
-	[0xF360] = {type="delta", size=2, receiveFunc=function(newValue, prevValue)
-		return math.max(math.min(newValue, 9999), 0) end}, -- Current Rupees
-	[0xF36A] = {type="delta", receiveFunc=function(newValue, prevValue)
-		return math.max(math.min(newValue, 999), 0) end}, -- Wishing Pond Rupees
+	[0xF360] = {type="delta", size=2, receiveFunc=clamp, min=0, max=9999}, -- Current Rupees
+	[0xF36A] = {type="delta", receiveFunc=clamp, min=0, max=99}, -- Wishing Pond Rupees
 	[0xF36B] = {type="delta", receiveFunc=function(newValue, prevValue)
 		return newValue % 4 end}, -- Heart pieces
-	[0xF36C] = {type="delta", default=0x18, receiveFunc=function(newValue, prevValue)
-		return math.max(math.min(newValue, 0xA0), 0) end}, -- HP Max
+	[0xF36C] = {type="delta", default=0x18, receiveFunc=clamp, min=0, max=0xA0}, -- HP Max
 	[0xF36D] = {type="delta", receiveFunc=function(newValue, prevValue)
 		local maxHP = readRAM("WRAM", 0xF36C, 1)
 		newValue = math.max(math.min(newValue, maxHP), 0)
@@ -560,20 +618,31 @@ ramItems = {
 		end
 		return newValue	end
 		, default=0x18}, -- HP Current
-	[0xF36E] = {type="delta", receiveFunc=function(newValue, prevValue)
-		return math.max(math.min(newValue, 0x80), 0) end}, -- MP
-	[0xF370] = {type="delta", receiveFunc=function(newValue, prevValue)
-		return math.max(math.min(newValue, 89), 0) end}, -- Bomb upgrades
-	[0xF371] = {type="delta", receiveFunc=function(newValue, prevValue)
-		return math.max(math.min(newValue, 69), 0) end}, -- Arrow upgrades
+	[0xF36E] = {type="delta", receiveFunc=clamp, min=0, max=0x80}, -- MP
+	[0xF370] = {type="delta", receiveFunc=clamp, min=0, max=89}, -- Bomb upgrades
+	[0xF371] = {type="delta", receiveFunc=clamp, min=0, max=69}, -- Arrow upgrades
 	[0xF377] = {type="delta", receiveFunc=function(newValue, prevValue)
 		local maxArrows = readRAM("WRAM", 0xF371, 1) + 30
 		return math.max(math.min(newValue, maxArrows), 0) end}, -- Arrows
 	[0xF343] = {type="delta", receiveFunc=function(newValue, prevValue)
 		local maxBombs = readRAM("WRAM", 0xF370, 1) + 10
-		return math.max(math.min(newValue, maxBombs), 0) end} -- Bombs
+		return math.max(math.min(newValue, maxBombs), 0) end}, -- Bombs
 
-	--TODO Keys
+	-- keys
+	[0xF37C] = {name="Sewer Passage Key", type="delta", receiveFunc=recieveKey},
+	[0xF37D] = {name="Hyrule Castle Key", type="delta", receiveFunc=recieveKey},
+	[0xF37E] = {name="Eastern Palace Key", type="delta", receiveFunc=recieveKey},
+	[0xF37F] = {name="Desert Palace Key", type="delta", receiveFunc=recieveKey},
+	[0xF380] = {name="Agahnim's Tower Key", type="delta", receiveFunc=recieveKey},
+	[0xF381] = {name="Swamp Palace Key", type="delta", receiveFunc=recieveKey},
+	[0xF382] = {name="Palace of Darkness Key", type="delta", receiveFunc=recieveKey},
+	[0xF383] = {name="Misery Mire Key", type="delta", receiveFunc=recieveKey},
+	[0xF384] = {name="Skull Woods Key", type="delta", receiveFunc=recieveKey},
+	[0xF385] = {name="Ice Palace Key", type="delta", receiveFunc=recieveKey},
+	[0xF386] = {name="Tower of Hera Key", type="delta", receiveFunc=recieveKey},
+	[0xF387] = {name="Thieves Town Key", type="delta", receiveFunc=recieveKey},
+	[0xF388] = {name="Turtle Rock Key", type="delta", receiveFunc=recieveKey},
+	[0xF389] = {name="Ganon's Tower Key", type="delta", receiveFunc=recieveKey},
 }
 
 
@@ -581,7 +650,7 @@ ramItems = {
 function getGUImessage(address, prevVal, newVal, user)
 	-- Only display the message if there is a name for the address
 	local name = ramItems[address].name
-	if name then
+	if name and prevVal ~= newVal then
 		-- If boolean, show 'Removed' for false
 		if ramItems[address].type == "bool" then				
 			gui.addmessage(user .. ": " .. name .. (newVal == 0 and 'Removed' or ''))
@@ -724,7 +793,7 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 
 		-- Run the address's reveive function if it exists
 		if (ramItems[address].receiveFunc) then
-			newval = ramItems[address].receiveFunc(newval, prevRAM[address])
+			newval = ramItems[address].receiveFunc(newval, prevRAM[address], address, ramItems[address])
 		end
 
 		-- Apply the address's bit mask
@@ -740,7 +809,7 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 		-- Write the new value
 		getGUImessage(address, prevRAM[address], newval, their_user)
 		prevRAM[address] = newval
-		if not gameNotLoaded then
+		if gameLoaded then
 			writeRAM("WRAM", address, ramItems[address].size, newval)
 		end
 	end	
@@ -752,16 +821,35 @@ function removeItems()
 	for ID, location in ipairs(locations) do
 		if (location.oldItem) then
 			-- Restore item's original value
-			writeRAM("CARTROM", location.address, 1, location.oldItem)
+			if (location.type == "Key") then
+				writeRAM("CARTROM", location.address, 2, location.oldItem1loc)
+				writeRAM("CARTROM", location.address + 2, 1, location.oldItem1val)
+				writeRAM("CARTROM", location.address2, 2, location.oldItem2loc)
+				writeRAM("CARTROM", location.address2 + 2, 1, location.oldItem2val)
+			else
+				writeRAM("CARTROM", location.address, 1, location.oldItem)
+			end
 		else
 			-- Store the original value
-			location.oldItem = readRAM("CARTROM", location.address, 1)
+			if (location.type == "Key") then
+				location.oldItem1loc = readRAM("CARTROM", location.address, 2)
+				location.oldItem1val = readRAM("CARTROM", location.address + 2, 1)
+				location.oldItem2loc = readRAM("CARTROM", location.address2, 2)
+				location.oldItem2val = readRAM("CARTROM", location.address2 + 2, 1)
+			else
+				location.oldItem = readRAM("CARTROM", location.address, 1)
+			end
 		end
 
 		-- Remove item if it's not yours
-		if (items[location.oldItem]) and (splitItems[ID] ~= my_ID) then
-			local prevItem = readRAM("CARTROM", location.address, 1)
-			if items[prevItem] then
+		if (splitItems[ID] ~= my_ID) then
+			if (location.type == "Key") then
+				writeRAM("CARTROM", location.address, 2, location.oldItem2loc)
+				writeRAM("CARTROM", location.address + 2, 1, location.oldItem2val)
+				writeRAM("CARTROM", location.address2, 2, 0xFF)
+			elseif (location.type == "Pot") then
+				writeRAM("CARTROM", location.address, 1, 0x01) -- Remove item
+			elseif (items[location.oldItem]) then
 				writeRAM("CARTROM", location.address, 1, 0x5A) -- Remove item
 			end
 		end
@@ -772,79 +860,84 @@ end
 lttp_ram.itemcount = 0
 for _,_ in pairs(locations) do lttp_ram.itemcount = lttp_ram.itemcount + 1 end
 
-local gameNotLoadedModes = {
-    [0x00]=true,  --Triforce / Zelda startup screens
-    [0x01]=true,  --Game Select screen
-    [0x02]=true,  --Copy Player Mode
-    [0x03]=true,  --Erase Player Mode
-    [0x04]=true,  --Name Player Mode
-    [0x05]=true,  --Loading Game Mode
---  [0x06],  --Pre Dungeon Mode
---  [0x07],  --Dungeon Mode
---  [0x08],  --Pre Overworld Mode
---  [0x09],  --Overworld Mode
---  [0x0A],  --Pre Overworld Mode (special overworld)
---  [0x0B],  --Overworld Mode (special overworld)
---  [0x0C],  --???? I think we can declare this one unused, almost with complete certainty.
---  [0x0D],  --Blank Screen
---  [0x0E],  --Text Mode/Item Screen/Map
---  [0x0F],  --Closing Spotlight
---  [0x10],  --Opening Spotlight
---  [0x11],  --Happens when you fall into a hole from the OW.
---  [0x12]=true,  --Death Mode
---  [0x13],  --Boss Victory Mode (refills stats)
-    [0x14]=true,  --History Mode (Title Screen Demo)
---  [0x15],  --Module for Magic Mirror
---  [0x16],  --Module for refilling stats after boss.
-    [0x17]=true,  --Restart mode (save and quit)
---  [0x18],  --Ganon exits from Agahnim's body. Chase Mode.
-    [0x19]=true,  --Triforce Room scene
-    [0x1A]=true,  --End sequence
-    [0x1B]=true,  --Screen to select where to start from (House, sanctuary, etc.)
+local gameLoadedModes = {
+    [0x00]=false,  --Triforce / Zelda startup screens
+    [0x01]=false,  --Game Select screen
+    [0x02]=false,  --Copy Player Mode
+    [0x03]=false,  --Erase Player Mode
+    [0x04]=false,  --Name Player Mode
+    [0x05]=false,  --Loading Game Mode
+    [0x06]=true,  --Pre Dungeon Mode
+    [0x07]=true,  --Dungeon Mode
+    [0x08]=true,  --Pre Overworld Mode
+    [0x09]=true,  --Overworld Mode
+    [0x0A]=true,  --Pre Overworld Mode (special overworld)
+    [0x0B]=true,  --Overworld Mode (special overworld)
+    [0x0C]=true,  --???? I think we can declare this one unused, almost with complete certainty.
+    [0x0D]=true,  --Blank Screen
+    [0x0E]=true,  --Text Mode/Item Screen/Map
+    [0x0F]=true,  --Closing Spotlight
+    [0x10]=true,  --Opening Spotlight
+    [0x11]=true,  --Happens when you fall into a hole from the OW.
+    [0x12]=true,  --Death Mode
+    [0x13]=true,  --Boss Victory Mode (refills stats)
+    [0x14]=false,  --History Mode (Title Screen Demo)
+    [0x15]=true,  --Module for Magic Mirror
+    [0x16]=true,  --Module for refilling stats after boss.
+    [0x17]=false,  --Restart mode (save and quit)
+    [0x18]=true,  --Ganon exits from Agahnim's body. Chase Mode.
+    [0x19]=false,  --Triforce Room scene
+    [0x1A]=false,  --End sequence
+    [0x1B]=false,  --Screen to select where to start from (House, sanctuary, etc.)
 }
+
+
+local messageQueue = {first = 0, last = -1}
+function messageQueue.isEmpty()
+	return messageQueue.first > messageQueue.last
+end
+function messageQueue.pushLeft (value)
+  local first = messageQueue.first - 1
+  messageQueue.first = first
+  messageQueue[first] = value
+end
+function messageQueue.pushRight (value)
+  local last = messageQueue.last + 1
+  messageQueue.last = last
+  messageQueue[last] = value
+end
+function messageQueue.popLeft ()
+  local first = messageQueue.first
+  if messageQueue.isEmpty() then error("list is empty") end
+  local value = messageQueue[first]
+  messageQueue[first] = nil        -- to allow garbage collection
+  messageQueue.first = first + 1
+  return value
+end
+function messageQueue.popRight ()
+  local last = messageQueue.last
+  if messageQueue.isEmpty() then error("list is empty") end
+  local value = messageQueue[last]
+  messageQueue[last] = nil         -- to allow garbage collection
+  messageQueue.last = last - 1
+  return value
+end
+
 
 -- Gets a message to send to the other player of new changes
 -- Returns the message as a dictionary object
 -- Returns false if no message is to be send
-
 function lttp_ram.getMessage()
 	-- Check if game is playing
-	gameNotLoaded = gameNotLoadedModes[readRAM("WRAM", 0x0010, 1)] == true
-	if (prevGameNotLoaded == nil) then
-		prevGameNotLoaded = gameNotLoaded
-	end
-
-	-- Initilize previous RAM frame if missing
-	if (prevRAM == nil) then
-		if gameNotLoaded then
-			prevRAM = {}
-			for address, item in pairs(ramItems) do
-				prevRAM[address] = (item.default or 0)
-			end
-		else
-			prevRAM = getRAM()
-		end
-	end
+	gameLoaded = gameLoadedModes[readRAM("WRAM", 0x0010, 1)] == true
 
 	-- Don't check for updated when game is not running
-	if gameNotLoaded then
-		prevGameNotLoaded = gameNotLoaded
+	if not gameLoaded then
 		return false
 	end
 
-	-- Load all queued changes when resuming game
-	if (gameNotLoaded == false and prevGameNotLoaded == true) then
-		local newRAM = getRAM()
-		local message = eventRAMchanges(newRAM, prevRAM) -- Find changes to apply
-		prevRAM = newRAM
-		if message then
-			lttp_ram.processMessage("[queued]", message)
-		end
-	end
-	prevGameNotLoaded = gameNotLoaded
-
-	-- Checked for queue death and apply when safe
-	if (dying) then
+	-- Checked for queued death and apply when safe
+	if dying then
 		local gamemode = readRAM("WRAM", 0x0010, 2)
 		-- Main mode: 07 = Dungeon, 09 = Overworld, 0B = Special Overworld
 		-- Sub mode: Non 0 = game is paused, transitioning between modes
@@ -852,6 +945,20 @@ function lttp_ram.getMessage()
 			writeRAM("WRAM", 0x0010, 2, 0x0012) -- Kill link as soon as it's safe
 			dying = false
 		end
+	end
+
+	-- Update dungeon key counts
+	updateKey()
+
+	-- Initilize previous RAM frame if missing
+	if prevRAM == nil then
+		prevRAM = getRAM()
+	end
+
+	-- Load all queued changes
+	while not messageQueue.isEmpty() do
+		local nextmessage = messageQueue.popLeft()
+		lttp_ram.processMessage(nextmessage.their_user, nextmessage.message)
 	end
 
 	-- Get current RAM events
@@ -864,6 +971,7 @@ function lttp_ram.getMessage()
 	return message
 end
 
+
 -- Process a message from another player and update RAM
 function lttp_ram.processMessage(their_user, message)
 	if message["i"] then
@@ -872,7 +980,11 @@ function lttp_ram.processMessage(their_user, message)
 		removeItems()
 	end
 
-	prevRAM = setRAMchanges(prevRAM, their_user, message)
+	if gameLoaded and messageQueue.isEmpty() then
+		prevRAM = setRAMchanges(prevRAM, their_user, message)
+	else
+		messageQueue.pushRight({["their_user"]=their_user, ["message"]=message})
+	end
 end
 
 return lttp_ram
