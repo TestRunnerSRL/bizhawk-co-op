@@ -558,7 +558,7 @@ ramItems = {
 	[0xF350] = {name="Cane of Somaria", type="bool"},
 	[0xF351] = {name="Cane of Bryna", type="bool"},
 	[0xF352] = {name="Magic Cape", type="bool"},
-	[0xF353] = {name={[0]"Magic Mirror Removed","Magic Letter","Magic Mirror"}, type="num"}, -- 1 = map gfx, 2 = mirror gfx
+	[0xF353] = {name={[0]="Magic Mirror Removed","Magic Letter","Magic Mirror"}, type="num"}, -- 1 = map gfx, 2 = mirror gfx
 	[0xF354] = {name={[0]="Bare Hands", "Power Gloves", "Titan's Mitts"}, type="num"},
 	[0xF355] = {name="Pegasus Boots", type="bool", receiveFunc=function(newValue, prevValue)
 		prevAbility = readRAM("WRAM", 0xF379, 1)
@@ -980,7 +980,7 @@ function lttp_ram.processMessage(their_user, message)
 		removeItems()
 	end
 
-	if gameLoaded and messageQueue.isEmpty() then
+	if gameLoaded then
 		prevRAM = setRAMchanges(prevRAM, their_user, message)
 	else
 		messageQueue.pushRight({["their_user"]=their_user, ["message"]=message})
