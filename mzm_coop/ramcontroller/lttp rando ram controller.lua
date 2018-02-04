@@ -612,12 +612,21 @@ ramItems = {
 }
 
 
+local function getBossMaxHP(boss) 
+	-- Ideal multiplier = n * (2 ^ (2 - 1))
+	-- Random multiplier = (2 ^ n) - 1
+	-- Average Ideal/Random = (2 ^ n) * ((n / 4) + 0.5) - 0.5
+	return boss.baseHP * (((2 ^ playercount) * ((playercount / 4) + 0.5)) - 0.5)
+end
+
+
 -- 0x0DD0 = state (4 is boss death, 6 is enemy death)
 -- 0x0DF0 = main timer (including death animations)
 -- 0x0EF0 = death pallete cycling timer
 -- 0x0D90 = GFX select. 0 = normal explosion during death
 -- Currently going for simple death animations instead of handling multi-part deaths (such as kill tail then body)
-local bosses = {
+local bosses
+bosses = {
 	[0x53] = {name="Armos Knight", 	baseHP=0x30, death={[0x0DD0]=0x06, [0x0DF0]=0x28, [0x0EF0]=0xFF, [0x0D90]=0x01} },
 	[0x54] = {name="Lanmola", 		baseHP=0x10, death={[0x0D80]=0x05, [0x0DD0]=0x06, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
 	[0x09] = {name="Moldorm", 		baseHP=0x0C, death={[0x0D80]=0x03} },
@@ -637,16 +646,16 @@ local bosses = {
 			local prevHP
 			if (prevPHP < 0.66666) then
 				-- HP = 0x1F -> Phase 2 trigger, broken mask (<66.666%)
-				prevPHP = 0x1F
+				prevHP = 0x1F
 			elseif (prevPHP < 0.83333) then
 				-- HP = 0x27 -> second mask chip (<83.333%)
-				prevPHP = 0x27
+				prevHP = 0x27
 			elseif (prevPHP < 1.00000) then
 				-- HP = 0x2F -> first mask chip (<100%)
-				prevPHP = 0x2F
+				prevHP = 0x2F
 			else
 				-- HP = 0x30 -> full mask (100%)
-				prevPHP = 0x30
+				prevHP = 0x30
 			end
 
 			local damage = 0
@@ -676,12 +685,12 @@ local bosses = {
 	[0xCE] = {name="Blind", 		baseHP=0x09, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00},
 		getDmgFunc = function(room, bossID, spriteID)
 			if bossID > 0 then
-				return 0
+				return false
 			end
 
 			local damage = 0
 			-- check for hits, 0F90 = Hit count (mod 3)
-			if readRAM("WRAM", 0x0F90 + spriteID, 1) > 0 then
+			if readRAM("WRAM", 0x0F90 + spriteID, 1) == 1 then
 				writeRAM("WRAM", 0x0F90 + spriteID, 1, 0)
 				damage = 1
 			end
@@ -691,7 +700,7 @@ local bosses = {
 			for spriteID2=0x00,0x0F do 
 				if readRAM("WRAM", 0x0E20 + spriteID2, 1) == 0xCE and
 				   readRAM("WRAM", 0x0DD0 + spriteID2, 1) == 0x09 then
-				  	heads = head + 1
+				  	heads = heads + 1
 				end
 			end
 
@@ -705,6 +714,8 @@ local bosses = {
 				writeRAM("WRAM", 0x0F90 + spriteID, 1, 3)
 				writeRAM("WRAM", 0x0EA0 + spriteID, 1, 0x0B)
 			end
+
+			return (damage == 1 and 1) or false
 		end,
 		deathFunc = function(room, bossID, spriteID)
 			for spriteID2=0x00,0x0F do 
@@ -725,8 +736,9 @@ local bosses = {
 		deathFunc = function(room, bossID, spriteID)
 			for spriteID2=0x00,0x0F do 
 				-- kill all remaining eyes
-				if readRAM("WRAM", 0x0E20 + spriteID2, 1) == 0xBE then
-					for deathAdr,deathVal in pairs(bosses[0xBE].death) do
+				if readRAM("WRAM", 0x0E20 + spriteID2, 1) == 0xBE and
+				   readRAM("WRAM", 0x0DD0 + spriteID2, 1) == 0x09 then
+				   	for deathAdr,deathVal in pairs(bosses[0xBE].death) do
 						writeRAM("WRAM", deathAdr + spriteID2, 1, deathVal)
 					end
 				end
@@ -778,12 +790,6 @@ local bosses = {
 		end },
 }
 
-local function getBossMaxHP(boss) 
-	-- Ideal multiplier = n * (2 ^ (2 - 1))
-	-- Random multiplier = (2 ^ n) - 1
-	-- Average Ideal/Random = (2 ^ n) * ((n / 4) + 0.5) - 0.5
-	return boss.baseHP * (((2 ^ playercount) * ((playercount / 4) + 0.5)) - 0.5)
-end
 
 local function getBossDamage()
 	local damages = {}
@@ -797,6 +803,8 @@ local function getBossDamage()
 		local spriteType = readRAM("WRAM", 0x0E20 + spriteID, 1)
 
 		local boss = bosses[spriteType]
+		local bossID
+		local damage = false
 		if (boss) then
 			-- boss detected
 			-- get boss ID for multiple bosses in one room
@@ -805,7 +813,7 @@ local function getBossDamage()
 			else
 				bossIDs[spriteType] = bossIDs[spriteType] + 1
 			end
-			local bossID = bossIDs[spriteType]
+			bossID = bossIDs[spriteType]
 
 			-- initialize boss damage table if nil
 			if (boss.units == nil) then
@@ -845,7 +853,7 @@ local function getBossDamage()
 						damage = boss.getDmgFunc(room, bossID, spriteID)
 					end
 				end
-			elseif (spriteStatus == 0x04 or spriteStatus == 0x06) and hp > 0 then
+			elseif (spriteStatus == 0x04 or spriteStatus == 0x06) and boss.units[room][bossID] < getBossMaxHP(boss) then
 				-- was just killed
 				damage = getBossMaxHP(boss)
 			end
@@ -854,7 +862,7 @@ local function getBossDamage()
 		-- store the damage found
 		if damage then
 			changes = true
-			table.insert(damages, {bossType=bossType, room=room, bossID=bossID, damage=damage})
+			table.insert(damages, {bossType=spriteType, room=room, bossID=bossID, damage=damage})
 		end
 	end
 
