@@ -21,6 +21,56 @@ for t, c in pairs(message_type_to_char) do
   char_to_message_type[c] = t
 end
 
+function tabletostring(table, header)
+  local retstr = ""
+  if type(table) == "table" then
+    for key,val in pairs(table) do
+      local newHeader = (header == nil and key) or (header .. ":" .. key)
+      retstr = retstr .. tabletostring(val, newHeader) .. ","
+    end
+    retstr = retstr:sub(1, -2)
+  else
+    if (table == true) then
+      retstr = header .. ":" .. "t"
+    elseif (table == false) then
+      retstr = header .. ":" .. "f"
+    else
+      retstr = header .. ":" .. table
+    end
+  end
+  return retstr
+end
+
+function stringtotable(split_message)
+  local ramevent = {}
+
+  for _,event in pairs(split_message) do
+    local splitevent = strsplit(event, ":")
+
+    local depth = 1
+    local eventDive = ramevent
+    while splitevent[depth + 2] ~= nil do
+      splitevent[depth] = tonumber(splitevent[depth]) or splitevent[depth]
+      if eventDive[splitevent[depth]] == nil then
+        eventDive[splitevent[depth]] = {}
+      end
+      eventDive = eventDive[splitevent[depth]]
+
+      depth = depth + 1
+    end
+    splitevent[depth] = tonumber(splitevent[depth]) or splitevent[depth]
+
+    if splitevent[depth + 1] == 't' then
+      eventDive[splitevent[depth]] = true
+    elseif splitevent[depth + 1] == 'f' then
+      eventDive[splitevent[depth]] = false
+    else
+      eventDive[splitevent[depth]] = tonumber(splitevent[depth + 1]) or splitevent[depth + 1]
+    end
+  end
+
+  return ramevent
+end
 
 
 --describes how to encode a message for each message type
@@ -40,29 +90,7 @@ local encode_message = {
   end,
 
   [messenger.RAMEVENT] = function(data)
-    message = ""
-    for i, arr in pairs(data[1]) do
-      if (type(arr) == 'table') then
-        for key, val in pairs(arr) do
-          if (val == true) then
-            val = "t"
-          elseif (val == false) then
-            val = "f"
-          end
-          message = message .. i .. ":" .. key .. ":" .. val .. ","
-        end
-      else
-        if (arr == true) then
-          arr = "t"
-        elseif (arr == false) then
-          arr = "f"
-        end
-        message = message .. i .. ":" .. arr .. ","
-      end
-    end
-    message = message:sub(1, -2)
-
-    return message
+    return tabletostring(data[1])
   end,
 
   --a config message expects 1 arguments:
@@ -119,42 +147,7 @@ local decode_message = {
   end,
 
   [messenger.RAMEVENT] = function(split_message)
-    local ramevent = {}
-    for _, event in pairs(split_message) do
-      local splitevent = strsplit(event, ":")
-      splitevent[1] = tonumber(splitevent[1]) or splitevent[1]
-
-      if (splitevent[3] == nil) then
-        local val
-
-        if splitevent[2] == 't' then
-          val = true
-        elseif splitevent[2] == 'f' then
-            val = false
-        else
-            val = tonumber(splitevent[2]) or splitevent[2]
-        end
-        ramevent[splitevent[1]] = val
-      else
-        if not ramevent[splitevent[1]] then
-          ramevent[splitevent[1]] = {}
-        end
-
-        local key, val
-        key = tonumber(splitevent[2]) or splitevent[2]
-
-        if splitevent[3] == 't' then
-          val = true
-        elseif splitevent[3] == 'f' then
-            val = false
-        else
-            val = tonumber(splitevent[3]) or splitevent[3]
-        end
-        ramevent[splitevent[1]][key] = val
-      end
-    end
-
-    return ramevent    
+    return stringtotable(split_message)
   end,
 
   [messenger.CONFIG] = function(split_message)
