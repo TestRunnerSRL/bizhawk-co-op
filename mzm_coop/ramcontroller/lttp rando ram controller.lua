@@ -379,42 +379,6 @@ local locations = {
 
 	{["address"]=0x18002A, ["name"]="Blacksmith",	["type"]="Npc"},
 	{["address"]=0x3355C, ["name"]="Blacksmith",	["type"]="Npc"},
-
-    {["address"]=0x4DA21, ["address2"]=0x4DA21,  ["type"]="Key"},
-    {["address"]=0x4DA5D, ["address2"]=0x4DA66,  ["type"]="Key"},
-    {["address"]=0x4DB80, ["address2"]=0x4DB9E,  ["type"]="Key"},
-    {["address"]=0x4DD74, ["address2"]=0x4DD80,  ["type"]="Key"},
-    {["address"]=0x4DDC4, ["address2"]=0x4DDE5,  ["type"]="Key"},
-    {["address"]=0x4DE08, ["address2"]=0x4DE0E,  ["type"]="Key"},
-    {["address"]=0x4E204, ["address2"]=0x4E204,  ["type"]="Key"},
-    {["address"]=0x4E20C, ["address2"]=0x4E20F,  ["type"]="Key"},
-    {["address"]=0x4E327, ["address2"]=0x4E327,  ["type"]="Key"},
-    {["address"]=0x4E4F8, ["address2"]=0x4E50A,  ["type"]="Key"},
-    {["address"]=0x4E688, ["address2"]=0x4E68E,  ["type"]="Key"},
-    {["address"]=0x4E70D, ["address2"]=0x4E716,  ["type"]="Key"},
-    {["address"]=0x4E7C9, ["address2"]=0x4E7D5,  ["type"]="Key"},
-    {["address"]=0x4E7FB, ["address2"]=0x4E7FE,  ["type"]="Key"},
-
-    {["address"]=0xDE5A, ["type"]="Pot"},
-    {["address"]=0xDF50, ["type"]="Pot"},
-    {["address"]=0xDF76, ["type"]="Pot"},
-    {["address"]=0xDF7B, ["type"]="Pot"},
-    {["address"]=0xDF89, ["type"]="Pot"},
-    {["address"]=0xDFEA, ["type"]="Pot"},
-    {["address"]=0xE009, ["type"]="Pot"},
-    {["address"]=0xE084, ["type"]="Pot"},
-    {["address"]=0xE0C0, ["type"]="Pot"},
-    {["address"]=0xE148, ["type"]="Pot"},
-    {["address"]=0xE22E, ["type"]="Pot"},
-    {["address"]=0xE28A, ["type"]="Pot"},
-    {["address"]=0xE2E8, ["type"]="Pot"},
-    {["address"]=0xE306, ["type"]="Pot"},
-    {["address"]=0xE314, ["type"]="Pot"},
-    {["address"]=0xE35A, ["type"]="Pot"},
-    {["address"]=0xE397, ["type"]="Pot"},
-    {["address"]=0xE3E7, ["type"]="Pot"},
-    {["address"]=0xE3FE, ["type"]="Pot"},
-
 }
 
 local prevRAM = nil
@@ -856,7 +820,40 @@ function removeItems()
 	end
 end
 
+-- Get enemy key drops (load dynamically for pot shuffling)
+for ID = 0,0x17F do
+	local roomspritesptr = 0x040000 + readRAM("CARTROM", 0x04D62E + (ID * 2), 2)
+	roomspritesptr = roomspritesptr + 1 -- ignore first bit of list
 
+	local keyfound = false
+	while (readRAM("CARTROM", roomspritesptr, 1) ~= 0xFF) do
+		if readRAM("CARTROM", roomspritesptr + 2, 1) == 0xE4 then
+			keyfound = roomspritesptr
+		end
+		roomspritesptr = roomspritesptr + 3
+	end
+	if keyfound then
+		table.insert(locations, {
+			["address"] = keyfound,
+			["address2"] = roomspritesptr - 3,
+			["type"] = "Key"
+		})
+	end
+end
+
+-- Get pot key locations
+for ID = 0,0x13F do
+	local roomsecretssptr = 0x000000 + readRAM("CARTROM", 0x00DB67 + (ID * 2), 2)
+	while (readRAM("CARTROM", roomsecretssptr, 2) ~= 0xFFFF) do
+		if readRAM("CARTROM", roomsecretssptr + 2, 1) == 0x08 then
+			table.insert(locations, {
+				["address"] = roomsecretssptr + 2,
+				["type"] = "Pot"
+			})
+		end
+		roomsecretssptr = roomsecretssptr + 3
+	end
+end
 lttp_ram.itemcount = 0
 for _,_ in pairs(locations) do lttp_ram.itemcount = lttp_ram.itemcount + 1 end
 
