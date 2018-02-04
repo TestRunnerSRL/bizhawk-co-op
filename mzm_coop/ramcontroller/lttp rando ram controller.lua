@@ -381,11 +381,13 @@ local locations = {
 	{["address"]=0x3355C, ["name"]="Blacksmith",	["type"]="Npc"},
 }
 
+
 local prevRAM = nil
 local gameLoaded
 local dying = false
 local prevmode = 0
 local lttp_ram = {}
+local playercount = 1
 
 -- Writes value to RAM using little endian
 local prevDomain = ""
@@ -608,6 +610,314 @@ ramItems = {
 	[0xF388] = {name="Turtle Rock Key", type="delta", receiveFunc=recieveKey},
 	[0xF389] = {name="Ganon's Tower Key", type="delta", receiveFunc=recieveKey},
 }
+
+
+-- 0x0DD0 = state (4 is boss death, 6 is enemy death)
+-- 0x0DF0 = main timer (including death animations)
+-- 0x0EF0 = death pallete cycling timer
+-- 0x0D90 = GFX select. 0 = normal explosion during death
+-- Currently going for simple death animations instead of handling multi-part deaths (such as kill tail then body)
+local bosses = {
+	[0x53] = {name="Armos Knight", 	baseHP=0x30, death={[0x0DD0]=0x06, [0x0DF0]=0x28, [0x0EF0]=0xFF, [0x0D90]=0x01} },
+	[0x54] = {name="Lanmola", 		baseHP=0x10, death={[0x0D80]=0x05, [0x0DD0]=0x06, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
+	[0x09] = {name="Moldorm", 		baseHP=0x0C, death={[0x0D80]=0x03} },
+	[0x7A] = {name="Agahnim", 		baseHP=0x60, death={[0x0D80]=0x0A, [0x0DF0]=0xFF},
+		deathFunc = function(room, bossID, spriteID)
+			if room == 0x0D then -- agahnim 2
+				writeRAM("WRAM", 0x0D80 + spriteID + 0, 1, 0x08) -- main aga
+				writeRAM("WRAM", 0x0D80 + spriteID + 1, 1, 0x09) -- shadow aga
+				writeRAM("WRAM", 0x0D80 + spriteID + 2, 1, 0x09) -- shadow aga
+			end
+		end },
+	[0x92] = {name="Helmasaur", 	baseHP=0x30, death={[0x0DD0]=0x06, [0x0DB0]=0x03, [0x0DF0]=0x80, [0x0EF0]=0xFF, [0x0D90]=0x00},
+		getDmgFunc = function (room, bossID, spriteID) 
+			local prevDamage = bosses[0x92].units[room][bossID]
+			local maxHP = getBossMaxHP(bosses[0x92])
+			local prevPHP = (maxHP - prevDamage) / maxHP
+			local prevHP
+			if (prevPHP < 0.66666) then
+				-- HP = 0x1F -> Phase 2 trigger, broken mask (<66.666%)
+				prevPHP = 0x1F
+			elseif (prevPHP < 0.83333) then
+				-- HP = 0x27 -> second mask chip (<83.333%)
+				prevPHP = 0x27
+			elseif (prevPHP < 1.00000) then
+				-- HP = 0x2F -> first mask chip (<100%)
+				prevPHP = 0x2F
+			else
+				-- HP = 0x30 -> full mask (100%)
+				prevPHP = 0x30
+			end
+
+			local damage = 0
+			local newHP = readRAM("WRAM", 0x0E50 + spriteID, 1)
+			if (newHP ~= prevHP) then
+				-- get damage
+				damage = prevHP - newHP
+			end
+
+			local newPHP = (maxHP - (prevDamage + damage)) / maxHP
+			if (newPHP < 0.66666) then
+				-- HP = 0x1F -> Phase 2 trigger, broken mask (<66.666%)
+				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0x1F)
+			elseif (newPHP < 0.83333) then
+				-- HP = 0x27 -> second mask chip (<83.333%)
+				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0x27)
+			elseif (newPHP < 1.00000) then
+				-- HP = 0x2F -> first mask chip (<100%)
+				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0x2F)
+			else
+				-- HP = 0x30 -> full mask (100%)
+				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0x30)
+			end
+
+			return damage
+		end },
+	[0xCE] = {name="Blind", 		baseHP=0x09, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00},
+		getDmgFunc = function(room, bossID, spriteID)
+			if bossID > 0 then
+				return 0
+			end
+
+			local damage = 0
+			-- check for hits, 0F90 = Hit count (mod 3)
+			if readRAM("WRAM", 0x0F90 + spriteID, 1) > 0 then
+				writeRAM("WRAM", 0x0F90 + spriteID, 1, 0)
+				damage = 1
+			end
+
+			-- count the floating heads
+			local heads = -1
+			for spriteID2=0x00,0x0F do 
+				if readRAM("WRAM", 0x0E20 + spriteID2, 1) == 0xCE and
+				   readRAM("WRAM", 0x0DD0 + spriteID2, 1) == 0x09 then
+				  	heads = head + 1
+				end
+			end
+
+			-- calculate the expected head count
+			local newDamage = bosses[0xCE].units[room][bossID] + damage
+			local phaseHP = getBossMaxHP(bosses[0xCE]) / 3
+			local newHeads = math.floor(newDamage / phaseHP)
+			-- if there should be a new head, and not during I-Frames
+			if (newHeads > heads and readRAM("WRAM", 0x0EA0 + spriteID, 1) == 0) then
+				-- 0x0EA0 = 0x0B -> trigger hit code, if Hits >= 3 then add head
+				writeRAM("WRAM", 0x0F90 + spriteID, 1, 3)
+				writeRAM("WRAM", 0x0EA0 + spriteID, 1, 0x0B)
+			end
+		end,
+		deathFunc = function(room, bossID, spriteID)
+			for spriteID2=0x00,0x0F do 
+				-- kill the floating heads
+				if readRAM("WRAM", 0x0E20 + spriteID2, 1) == 0xCE and
+				   readRAM("WRAM", 0x0DD0 + spriteID2, 1) == 0x09 then
+					writeRAM("WRAM", 0x0DD0 + spriteID2, 1, 0x06)
+					writeRAM("WRAM", 0x0DF0 + spriteID2, 1, 0x10)
+				end
+			end
+		end },
+	[0x88] = {name="Mothula", 		baseHP=0x20, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
+	[0xA4] = {name="Ice Shell",		baseHP=0x40, death={[0x0D80]=0x01} },
+	[0xA2] = {name="Kholdstare",	baseHP=0x40, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
+	[0x8C] = {name="Arrghus",		baseHP=0x20, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
+	[0x8D] = {name="Arrghus Eye",	baseHP=0x08, death={[0x0DD0]=0x06, [0x0DF0]=0x20, [0x0EF0]=0xFF, [0x0D80]=0x01, [0x0DC0]=0x00, [0x0E40]=0x04} },
+	[0xBD] = {name="Vitreous",		baseHP=0x80, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00},
+		deathFunc = function(room, bossID, spriteID)
+			for spriteID2=0x00,0x0F do 
+				-- kill all remaining eyes
+				if readRAM("WRAM", 0x0E20 + spriteID2, 1) == 0xBE then
+					for deathAdr,deathVal in pairs(bosses[0xBE].death) do
+						writeRAM("WRAM", deathAdr + spriteID2, 1, deathVal)
+					end
+				end
+			end
+		end },
+	[0xBE] = {name="Vitreous Eye",	baseHP=0x28, death={[0x0DD0]=0x06, [0x0DF0]=0x20, [0x0EF0]=0xFF, [0x0D80]=0x01, [0x0DC0]=0x00, [0x0E40]=0x04} },
+	[0xCB] = {name="Trinexx",		baseHP=0x28, death={[0x0D80]=0x80} },
+	[0xCC] = {name="Trinexx Fire",	baseHP=0x28, death={[0x0D80]=0x80} },
+	[0xCD] = {name="Trinexx Ice",	baseHP=0x28, death={[0x0D80]=0x80} },
+	[0xD6] = {name="Ganon",			baseHP=0xC0, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00}, 
+		getDmgFunc = function (room, bossID, spriteID) 
+			local prevDamage = bosses[0xD6].units[room][bossID]
+			local maxHP = getBossMaxHP(bosses[0xD6])
+			local prevPHP = (maxHP - prevDamage) / maxHP
+			local prevHP
+			if (prevPHP < 0.50000) then
+				-- HP = 0x60 -> phase 4 (0x60 hp, 50%)
+				prevPHP = 0x60
+			elseif (prevPHP < 0.75000) then
+				-- HP = 0xD0 -> phase 2 (0x30 hp, 75%)
+				-- HP = 0xA0 -> phase 3 (4 hits, untracked)
+				prevPHP = 0xD0
+			else
+				-- HP = 0xFF -> phase 1 (0x30 hp, 100%)
+				prevPHP = 0xFF
+			end
+
+			local damage = 0
+			local newHP = readRAM("WRAM", 0x0E50 + spriteID, 1)
+			if (newHP ~= prevHP) then
+				-- get damage
+				damage = prevHP - newHP
+			end
+
+			local newPHP = (maxHP - (prevDamage + damage)) / maxHP
+			if (newPHP < 0.50000) then
+				-- HP = 0x60 -> phase 4 (0x60 hp, 50%)
+				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0x60)
+			elseif (newPHP < 0.75000) then
+				-- HP = 0xD0 -> phase 2 (0x30 hp, 75%)
+				-- HP = 0xA0 -> phase 3 (4 hits, untracked)
+				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0xD0)
+			else
+				-- HP = 0xFF -> phase 1 (0x30 hp, 100%)
+				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0x60)
+			end
+
+			return damage
+		end },
+}
+
+local function getBossMaxHP(boss) 
+	-- Ideal multiplier = n * (2 ^ (2 - 1))
+	-- Random multiplier = (2 ^ n) - 1
+	-- Average Ideal/Random = (2 ^ n) * ((n / 4) + 0.5) - 0.5
+	return boss.baseHP * (((2 ^ playercount) * ((playercount / 4) + 0.5)) - 0.5)
+end
+
+local function getBossDamage()
+	local damages = {}
+	local changes = false
+
+	local room = readRAM("WRAM", 0x00A0, 1)
+
+	local bossIDs = {}
+	for spriteID=0x00,0x0F do
+		-- search the sprite list for a matching type
+		local spriteType = readRAM("WRAM", 0x0E20 + spriteID, 1)
+
+		local boss = bosses[spriteType]
+		if (boss) then
+			-- boss detected
+			-- get boss ID for multiple bosses in one room
+			if bossIDs[spriteType] == nil then
+				bossIDs[spriteType] = 0
+			else
+				bossIDs[spriteType] = bossIDs[spriteType] + 1
+			end
+			local bossID = bossIDs[spriteType]
+
+			-- initialize boss damage table if nil
+			if (boss.units == nil) then
+				boss.units = {}
+			end
+			if (boss.units[room] == nil) then
+				boss.units[room] = {}
+			end
+			if (boss.units[room][bossID] == nil) then
+				boss.units[room][bossID] = 0
+			end
+
+			local spriteStatus = readRAM("WRAM", 0x0DD0 + spriteID, 1)
+			if (spriteStatus == 0x09) then
+				-- if unit is active
+				if (boss.units[room][bossID] >= getBossMaxHP(boss)) then
+					-- boss needs to be killed
+					for deathAdr,deathVal in pairs(boss.death) do
+						writeRAM("WRAM", deathAdr + spriteID, 1, deathVal)
+					end
+
+					if (boss.deathFunc ~= nil) then
+						boss.deathFunc(room, bossID, spriteID)
+					end
+				else
+					-- boss is alive still
+					if (boss.getDmgFunc == nil) then
+						-- default damage reader
+						local newHP = readRAM("WRAM", 0x0E50 + spriteID, 1)
+						if (newHP ~= boss.baseHP) then
+							-- get damage
+							damage = boss.baseHP - newHP
+							writeRAM("WRAM", 0x0E50 + spriteID, 1, boss.baseHP)
+						end
+					else
+						-- custom damage reader
+						damage = boss.getDmgFunc(room, bossID, spriteID)
+					end
+				end
+			elseif (spriteStatus == 0x04 or spriteStatus == 0x06) and hp > 0 then
+				-- was just killed
+				damage = getBossMaxHP(boss)
+			end
+		end
+
+		-- store the damage found
+		if damage then
+			changes = true
+			table.insert(damages, {bossType=bossType, room=room, bossID=bossID, damage=damage})
+		end
+	end
+
+	if changes then
+		return damages
+	else
+		return false
+	end
+end
+
+
+function promoteItem(list, newItem)
+	local index
+	if (list[newItem] == nil) then
+		index = math.huge
+	else
+		index = list[newItem]
+	end
+
+	local count = 0
+	for item,val in pairs(list) do
+		count = count + 1
+		if (val < index) then
+			list[item] = val + 1
+		end
+	end
+
+	list[newItem] = 0
+
+	if index == math.huge then
+		return count
+	else
+		return index
+	end
+end
+
+
+function setBossDamage(damages, their_user, multiply)
+	for _,bossDamage in pairs(damages) do
+		local boss = bosses[bossDamage.bossType]
+		-- initialize boss damage table if nil
+		if (boss.units == nil) then
+			boss.units = {}
+		end
+		if (boss.units[bossDamage.room] == nil) then
+			boss.units[bossDamage.room] = {}
+		end
+		if (boss.units[bossDamage.room][bossDamage.bossID] == nil) then
+			boss.units[bossDamage.room][bossDamage.bossID] = 0
+		end
+		if boss.mult == nil then
+			boss.mult = {}
+		end
+
+		local index = promoteItem(boss.mult, their_user)
+		if multiply then
+			bossDamage.damage = bossDamage.damage * (2 ^ index)
+		end
+
+		boss.units[bossDamage.room][bossDamage.bossID] = boss.units[bossDamage.room][bossDamage.bossID] + bossDamage.damage
+	end
+end
+
 
 
 -- Display a message of the ram event
@@ -965,6 +1275,16 @@ function lttp_ram.getMessage()
 	-- Update the RAM frame pointer
 	prevRAM = newRAM
 
+	-- Get boss damages
+	local damages = getBossDamage()
+	if damages then
+		setBossDamage(damages, config.user, true)
+		if message == false then
+			message = {}
+		end
+		message["b"] = damages
+	end
+
 	return message
 end
 
@@ -975,6 +1295,20 @@ function lttp_ram.processMessage(their_user, message)
 		splitItems = message["i"]
 		message["i"] = nil
 		removeItems()
+
+		local playerlist = {}
+		playercount = 0
+		for _,player in pairs(splitItems) do
+			if playerlist[player] == nil then
+				playerlist[player] = true
+				playercount = playercount + 1
+			end
+		end
+	end
+
+	if message["b"] then
+		setBossDamage(message["b"], their_user, false)
+		message["b"] = nil
 	end
 
 	if gameLoaded then
@@ -985,3 +1319,5 @@ function lttp_ram.processMessage(their_user, message)
 end
 
 return lttp_ram
+
+
