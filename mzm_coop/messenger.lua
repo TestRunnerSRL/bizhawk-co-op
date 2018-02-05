@@ -199,7 +199,8 @@ function messenger.receive(client_socket, nonblocking)
   --determine message type
   local message_type = char_to_message_type[message:sub(1,1)]
   if (message_type == nil) then
-    error("Recieved an unidentifiable message.")
+    printOutput("Recieved an unidentifiable message: " .. message)
+    return nil
   end
   message = message:sub(2)
   --decode the message
