@@ -630,13 +630,22 @@ bosses = {
 	[0x53] = {name="Armos Knight", 	baseHP=0x30, death={[0x0DD0]=0x06, [0x0DF0]=0x28, [0x0EF0]=0xFF, [0x0D90]=0x01} },
 	[0x54] = {name="Lanmola", 		baseHP=0x10, death={[0x0D80]=0x05, [0x0DD0]=0x06, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
 	[0x09] = {name="Moldorm", 		baseHP=0x0C, death={[0x0D80]=0x03} },
-	[0x7A] = {name="Agahnim", 		baseHP=0x60, death={[0x0D80]=0x0A, [0x0DF0]=0xFF},
+	[0x7A] = {name="Agahnim", 		baseHP=0x60, death={},
 		deathFunc = function(room, bossID, spriteID)
-			if room == 0x0D then -- agahnim 2
-				writeRAM("WRAM", 0x0D80 + spriteID + 0, 1, 0x08) -- main aga
-				writeRAM("WRAM", 0x0D80 + spriteID + 1, 1, 0x09) -- shadow aga
-				writeRAM("WRAM", 0x0D80 + spriteID + 2, 1, 0x09) -- shadow aga
+			if readRAM("WRAM", 0x0D80 + spriteID, 1) < 0x08 then
+				-- only apply death if not in a death AI pattern
+				writeRAM("WRAM", 0x0DF0 + spriteID, 1, 0xFF) -- flashing pallete
+				if room == 0x0D then -- agahnim 2
+					writeRAM("WRAM", 0x0D80 + spriteID + 0, 1, 0x08) -- aga2 death collapse
+					writeRAM("WRAM", 0x0D80 + spriteID + 1, 1, 0x09) -- shadow aga
+					writeRAM("WRAM", 0x0D80 + spriteID + 2, 1, 0x09) -- shadow aga
+				else -- agahnim 1
+					writeRAM("WRAM", 0x0D80 + spriteID, 1, 0x0A) -- aga1 death spin
+				end
 			end
+		end,
+		deathTestFunc = function(spriteID)
+
 		end },
 	[0x92] = {name="Helmasaur", 	baseHP=0x30, death={[0x0DD0]=0x06, [0x0DB0]=0x03, [0x0DF0]=0x80, [0x0EF0]=0xFF, [0x0D90]=0x00},
 		getDmgFunc = function (room, bossID, spriteID) 
