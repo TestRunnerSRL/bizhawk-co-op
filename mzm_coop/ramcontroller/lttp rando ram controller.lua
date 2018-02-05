@@ -1251,12 +1251,14 @@ end
 -- Gets a message to send to the other player of new changes
 -- Returns the message as a dictionary object
 -- Returns false if no message is to be send
+local prevGameLoaded = true
 function lttp_ram.getMessage()
 	-- Check if game is playing
 	gameLoaded = gameLoadedModes[readRAM("WRAM", 0x0010, 1)] == true
 
 	-- Don't check for updated when game is not running
 	if not gameLoaded then
+		prevGameLoaded = false
 		return false
 	end
 
@@ -1278,6 +1280,16 @@ function lttp_ram.getMessage()
 	if prevRAM == nil then
 		prevRAM = getRAM()
 	end
+
+	-- Game was just loaded, restore to previous known RAM state
+	if (gameLoaded and not prevGameLoaded) then
+		 -- get changes to prevRAM and apply them to game RAM
+		local newRAM = getRAM()
+		local message = eventRAMchanges(newRAM, prevRAM)
+		prevRAM = newRAM
+		lttp_RAM.processMessage("Save Restore", message)
+	end
+	prevGameLoaded = gameLoaded
 
 	-- Load all queued changes
 	while not messageQueue.isEmpty() do
