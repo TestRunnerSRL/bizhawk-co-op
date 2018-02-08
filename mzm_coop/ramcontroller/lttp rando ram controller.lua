@@ -495,7 +495,7 @@ end
 
 ramItems = {
 	[0x0010] = {type="num", receiveFunc=function(newValue, prevValue)
-		if (newValue == 0x19) -- Triforce room scene mode
+		if (newValue == 0x19) then -- Triforce room scene mode
 			return newValue
 		else
 			return prevval
