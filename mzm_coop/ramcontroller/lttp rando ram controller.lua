@@ -494,6 +494,13 @@ end
 
 
 ramItems = {
+	[0x0010] = {type="num", receiveFunc=function(newValue, prevValue)
+		if (newValue == 0x19) -- Triforce room scene mode
+			return newValue
+		else
+			return prevval
+		end
+	end},
 	-- INVENTORY_SWAP
 	[0xF38C] = {name={[0]="Bird", "Flute", "Shovel", "unknown item", "Magic Powder", "Mushroom", "Red Boomerang", "Blue Boomerang"}, type="bit"},
 	-- INVENTORY_SWAP_2
