@@ -381,9 +381,74 @@ local locations = {
 	{["address"]=0x3355C, ["name"]="Blacksmith",	["type"]="Npc"},
 }
 
+local gameLoadedModes = {
+    [0x00]=false,  --Triforce / Zelda startup screens
+    [0x01]=false,  --Game Select screen
+    [0x02]=false,  --Copy Player Mode
+    [0x03]=false,  --Erase Player Mode
+    [0x04]=false,  --Name Player Mode
+    [0x05]=false,  --Loading Game Mode
+    [0x06]=true,  --Pre Dungeon Mode
+    [0x07]=true,  --Dungeon Mode
+    [0x08]=true,  --Pre Overworld Mode
+    [0x09]=true,  --Overworld Mode
+    [0x0A]=true,  --Pre Overworld Mode (special overworld)
+    [0x0B]=true,  --Overworld Mode (special overworld)
+    [0x0C]=true,  --???? I think we can declare this one unused, almost with complete certainty.
+    [0x0D]=true,  --Blank Screen
+    [0x0E]=true,  --Text Mode/Item Screen/Map
+    [0x0F]=true,  --Closing Spotlight
+    [0x10]=true,  --Opening Spotlight
+    [0x11]=true,  --Happens when you fall into a hole from the OW.
+    [0x12]=true,  --Death Mode
+    [0x13]=true,  --Boss Victory Mode (refills stats)
+    [0x14]=false,  --History Mode (Title Screen Demo)
+    [0x15]=true,  --Module for Magic Mirror
+    [0x16]=true,  --Module for refilling stats after boss.
+    [0x17]=false,  --Restart mode (save and quit)
+    [0x18]=true,  --Ganon exits from Agahnim's body. Chase Mode.
+    [0x19]=false,  --Triforce Room scene
+    [0x1A]=false,  --End sequence
+    [0x1B]=false,  --Screen to select where to start from (House, sanctuary, etc.)
+}
+
+local continueHP = {
+	[03] = 03,
+	[04] = 03,
+	[05] = 04,
+	[06] = 04,
+	[07] = 05,
+	[08] = 05,
+	[09] = 06,
+	[10] = 06,
+	[11] = 07,
+	[12] = 07,
+	[13] = 07,
+	[14] = 08,
+	[15] = 08,
+	[16] = 08,
+	[17] = 09,
+	[18] = 09,
+	[19] = 09,
+	[20] = 10,
+}
+
+
+local deathQueue = {}
+function tableCount(table)
+	local count = 0
+    for _, _ in pairs(table) do
+        count = count + 1
+    end
+    return count
+end
 
 local prevRAM = nil
+local gameMode
+local prevGameMode = nil
+
 local gameLoaded
+local prevGameLoaded = true
 local dying = false
 local prevmode = 0
 local lttp_ram = {}
@@ -581,15 +646,29 @@ ramItems = {
 	[0xF36A] = {type="delta", receiveFunc=clamp, min=0, max=999}, -- Wishing Pond Rupees
 	[0xF36B] = {type="delta", receiveFunc=function(newValue, prevValue)
 		return newValue % 4 end}, -- Heart pieces
-	[0xF36C] = {type="delta", default=0x18, receiveFunc=clamp, min=0, max=0xA0}, -- HP Max
-	[0xF36D] = {type="delta", receiveFunc=function(newValue, prevValue)
-		local maxHP = readRAM("WRAM", 0xF36C, 1)
-		newValue = math.max(math.min(newValue, maxHP), 0)
-		if newValue == 0 and prevValue ~= 0 then
-			dying = true
-			gui.addmessage("You are dead.")
-		end
-		return newValue	end
+	[0xF36C] = {type="delta", default=0x18, receiveFunc=clamp, min=0, max=0xF0}, -- HP Max
+	[0xF36D] = {type="delta", 
+		receiveFunc=function(newValue, prevValue, address, item, their_user)
+			local delta = newValue - prevValue
+
+			if (tableCount(deathQueue) > 0) then
+				if (delta < -0xFF) then
+					deathQueue[their_user] = true
+				end
+				return prevValue
+			end
+
+			if (delta < -0xFF) then
+				-- death message
+				newValue = 0
+				gui.addmessage(their_user .. " killed you.")
+				deathQueue[their_user] = true
+			end
+
+			local maxHP = readRAM("WRAM", 0xF36C, 1)
+			newValue = math.max(math.min(newValue, maxHP), 0)
+
+			return newValue	end
 		, default=0x18}, -- HP Current
 	[0xF36E] = {type="delta", receiveFunc=clamp, min=0, max=0x80}, -- MP
 	[0xF370] = {type="delta", receiveFunc=clamp, min=0, max=89}, -- Bomb upgrades
@@ -1097,7 +1176,7 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 
 		-- Run the address's reveive function if it exists
 		if (ramItems[address].receiveFunc) then
-			newval = ramItems[address].receiveFunc(newval, prevRAM[address], address, ramItems[address])
+			newval = ramItems[address].receiveFunc(newval, prevRAM[address], address, ramItems[address], their_user)
 		end
 
 		-- Apply the address's bit mask
@@ -1113,7 +1192,7 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 		-- Write the new value
 		getGUImessage(address, prevRAM[address], newval, their_user)
 		prevRAM[address] = newval
-		if gameLoaded then
+		if gameLoadedModes[gameMode] then
 			writeRAM("WRAM", address, ramItems[address].size, newval)
 		end
 	end	
@@ -1197,38 +1276,6 @@ end
 lttp_ram.itemcount = 0
 for _,_ in pairs(locations) do lttp_ram.itemcount = lttp_ram.itemcount + 1 end
 
-local gameLoadedModes = {
-    [0x00]=false,  --Triforce / Zelda startup screens
-    [0x01]=false,  --Game Select screen
-    [0x02]=false,  --Copy Player Mode
-    [0x03]=false,  --Erase Player Mode
-    [0x04]=false,  --Name Player Mode
-    [0x05]=false,  --Loading Game Mode
-    [0x06]=true,  --Pre Dungeon Mode
-    [0x07]=true,  --Dungeon Mode
-    [0x08]=true,  --Pre Overworld Mode
-    [0x09]=true,  --Overworld Mode
-    [0x0A]=true,  --Pre Overworld Mode (special overworld)
-    [0x0B]=true,  --Overworld Mode (special overworld)
-    [0x0C]=true,  --???? I think we can declare this one unused, almost with complete certainty.
-    [0x0D]=true,  --Blank Screen
-    [0x0E]=true,  --Text Mode/Item Screen/Map
-    [0x0F]=true,  --Closing Spotlight
-    [0x10]=true,  --Opening Spotlight
-    [0x11]=true,  --Happens when you fall into a hole from the OW.
-    [0x12]=true,  --Death Mode
-    [0x13]=true,  --Boss Victory Mode (refills stats)
-    [0x14]=false,  --History Mode (Title Screen Demo)
-    [0x15]=true,  --Module for Magic Mirror
-    [0x16]=true,  --Module for refilling stats after boss.
-    [0x17]=false,  --Restart mode (save and quit)
-    [0x18]=true,  --Ganon exits from Agahnim's body. Chase Mode.
-    [0x19]=false,  --Triforce Room scene
-    [0x1A]=false,  --End sequence
-    [0x1B]=false,  --Screen to select where to start from (House, sanctuary, etc.)
-}
-
-
 local messageQueue = {first = 0, last = -1}
 function messageQueue.isEmpty()
 	return messageQueue.first > messageQueue.last
@@ -1264,26 +1311,15 @@ end
 -- Gets a message to send to the other player of new changes
 -- Returns the message as a dictionary object
 -- Returns false if no message is to be send
-local prevGameLoaded = true
 function lttp_ram.getMessage()
 	-- Check if game is playing
-	gameLoaded = gameLoadedModes[readRAM("WRAM", 0x0010, 1)] == true
+	gameMode = readRAM("WRAM", 0x0010, 1)
+	local gameLoaded = gameLoadedModes[gameMode] == true
 
 	-- Don't check for updated when game is not running
 	if not gameLoaded then
-		prevGameLoaded = false
+		prevGameMode = gameMode
 		return false
-	end
-
-	-- Checked for queued death and apply when safe
-	if dying then
-		local gamemode = readRAM("WRAM", 0x0010, 2)
-		-- Main mode: 07 = Dungeon, 09 = Overworld, 0B = Special Overworld
-		-- Sub mode: Non 0 = game is paused, transitioning between modes
-		if (gamemode == 0x0007 or gamemode == 0x0009 or gamemode == 0x000B) then -- If link is controllable
-			writeRAM("WRAM", 0x0010, 2, 0x0012) -- Kill link as soon as it's safe
-			dying = false
-		end
 	end
 
 	-- Update dungeon key counts
@@ -1294,15 +1330,62 @@ function lttp_ram.getMessage()
 		prevRAM = getRAM()
 	end
 
+	-- Checked for queued death and apply when safe
+	if tableCount(deathQueue) > 0 and not deathQueue[config.user] then
+		-- Main mode: 07 = Dungeon, 09 = Overworld, 0B = Special Overworld
+		-- Sub mode: Non 0 = game is paused, transitioning between modes
+		if (gameMode == 0x07 or gameMode == 0x09 or gameMode == 0x0B) and (readRAM("WRAM", 0x0011, 1) == 0x00) then 
+			-- If link is controllable
+			writeRAM("WRAM", 0x0010, 2, 0x0012) -- Kill link as soon as it's safe
+			writeRAM("WRAM", 0xF36D, 1, 0)
+			prevRAM[0xF36D] = 0
+			gameMode = 0x12
+		end
+	end
+
+	if (gameMode == 0x12) then
+		local deathCount = tableCount(deathQueue)
+		if (deathCount > 0 and deathCount < playercount) then
+			-- Lock the death until everyone is dying
+			writeRAM("WRAM", 0x0010, 2, 0x0012)
+		elseif (deathCount >= playercount) then
+			deathQueue = {}
+
+			local hasFairy = false
+			for bottleID=0,3 do
+				if prevRAM[0xF35C + bottleID] == 0x06 then
+					-- has fairy
+					hasFairy = true
+				end
+			end
+
+			local maxHP = readRAM("WRAM", 0xF36C, 1)
+			local contHP
+			if (hasFairy) then
+				contHP = 7 * 8
+			else
+			 	contHP = (continueHP[maxHP / 8] or 10) * 8
+			end
+			prevRAM[0xF36D] = math.max(math.min(prevRAM[0xF36D] + contHP, maxHP), 0)
+			writeRAM("WRAM", 0xF36D, 1, prevRAM[0xF36D])		
+		end
+
+		if (prevGameMode == 0x12) then
+			-- discard continue HP/fairy HP
+			writeRAM("WRAM", 0xF36D, 1, prevRAM[0xF36D])
+		end
+	end
+
 	-- Game was just loaded, restore to previous known RAM state
-	if (gameLoaded and not prevGameLoaded) then
+	if (gameLoaded and not gameLoadedModes[prevGameMode]) then
 		 -- get changes to prevRAM and apply them to game RAM
 		local newRAM = getRAM()
 		local message = eventRAMchanges(newRAM, prevRAM)
 		prevRAM = newRAM
-		lttp_RAM.processMessage("Save Restore", message)
+		if (message) then
+			lttp_ram.processMessage("Save Restore", message)
+		end
 	end
-	prevGameLoaded = gameLoaded
 
 	-- Load all queued changes
 	while not messageQueue.isEmpty() do
@@ -1326,6 +1409,22 @@ function lttp_ram.getMessage()
 		end
 		message["b"] = damages
 	end
+
+	-- Check for death message
+	if (gameMode == 0x12) then
+		if (prevGameMode ~= 0x12) then
+			if message == false then
+				message = {}
+			end
+
+			message[0xF36D] = -0x100 -- death message is a large HP loss
+			deathQueue[config.user] = true
+		else 
+			-- suppress all non death messages during death sequence
+			return false
+		end
+	end
+	prevGameMode = gameMode
 
 	return message
 end
@@ -1353,7 +1452,7 @@ function lttp_ram.processMessage(their_user, message)
 		message["b"] = nil
 	end
 
-	if gameLoaded then
+	if gameLoadedModes[gameMode] then
 		prevRAM = setRAMchanges(prevRAM, their_user, message)
 	else
 		messageQueue.pushRight({["their_user"]=their_user, ["message"]=message})
