@@ -650,9 +650,6 @@ bosses = {
 					writeRAM("WRAM", 0x0D80 + spriteID, 1, 0x0A) -- aga1 death spin
 				end
 			end
-		end,
-		deathTestFunc = function(spriteID)
-
 		end },
 	[0x92] = {name="Helmasaur", 	baseHP=0x30, death={[0x0DD0]=0x06, [0x0DB0]=0x03, [0x0DF0]=0x80, [0x0EF0]=0xFF, [0x0D90]=0x00},
 		getDmgFunc = function (room, bossID, spriteID) 
@@ -674,12 +671,8 @@ bosses = {
 				prevHP = 0x30
 			end
 
-			local damage = 0
 			local newHP = readRAM("WRAM", 0x0E50 + spriteID, 1)
-			if (newHP ~= prevHP) then
-				-- get damage
-				damage = prevHP - newHP
-			end
+			local damage = prevHP - newHP
 
 			local newPHP = (maxHP - (prevDamage + damage)) / maxHP
 			if (newPHP < 0.66666) then
@@ -731,7 +724,7 @@ bosses = {
 				writeRAM("WRAM", 0x0EA0 + spriteID, 1, 0x0B)
 			end
 
-			return (damage == 1 and 1) or false
+			return damage
 		end,
 		deathFunc = function(room, bossID, spriteID)
 			for spriteID2=0x00,0x0F do 
@@ -744,7 +737,22 @@ bosses = {
 			end
 		end },
 	[0x88] = {name="Mothula", 		baseHP=0x20, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
-	[0xA4] = {name="Ice Shell",		baseHP=0x40, death={[0x0D80]=0x01} },
+	[0xA4] = {name="Ice Shell",		baseHP=0x40, death={[0x0D80]=0x01},  
+		getDmgFunc = function (room, bossID, spriteID) 
+			local boss = bosses[0xA4]
+			if (readRAM("WRAM", 0x0D80 + spriteID, 1) > 0) then
+				return getBossMaxHP(boss)
+			end
+
+			-- default damage reader
+			local newHP = readRAM("WRAM", 0x0E50 + spriteID, 1)
+			local damage = boss.baseHP - newHP
+			if (newHP ~= boss.baseHP) then
+				writeRAM("WRAM", 0x0E50 + spriteID, 1, boss.baseHP)
+			end
+
+			return damage
+		end},
 	[0xA2] = {name="Kholdstare",	baseHP=0x40, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
 	[0x8C] = {name="Arrghus",		baseHP=0x20, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
 	[0x8D] = {name="Arrghus Eye",	baseHP=0x08, death={[0x0DD0]=0x06, [0x0DF0]=0x20, [0x0EF0]=0xFF, [0x0D80]=0x01, [0x0DC0]=0x00, [0x0E40]=0x04} },
@@ -772,22 +780,18 @@ bosses = {
 			local prevHP
 			if (prevPHP < 0.50000) then
 				-- HP = 0x60 -> phase 4 (0x60 hp, 50%)
-				prevPHP = 0x60
+				prevHP = 0x60
 			elseif (prevPHP < 0.75000) then
 				-- HP = 0xD0 -> phase 2 (0x30 hp, 75%)
 				-- HP = 0xA0 -> phase 3 (4 hits, untracked)
-				prevPHP = 0xD0
+				prevHP = 0xD0
 			else
 				-- HP = 0xFF -> phase 1 (0x30 hp, 100%)
-				prevPHP = 0xFF
+				prevHP = 0xFF
 			end
 
-			local damage = 0
 			local newHP = readRAM("WRAM", 0x0E50 + spriteID, 1)
-			if (newHP ~= prevHP) then
-				-- get damage
-				damage = prevHP - newHP
-			end
+			local damage = prevHP - newHP
 
 			local newPHP = (maxHP - (prevDamage + damage)) / maxHP
 			if (newPHP < 0.50000) then
@@ -876,7 +880,7 @@ local function getBossDamage()
 		end
 
 		-- store the damage found
-		if damage then
+		if damage and damage > 0 then
 			changes = true
 			table.insert(damages, {bossType=spriteType, room=room, bossID=bossID, damage=damage})
 		end
