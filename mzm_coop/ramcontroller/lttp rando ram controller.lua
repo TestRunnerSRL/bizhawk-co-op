@@ -567,18 +567,18 @@ ramItems = {
 	[0xF35E] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
 	[0xF35F] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
 	[0xF364] = {name={[0]="unused Compass", "unused Compass", "Ganon's Tower Compass", "Turtle Rock Compass", "Thieves Towen Compass", "Tower of Hera Compass", "Ice Palace Compass", "Skull Woods Compass"}, type="bit"},
-	[0xF365] = {name={[0]="Misery Mire Compass", "Palace of Darkness Compass", "Swamp Palace Compass", "Agahnim's Tower Compass", "Desert Palace Compass", "Eastern Palace Compass", "Hyrule Castle Compass", "Sewer Passage Compass"}, type="bit"},
+	[0xF365] = {name={[0]="Misery Mire Compass", "Palace of Darkness Compass", "Swamp Palace Compass", "Agahnim's Tower Compass", "Desert Palace Compass", "Eastern Palace Compass", "Hyrule Castle Compass"}, type="bit"},
 	[0xF366] = {name={[0]="unused Boss Key", "unused Boss Key", "Ganon's Tower Boss Key", "Turtle Rock Boss Key", "Thieves Towen Boss Key", "Tower of Hera Boss Key", "Ice Palace Boss Key", "Skull Woods Boss Key"}, type="bit"},
-	[0xF367] = {name={[0]="Misery Mire Boss Key", "Palace of Darkness Boss Key", "Swamp Palace Boss Key", "Agahnim's Tower Boss Key", "Desert Palace Boss Key", "Eastern Palace Boss Key", "Hyrule Castle Boss Key", "Sewer Passage Boss Key"}, type="bit"},
+	[0xF367] = {name={[0]="Misery Mire Boss Key", "Palace of Darkness Boss Key", "Swamp Palace Boss Key", "Agahnim's Tower Boss Key", "Desert Palace Boss Key", "Eastern Palace Boss Key", "Hyrule Castle Boss Key"}, type="bit"},
 	[0xF368] = {name={[0]="unused Map", "unused Map", "Ganon's Tower Map", "Turtle Rock Map", "Thieves Towen Map", "Tower of Hera Map", "Ice Palace Map", "Skull Woods Map"}, type="bit"},
-	[0xF369] = {name={[0]="Misery Mire Map", "Palace of Darkness Map", "Swamp Palace Map", "Agahnim's Tower Map", "Desert Palace Map", "Eastern Palace Map", "Hyrule Castle Map", "Sewer Passage Map"}, type="bit"},
+	[0xF369] = {name={[0]="Misery Mire Map", "Palace of Darkness Map", "Swamp Palace Map", "Agahnim's Tower Map", "Desert Palace Map", "Eastern Palace Map", "Hyrule Castle Map"}, type="bit"},
 	[0xF374] = {name={[0]="Red Pendant", "Blue Pendant", "Green Pendant"}, type="bit"},
 	[0xF37A] = {name={[0]="Crystal 6", "Crystal 1", "Crystal 5", "Crystal 7", "Crystal 2", "Crystal 4", "Crystal 3", "unused"}, type="bit"},
 	[0xF37B] = {name={[0]="Normal Magic", "1/2 Magic", "1/4 Magic"}, type="delta", receiveFunc=clamp, min=0, max=2},
 
 	-- Ammo values
 	[0xF360] = {type="delta", size=2, receiveFunc=clamp, min=0, max=9999}, -- Current Rupees
-	[0xF36A] = {type="delta", receiveFunc=clamp, min=0, max=99}, -- Wishing Pond Rupees
+	[0xF36A] = {type="delta", receiveFunc=clamp, min=0, max=999}, -- Wishing Pond Rupees
 	[0xF36B] = {type="delta", receiveFunc=function(newValue, prevValue)
 		return newValue % 4 end}, -- Heart pieces
 	[0xF36C] = {type="delta", default=0x18, receiveFunc=clamp, min=0, max=0xA0}, -- HP Max
@@ -602,7 +602,7 @@ ramItems = {
 		return math.max(math.min(newValue, maxBombs), 0) end}, -- Bombs
 
 	-- keys
-	[0xF37C] = {name="Sewer Passage Key", type="delta", receiveFunc=recieveKey},
+	[0xF37C] = {type="delta", receiveFunc=recieveKey}, -- Sewer Passage Key
 	[0xF37D] = {name="Hyrule Castle Key", type="delta", receiveFunc=recieveKey},
 	[0xF37E] = {name="Eastern Palace Key", type="delta", receiveFunc=recieveKey},
 	[0xF37F] = {name="Desert Palace Key", type="delta", receiveFunc=recieveKey},
@@ -956,8 +956,8 @@ function getGUImessage(address, prevVal, newVal, user)
 		elseif ramItems[address].type == "num" then
 			if (type(name) == 'string') then
 				gui.addmessage(user .. ": " .. name .. " = " .. newVal)
-			else
-				gui.addmessage(user .. ": " .. (name[newVal] or (name[0] .. " = " .. newVal)))
+			elseif (name[newVal]) then
+				gui.addmessage(user .. ": " .. name[newVal])
 			end
 		-- If bitflag, show each bit: the indexed name or bit index as a boolean
 		elseif ramItems[address].type == "bit" then
@@ -968,18 +968,20 @@ function getGUImessage(address, prevVal, newVal, user)
 				if (newBit ~= prevBit) then
 					if (type(name) == 'string') then
 						gui.addmessage(user .. ": " .. name .. " flag " .. b .. (newBit and '' or ' Removed'))
-					else
-						gui.addmessage(user .. ": " .. (name[b] or name[1]) .. (newBit and '' or ' Removed'))
+					elseif (name[b]) then
+						gui.addmessage(user .. ": " .. name[b] .. (newBit and '' or ' Removed'))
 					end
 				end
 			end
 		-- if delta, show the indexed name, or the differential
 		elseif ramItems[address].type == "delta" then
 			local delta = newVal - prevVal
-			if (type(name) == 'string') then
-				gui.addmessage(user .. ": " .. name .. (delta > 0 and " +" or " ") .. delta)
-			else
-				gui.addmessage(user .. ": " .. (name[newVal] or (name[0] .. (delta > 0 and " +" or " ") .. delta)))
+			if (delta > 0) then
+				if (type(name) == 'string') then
+					gui.addmessage(user .. ": " .. name .. (delta > 0 and " +" or " ") .. delta)
+				elseif (name[newVal]) then
+					gui.addmessage(user .. ": " .. name[newVal])
+				end
 			end
 		else 
 			gui.addmessage("Unknown item ram type")
