@@ -111,7 +111,7 @@ function host.listen()
 	client:settimeout(5)
 
 	--sync the gameplay
-	local success, their_user = pcall(sync.syncconfig(client, clientID))
+	local success, their_user = pcall(sync.syncconfig, client, clientID)
 	if success and their_user then
 		host.clients[clientID] = client
 		host.users[their_user] = clientID
