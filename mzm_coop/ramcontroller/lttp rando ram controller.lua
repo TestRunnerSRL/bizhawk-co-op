@@ -563,7 +563,7 @@ ramItems = {
 		if (newValue == 0x19) then -- Triforce room scene mode
 			return newValue
 		else
-			return prevval
+			return prevValue
 		end
 	end},
 	-- INVENTORY_SWAP
