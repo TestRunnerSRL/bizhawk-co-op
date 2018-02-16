@@ -751,7 +751,7 @@ bosses = {
 			end
 
 			local newHP = readRAM("WRAM", 0x0E50 + spriteID, 1)
-			local damage = prevHP - newHP
+			local damage = math.max(prevHP - newHP, 0)
 
 			local newPHP = (maxHP - (prevDamage + damage)) / maxHP
 			if (newPHP < 0.66666) then
@@ -857,12 +857,12 @@ bosses = {
 			local maxHP = getBossMaxHP(bosses[0xD6])
 			local prevPHP = (maxHP - prevDamage) / maxHP
 			local prevHP
-			if (prevPHP < 0.50000) then
+			if (prevPHP <= 0.50000) then
 				-- HP = 0x60 -> phase 4 (0x60 hp, 50%)
-				prevHP = 0x60
-			elseif (prevPHP < 0.75000) then
-				-- HP = 0xD0 -> phase 2 (0x30 hp, 75%)
 				-- HP = 0xA0 -> phase 3 (4 hits, untracked)
+				prevHP = 0x60
+			elseif (prevPHP <= 0.75000) then
+				-- HP = 0xD0 -> phase 2 (0x30 hp, 75%)
 				prevHP = 0xD0
 			else
 				-- HP = 0xFF -> phase 1 (0x30 hp, 100%)
@@ -870,19 +870,19 @@ bosses = {
 			end
 
 			local newHP = readRAM("WRAM", 0x0E50 + spriteID, 1)
-			local damage = prevHP - newHP
+			local damage = math.max(prevHP - newHP, 0)
 
 			local newPHP = (maxHP - (prevDamage + damage)) / maxHP
-			if (newPHP < 0.50000) then
+			if (newPHP <= 0.50000) then
 				-- HP = 0x60 -> phase 4 (0x60 hp, 50%)
-				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0x60)
-			elseif (newPHP < 0.75000) then
-				-- HP = 0xD0 -> phase 2 (0x30 hp, 75%)
 				-- HP = 0xA0 -> phase 3 (4 hits, untracked)
+				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0x60)
+			elseif (newPHP <= 0.75000) then
+				-- HP = 0xD0 -> phase 2 (0x30 hp, 75%)
 				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0xD0)
 			else
 				-- HP = 0xFF -> phase 1 (0x30 hp, 100%)
-				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0x60)
+				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0xFF)
 			end
 
 			return damage
