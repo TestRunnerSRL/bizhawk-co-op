@@ -407,7 +407,7 @@ local gameLoadedModes = {
     [0x16]=true,  --Module for refilling stats after boss.
     [0x17]=false,  --Restart mode (save and quit)
     [0x18]=true,  --Ganon exits from Agahnim's body. Chase Mode.
-    [0x19]=false,  --Triforce Room scene
+    [0x19]=true,  --Triforce Room scene
     [0x1A]=false,  --End sequence
     [0x1B]=false,  --Screen to select where to start from (House, sanctuary, etc.)
 }
