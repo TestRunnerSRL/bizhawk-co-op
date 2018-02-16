@@ -1202,24 +1202,28 @@ end
 local splitItems = {}
 function removeItems()
 	for ID, location in ipairs(locations) do
-		if (location.oldItem) then
-			-- Restore item's original value
-			if (location.type == "Key") then
+		if (location.type == "Key") then
+			-- If enemy key
+			if (location.oldItem1loc) then
+				-- Restore key's original value
 				writeRAM("CARTROM", location.address, 2, location.oldItem1loc)
 				writeRAM("CARTROM", location.address + 2, 1, location.oldItem1val)
 				writeRAM("CARTROM", location.address2, 2, location.oldItem2loc)
 				writeRAM("CARTROM", location.address2 + 2, 1, location.oldItem2val)
 			else
-				writeRAM("CARTROM", location.address, 1, location.oldItem)
-			end
-		else
-			-- Store the original value
-			if (location.type == "Key") then
+				-- Store key's original value
 				location.oldItem1loc = readRAM("CARTROM", location.address, 2)
 				location.oldItem1val = readRAM("CARTROM", location.address + 2, 1)
 				location.oldItem2loc = readRAM("CARTROM", location.address2, 2)
 				location.oldItem2val = readRAM("CARTROM", location.address2 + 2, 1)
+			end
+		else
+			-- If pot key or item
+			if (location.oldItem) then
+				-- Restore item's original value
+				writeRAM("CARTROM", location.address, 1, location.oldItem)
 			else
+				-- Store ite's original value
 				location.oldItem = readRAM("CARTROM", location.address, 1)
 			end
 		end
@@ -1229,7 +1233,7 @@ function removeItems()
 			if (location.type == "Key") then
 				writeRAM("CARTROM", location.address, 2, location.oldItem2loc)
 				writeRAM("CARTROM", location.address + 2, 1, location.oldItem2val)
-				writeRAM("CARTROM", location.address2, 2, 0xFF)
+				writeRAM("CARTROM", location.address2, 1, 0xFF)
 			elseif (location.type == "Pot") then
 				writeRAM("CARTROM", location.address, 1, 0x01) -- Remove item
 			elseif (items[location.oldItem]) then
@@ -1242,7 +1246,7 @@ end
 -- Get enemy key drops (load dynamically for pot shuffling)
 for ID = 0,0x17F do
 	local roomspritesptr = 0x040000 + readRAM("CARTROM", 0x04D62E + (ID * 2), 2)
-	roomspritesptr = roomspritesptr + 1 -- ignore first bit of list
+	roomspritesptr = roomspritesptr + 1 -- ignore first byte of list
 
 	local keyfound = false
 	while (readRAM("CARTROM", roomspritesptr, 1) ~= 0xFF) do
