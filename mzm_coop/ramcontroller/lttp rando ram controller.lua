@@ -876,6 +876,35 @@ bosses = {
 	[0xCD] = {name="Trinexx Ice",	baseHP=0x28, death={[0x0D80]=0x80} },
 	[0xD6] = {name="Ganon",			baseHP=0xC0, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00}, 
 		getDmgFunc = function (room, bossID, spriteID) 
+			local ganonAIPhase = {
+		        [0x00] = 1, -- Sets up the initial Ganon text, and his music.
+		        [0x01] = 1, -- spin trident + throw [phase 1]
+		        [0x02] = 1, -- catching trident [phase 1]
+		        [0x03] = 1, -- caught trident [phase 1]
+		        [0x04] = 0, -- ???, but probably phase 1
+		        [0x05] = 1, -- teleport [phase 1]
+		        [0x06] = 1, -- looking around [phase 1]
+		        [0x07] = 2, -- spawn fire ring [phase 2]
+		        [0x08] = 2, -- expanding fire ring [phase 2]
+		        [0x09] = 2, -- spawning firebats [phase 2]
+		        [0x0A] = 0, -- teleport [phase 2]; talking [phase 4]
+		        [0x0B] = 2, -- reappearing [phase 2]
+		        [0x0C] = 0, -- spawn firebat [phase 3]
+		        [0x0D] = 0, -- teleport [phase 3]
+		        [0x0E] = 0, -- reappearing [phase 3]
+		        [0x0F] = 0, -- jumping [phase 3]
+		        [0x10] = 0, -- stomping [phase 3]
+		        [0x11] = 4, -- spawn firebat [phase 4]
+		        [0x12] = 4, -- teleport [phase 4]
+		        [0x13] = 4  -- frozen [phase 4]
+	       	}
+	       	local prevPhase = ganonAIPhase[readRAM("WRAM", 0x0D80 + spriteID, 1)]
+	       	if (prevPhase == 0 or prevPhase == nil) then
+	       		-- Don't track damage during these AI states
+	       		return 0
+	       	end
+
+	       	-- Calculate expected HP
 			local prevDamage = bosses[0xD6].units[room][bossID]
 			local maxHP = getBossMaxHP(bosses[0xD6])
 			local prevPHP = (maxHP - prevDamage) / maxHP
@@ -892,20 +921,43 @@ bosses = {
 				prevHP = 0xFF
 			end
 
+			-- Calculate Damage
 			local newHP = readRAM("WRAM", 0x0E50 + spriteID, 1)
 			local damage = math.max(prevHP - newHP, 0)
 
+			-- Update HP in RAM
 			local newPHP = (maxHP - (prevDamage + damage)) / maxHP
+			local newPhase
 			if (newPHP <= 0.50000) then
 				-- HP = 0x60 -> phase 4 (0x60 hp, 50%)
 				-- HP = 0xA0 -> phase 3 (4 hits, untracked)
 				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0x60)
+				newPhase = 4
 			elseif (newPHP <= 0.75000) then
 				-- HP = 0xD0 -> phase 2 (0x30 hp, 75%)
 				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0xD0)
+				newPhase = 2
 			else
 				-- HP = 0xFF -> phase 1 (0x30 hp, 100%)
 				writeRAM("WRAM", 0x0E50 + spriteID, 1, 0xFF)
+				newPhase = 1
+			end
+
+			-- Change Phase
+			if (prevPhase ~= newPhase) then
+				-- Set to appropriate Teleport Phase AI
+				if (newPhase == 1) then
+					writeRAM("WRAM", 0x0D80 + spriteID, 1, 0x05)
+				elseif (newPhase == 2) then
+					writeRAM("WRAM", 0x0D80 + spriteID, 1, 0x0A)
+				else
+					writeRAM("WRAM", 0x0D80 + spriteID, 1, 0x0D)
+				end
+
+				for spriteID2=0x01,0x0F do 
+					-- kill everything except ganon
+					writeRAM("WRAM", 0x0DD0 + spriteID2, 1, 0)
+				end				
 			end
 
 			return damage
