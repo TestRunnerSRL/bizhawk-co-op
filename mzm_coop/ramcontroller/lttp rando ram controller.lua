@@ -1276,7 +1276,7 @@ end
 
 local splitItems = {}
 function removeItems()
-	for ID, location in ipairs(locations) do
+	for ID, location in pairs(locations) do
 		if (location.type == "Key") then
 			-- If enemy key
 			if (location.oldItem1loc) then
@@ -1417,6 +1417,7 @@ function lttp_ram.getMessage()
 			-- If link is controllable
 			writeRAM("WRAM", 0x0010, 2, 0x0012) -- Kill link as soon as it's safe
 			writeRAM("WRAM", 0xF36D, 1, 0)
+			writeRAM("WRAM", 0x04C6, 1, 0) -- Stop any special cutscenes
 			prevRAM[0xF36D] = 0
 			gameMode = 0x12
 		end
