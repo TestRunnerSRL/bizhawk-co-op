@@ -816,9 +816,9 @@ bosses = {
 			end
 		end },
 	[0x88] = {name="Mothula", 		baseHP=0x20, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
-	[0xA4] = {name="Ice Shell",		baseHP=0x40, death={[0x0D80]=0x01},  
+	[0xA3] = {name="Ice Shell",		baseHP=0x40, death={},  
 		getDmgFunc = function (room, bossID, spriteID) 
-			local boss = bosses[0xA4]
+			local boss = bosses[0xA3]
 			if (readRAM("WRAM", 0x0D80 + spriteID, 1) > 0) then
 				return getBossMaxHP(boss)
 			end
@@ -831,8 +831,31 @@ bosses = {
 			end
 
 			return damage
+		end,
+		deathFunc = function(room, bossID, spriteID)
+			-- Start death timer once
+			if (readRAM("WRAM", 0x0D80 + spriteID, 1) == 0) then
+				writeRAM("WRAM", 0x0D80 + spriteID, 1, 1)
+			end
 		end},
-	[0xA2] = {name="Kholdstare",	baseHP=0x40, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
+	[0xA2] = {name="Kholdstare",	baseHP=0x40, death={},
+		deathFunc = function(room, bossID, spriteID)
+			-- Count number of kholdstare eyes
+			local count = 0
+			for spriteID2=0x00,0x0F do 
+				if readRAM("WRAM", 0x0E20 + spriteID2, 1) == 0xA2 then
+					count = count + 1
+				end
+			end
+
+			-- Wait to kill until there are at least three eyes
+			-- There are initially only 1, so wait for spawn
+			if (count >= 3) then
+			   	for deathAdr,deathVal in pairs({[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00}) do
+					writeRAM("WRAM", deathAdr + spriteID, 1, deathVal)
+				end
+			end
+		end },
 	[0x8C] = {name="Arrghus",		baseHP=0x20, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00} },
 	[0x8D] = {name="Arrghus Eye",	baseHP=0x08, death={[0x0DD0]=0x06, [0x0DF0]=0x20, [0x0EF0]=0xFF, [0x0D80]=0x01, [0x0DC0]=0x00, [0x0E40]=0x04} },
 	[0xBD] = {name="Vitreous",		baseHP=0x80, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00},
