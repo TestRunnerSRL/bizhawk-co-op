@@ -32,27 +32,27 @@ local sync = require("bizhawk-co-op\\sync")
 
 
 --stringList contains the output text
-local stringList = {last = 1, first = 10}
-for i = stringList.first, stringList.last, -1 do
-	stringList[i] = ""
-end
-
+local stringList = {last = -1, first = 0}
 
 --add a new line to the string list
 function stringList.push(value)
-  stringList.first = stringList.first + 1
-  stringList[stringList.first] = value
-  stringList[stringList.last] = nil
   stringList.last = stringList.last + 1
+  stringList[stringList.last] = value
+
+  if (stringList.last > 100) then
+    stringList[stringList.first] = nil
+    stringList.first = stringList.first + 1
+  end
 end
 
 
 --get the entire string list as a single string
 function stringList.tostring()
 	local outputstr = ""
-	for i = stringList.first, stringList.last, -1 do
+	for i = stringList.first, stringList.last do
 		outputstr = outputstr .. stringList[i] .. "\r\n"
 	end
+	outputstr = string.sub(outputstr, 0, -2)
 
 	return outputstr
 end
@@ -64,7 +64,10 @@ function printOutput(str)
 	str = "[" .. os.date("%H:%M:%S", os.time()) .. "] " .. str
 	stringList.push(str)
 
-	forms.settext(text1, stringList.tostring())
+	forms.settext(text1, "")
+	-- This is slower but seems to be the only way to autoscroll the text
+	--forms.setproperty(text1, "SelectionStart", 0)
+	forms.setproperty(text1, "SelectedText", stringList.tostring())
 end
 
 
@@ -168,9 +171,10 @@ end
 --Create the form
 mainform = forms.newform(310, 310, "Bizhawk Co-op")
 
-text1 = forms.textbox(mainform, "", 263, 105, nil, 16, 153, true, false)
+text1 = forms.textbox(mainform, "", 263, 105, nil, 16, 179, true, true, 'Vertical')
 forms.setproperty(text1, "ReadOnly", true)
-forms.setproperty(text1, "MaxLength", 1028)
+--forms.setproperty(text1, "MaxLength", 32767)
+
 
 if forms.setdropdownitems then -- can't update list prior to bizhawk 1.12.0
 	btnGetRooms = forms.button(mainform, "Refresh Rooms", refreshRooms, 220, 10, 60, 23)
