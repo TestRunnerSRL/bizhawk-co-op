@@ -3,6 +3,7 @@ local guiClick = {}
 mainform = nil
 local text1, lblRooms, btnGetRooms, ddRooms, btnQuit, btnJoin, btnHost
 local txtUser, txtPass, lblUser, lblPass, ddRamCode, lblRamCode
+local lblPort, txtPort
 config = {}
 
 
@@ -99,6 +100,7 @@ function updateGUI()
 		forms.setproperty(ddRamCode, "Enabled", true)
 		forms.setproperty(txtUser, "Enabled", true)
 		forms.setproperty(txtPass, "Enabled", true)
+		forms.setproperty(txtPort, "Enabled", true)
 		forms.setproperty(btnQuit, "Enabled", false)
 		forms.setproperty(btnJoin, "Enabled", true)
 		forms.setproperty(btnHost, "Enabled", true)
@@ -109,6 +111,7 @@ function updateGUI()
 		forms.setproperty(ddRooms, "Enabled", false)
 		forms.setproperty(txtUser, "Enabled", false)
 		forms.setproperty(txtPass, "Enabled", false)
+		forms.setproperty(txtPort, "Enabled", false)
 		forms.setproperty(btnQuit, "Enabled", true)
 		forms.setproperty(btnJoin, "Enabled", false)
 		forms.setproperty(btnHost, "Enabled", not host.locked)
@@ -141,7 +144,7 @@ function prepareConnection()
 	config.ramcode = forms.gettext(ddRamCode)
 	config.user = forms.gettext(txtUser)
 	config.pass = forms.gettext(txtPass)
-	config.port = 50000
+	config.port = forms.gettext(txtPort)
 	--config.hostname = forms.gettext(txtIP)
 end
 
@@ -169,7 +172,7 @@ end
 
 
 --Create the form
-mainform = forms.newform(310, 310, "Bizhawk Co-op")
+mainform = forms.newform(310, 336, "Bizhawk Co-op")
 
 text1 = forms.textbox(mainform, "", 263, 105, nil, 16, 179, true, true, 'Vertical')
 forms.setproperty(text1, "ReadOnly", true)
@@ -199,24 +202,25 @@ lblRooms = forms.label(mainform, "Rooms:", 34, 13)
 
 txtUser = forms.textbox(mainform, "", 200, 20, nil, 80, 40, false, false)
 txtPass = forms.textbox(mainform, "", 200, 20, nil, 80, 66, false, false)
-ddRamCode = forms.dropdown(mainform, os.dir("bizhawk-co-op\\ramcontroller"), 80, 93, 200, 10)
+txtPort = forms.textbox(mainform, '50000', 200, 20, nil, 80, 92, false, false)
+ddRamCode = forms.dropdown(mainform, os.dir("bizhawk-co-op\\ramcontroller"), 80, 119, 200, 10)
 lblUser = forms.label(mainform, "Username:", 19, 41)
 lblPass = forms.label(mainform, "Password:", 21, 68)
-lblRamCode = forms.label(mainform, "RAM Script:", 13, 95)
+lblPort = forms.label(mainform, "Port:", 48, 94)
+lblRamCode = forms.label(mainform, "RAM Script:", 13, 121)
 
-
-
+forms.setproperty(txtPass, 'UseSystemPasswordChar', true)
 
 
 btnQuit = forms.button(mainform, "Leave Room", leaveRoom, 
-	15, 120, 85, 25)
+	15, 146, 85, 25)
 forms.setproperty(btnQuit, 'Enabled', false)
 btnHost = forms.button(mainform, "Create Room", 
 	function() prepareConnection(); guiClick["Host Server"] = host.start end, 
-	105, 120, 85, 25)
+	105, 146, 85, 25)
 btnJoin = forms.button(mainform, "Join Room", 
 	function() prepareConnection(); guiClick["Join Server"] = host.join end, 
-	195, 120, 85, 25)
+	195, 146, 85, 25)
 
 sendMessage = {}
 local thread

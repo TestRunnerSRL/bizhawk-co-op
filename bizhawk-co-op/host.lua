@@ -63,7 +63,7 @@ function host.start()
 	--create the server
 	server = socket.bind("*", config.port, 1)
 	if (server == nil) then
-		printOutput("Error creating server.")
+		printOutput("Error creating server. Port is probably in use.")
 		host.status = 'Idle'
 		updateGUI()
 		return false
