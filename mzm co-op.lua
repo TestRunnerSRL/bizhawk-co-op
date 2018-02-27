@@ -7,6 +7,10 @@ config = {}
 
 
 function strsplit(inputstr, sep, max)
+  if not inputstr then
+    return {}
+  end
+
   if not sep then
     sep = ","
   end

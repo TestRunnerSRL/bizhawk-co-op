@@ -1276,42 +1276,21 @@ end
 
 local splitItems = {}
 function removeItems()
-	for ID, location in pairs(locations) do
-		if (location.type == "Key") then
-			-- If enemy key
-			if (location.oldItem1loc) then
-				-- Restore key's original value
-				writeRAM("CARTROM", location.address, 2, location.oldItem1loc)
-				writeRAM("CARTROM", location.address + 2, 1, location.oldItem1val)
-				writeRAM("CARTROM", location.address2, 2, location.oldItem2loc)
-				writeRAM("CARTROM", location.address2 + 2, 1, location.oldItem2val)
-			else
-				-- Store key's original value
-				location.oldItem1loc = readRAM("CARTROM", location.address, 2)
-				location.oldItem1val = readRAM("CARTROM", location.address + 2, 1)
-				location.oldItem2loc = readRAM("CARTROM", location.address2, 2)
-				location.oldItem2val = readRAM("CARTROM", location.address2 + 2, 1)
-			end
-		else
-			-- If pot key or item
-			if (location.oldItem) then
-				-- Restore item's original value
-				writeRAM("CARTROM", location.address, 1, location.oldItem)
-			else
-				-- Store ite's original value
-				location.oldItem = readRAM("CARTROM", location.address, 1)
-			end
-		end
+	-- Reload Core to restore previously removed items
+	client.reboot_core()
+	prevDomain = ""
 
+	for ID, location in pairs(locations) do
 		-- Remove item if it's not yours
 		if (splitItems[ID] ~= my_ID) then
 			if (location.type == "Key") then
-				writeRAM("CARTROM", location.address, 2, location.oldItem2loc)
-				writeRAM("CARTROM", location.address + 2, 1, location.oldItem2val)
+				-- Move last enemy in list over the key item
+				writeRAM("CARTROM", location.address, 2, readRAM("CARTROM", location.address2, 2))
+				writeRAM("CARTROM", location.address + 2, 1, readRAM("CARTROM", location.address2 + 2, 1))
 				writeRAM("CARTROM", location.address2, 1, 0xFF)
 			elseif (location.type == "Pot") then
-				writeRAM("CARTROM", location.address, 1, 0x01) -- Remove item
-			elseif (items[location.oldItem]) then
+				writeRAM("CARTROM", location.address, 1, 0x01) -- Remove pot key
+			elseif (items[readRAM("CARTROM", location.address, 1)]) then
 				writeRAM("CARTROM", location.address, 1, 0x5A) -- Remove item
 			end
 		end
