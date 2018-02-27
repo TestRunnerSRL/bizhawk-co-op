@@ -86,18 +86,18 @@ local items = {
 	[0x57] = 'Programmable 3',
 	[0x58] = 'Silver Arrows Upgrade',
 	[0x59] = 'Rupoor',
-	[0x5B] = 'Red Clock',
-	[0x5C] = 'Blue Clock',
-	[0x5D] = 'Green Clock',
+--	[0x5B] = 'Red Clock',
+--	[0x5C] = 'Blue Clock',
+--	[0x5D] = 'Green Clock',
 	[0x5E] = 'Progressive Sword',
 	[0x5F] = 'Progressive Shield',
 	[0x60] = 'Progressive Armor',
 	[0x61] = 'Progressive Glove',
 	[0x62] = 'Unique RNG Item',
 	[0x63] = 'Non-Unique RNG Item',
-	[0x6A] = 'Triforce',
-	[0x6B] = 'Power Star',
-	[0x6C] = 'Triforce Piece',
+--	[0x6A] = 'Triforce',
+--	[0x6B] = 'Power Star',
+--	[0x6C] = 'Triforce Piece',
 	[0x70] = 'Light World Map',
 	[0x71] = 'Dark World Map',
 	[0x72] = 'Ganons Tower Map',
@@ -156,6 +156,56 @@ local items = {
 	[0xAB] = 'Thieves Town Key',
 	[0xAC] = 'Turtle Rock Key',
 	[0xAD] = 'Ganons Tower Key',
+}
+
+local bigKeys = {
+	[0x32] = 'Big Key',
+	[0x92] = 'Ganons Tower Big Key',
+	[0x93] = 'Turtle Rock Big Key',
+	[0x94] = 'Thieves Town Big Key',
+	[0x95] = 'Tower of Hera Big Key',
+	[0x96] = 'Ice Palace Big Key',
+	[0x97] = 'Skull Woods Big Key',
+	[0x98] = 'Misery Mire Big Key',
+	[0x99] = 'Palace of Darkness Big Key',
+	[0x9A] = 'Swamp Palace Big Key',
+	[0x9B] = 'Agahnims Tower Big Key',
+	[0x9C] = 'Desert Palace Big Key',
+	[0x9D] = 'Eastern Palace Big Key',
+	[0x9E] = 'Hyrule Castle Big Key',
+	[0x9F] = 'Sewers Big Key',
+}
+
+local smallKeys = {
+	[0x24] = 'Key',
+	[0xA0] = 'Sewers Key',
+	[0xA1] = 'Hyrule Castle Key',
+	[0xA2] = 'Eastern Palace Key',
+	[0xA3] = 'Desert Palace Key',
+	[0xA4] = 'Agahnims Tower Key',
+	[0xA5] = 'Swamp Palace Key',
+	[0xA6] = 'Palace of Darkness Key',
+	[0xA7] = 'Misery Mire Key',
+	[0xA8] = 'Skull Woods Key',
+	[0xA9] = 'Ice Palace Key',
+	[0xAA] = 'Tower of Hera Key',
+	[0xAB] = 'Thieves Town Key',
+	[0xAC] = 'Turtle Rock Key',
+	[0xAD] = 'Ganons Tower Key',
+}
+
+local junkItems = {
+	[1]={['val']=0x27, ['name']='Bomb'},
+	{['val']=0x28, ['name']='Three Bombs'},
+	{['val']=0x34, ['name']='One Rupee'},
+	{['val']=0x35, ['name']='Five Rupees'},
+	{['val']=0x36, ['name']='Twenty Rupees'},
+	{['val']=0x41, ['name']='Fifty Rupees'},
+	{['val']=0x42, ['name']='Heart'},
+	{['val']=0x43, ['name']='Arrow'},
+	{['val']=0x44, ['name']='Ten Arrows'},
+	{['val']=0x45, ['name']='Small Magic'},
+	{['val']=0x59, ['name']='Rupoor'},
 }
 
 local locations = {
@@ -557,6 +607,15 @@ local function updateKey()
 	end
 end
 
+local function receiveBottle(newValue, prevValue) 
+	if config.ramconfig.ammo then
+		return newValue
+	else
+		-- get item, but don't remove item
+		return zeroChange(newValue, prevValue) 
+	end
+end
+
 
 ramItems = {
 	[0x0010] = {type="num", receiveFunc=function(newValue, prevValue)
@@ -627,10 +686,10 @@ ramItems = {
 	[0xF416] = {type="delta", mask=0xC0, receiveFunc=clamp, min=0, max=0xC0}, -- Progressive shield
 	[0xF35A] = {name={[0]="No Shield", "Fighter's Shield", "Fire Shield", "Mirror Shield"}, type="delta", receiveFunc=clamp, min=0, max=3},
 	[0xF35B] = {name={[0]="Green Mail", "Blue Mail", "Red Mail"}, type="delta", receiveFunc=clamp, min=0, max=2},
-	[0xF35C] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"}, 
-	[0xF35D] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
-	[0xF35E] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
-	[0xF35F] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num"},
+	[0xF35C] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num", receiveFunc=receiveBottle}, 
+	[0xF35D] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num", receiveFunc=receiveBottle},
+	[0xF35E] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num", receiveFunc=receiveBottle},
+	[0xF35F] = {name={[0]="No bottle", "Mushroom", "Empty bottle", "Red Potion", "Green Potion", "Blue Potion", "Fairy", "Bee", "Good Bee"}, type="num", receiveFunc=receiveBottle},
 	[0xF364] = {name={[0]="unused Compass", "unused Compass", "Ganon's Tower Compass", "Turtle Rock Compass", "Thieves Towen Compass", "Tower of Hera Compass", "Ice Palace Compass", "Skull Woods Compass"}, type="bit"},
 	[0xF365] = {name={[0]="Misery Mire Compass", "Palace of Darkness Compass", "Swamp Palace Compass", "Agahnim's Tower Compass", "Desert Palace Compass", "Eastern Palace Compass", "Hyrule Castle Compass"}, type="bit"},
 	[0xF366] = {name={[0]="unused Boss Key", "unused Boss Key", "Ganon's Tower Boss Key", "Turtle Rock Boss Key", "Thieves Towen Boss Key", "Tower of Hera Boss Key", "Ice Palace Boss Key", "Skull Woods Boss Key"}, type="bit"},
@@ -642,12 +701,12 @@ ramItems = {
 	[0xF37B] = {name={[0]="Normal Magic", "1/2 Magic", "1/4 Magic"}, type="delta", receiveFunc=clamp, min=0, max=2},
 
 	-- Ammo values
-	[0xF360] = {type="delta", size=2, receiveFunc=clamp, min=0, max=9999}, -- Current Rupees
-	[0xF36A] = {type="delta", receiveFunc=clamp, min=0, max=999}, -- Wishing Pond Rupees
+	[0xF360] = {flag="ammo", type="delta", size=2, receiveFunc=clamp, min=0, max=9999}, -- Current Rupees
+	[0xF36A] = {flag="ammo", type="delta", receiveFunc=clamp, min=0, max=999}, -- Wishing Pond Rupees
 	[0xF36B] = {type="delta", receiveFunc=function(newValue, prevValue)
 		return newValue % 4 end}, -- Heart pieces
 	[0xF36C] = {type="delta", default=0x18, receiveFunc=clamp, min=0, max=0xF0}, -- HP Max
-	[0xF36D] = {type="delta", 
+	[0xF36D] = {flag="ammo", type="delta", 
 		receiveFunc=function(newValue, prevValue, address, item, their_user)
 			local delta = newValue - prevValue
 
@@ -670,31 +729,31 @@ ramItems = {
 
 			return newValue	end
 		, default=0x18}, -- HP Current
-	[0xF36E] = {type="delta", receiveFunc=clamp, min=0, max=0x80}, -- MP
+	[0xF36E] = {flag="ammo", type="delta", receiveFunc=clamp, min=0, max=0x80}, -- MP
 	[0xF370] = {type="delta", receiveFunc=clamp, min=0, max=89}, -- Bomb upgrades
 	[0xF371] = {type="delta", receiveFunc=clamp, min=0, max=69}, -- Arrow upgrades
-	[0xF377] = {type="delta", receiveFunc=function(newValue, prevValue)
+	[0xF377] = {flag="ammo", type="delta", receiveFunc=function(newValue, prevValue)
 		local maxArrows = readRAM("WRAM", 0xF371, 1) + 30
 		return math.max(math.min(newValue, maxArrows), 0) end}, -- Arrows
-	[0xF343] = {type="delta", receiveFunc=function(newValue, prevValue)
+	[0xF343] = {flag="ammo", type="delta", receiveFunc=function(newValue, prevValue)
 		local maxBombs = readRAM("WRAM", 0xF370, 1) + 10
 		return math.max(math.min(newValue, maxBombs), 0) end}, -- Bombs
 
 	-- keys
-	[0xF37C] = {type="delta", receiveFunc=recieveKey}, -- Sewer Passage Key
-	[0xF37D] = {name="Hyrule Castle Key", type="delta", receiveFunc=recieveKey},
-	[0xF37E] = {name="Eastern Palace Key", type="delta", receiveFunc=recieveKey},
-	[0xF37F] = {name="Desert Palace Key", type="delta", receiveFunc=recieveKey},
-	[0xF380] = {name="Agahnim's Tower Key", type="delta", receiveFunc=recieveKey},
-	[0xF381] = {name="Swamp Palace Key", type="delta", receiveFunc=recieveKey},
-	[0xF382] = {name="Palace of Darkness Key", type="delta", receiveFunc=recieveKey},
-	[0xF383] = {name="Misery Mire Key", type="delta", receiveFunc=recieveKey},
-	[0xF384] = {name="Skull Woods Key", type="delta", receiveFunc=recieveKey},
-	[0xF385] = {name="Ice Palace Key", type="delta", receiveFunc=recieveKey},
-	[0xF386] = {name="Tower of Hera Key", type="delta", receiveFunc=recieveKey},
-	[0xF387] = {name="Thieves Town Key", type="delta", receiveFunc=recieveKey},
-	[0xF388] = {name="Turtle Rock Key", type="delta", receiveFunc=recieveKey},
-	[0xF389] = {name="Ganon's Tower Key", type="delta", receiveFunc=recieveKey},
+	[0xF37C] = {flag="skey", type="delta", receiveFunc=recieveKey}, -- Sewer Passage Key
+	[0xF37D] = {flag="skey", name="Hyrule Castle Key", type="delta", receiveFunc=recieveKey},
+	[0xF37E] = {flag="skey", name="Eastern Palace Key", type="delta", receiveFunc=recieveKey},
+	[0xF37F] = {flag="skey", name="Desert Palace Key", type="delta", receiveFunc=recieveKey},
+	[0xF380] = {flag="skey", name="Agahnim's Tower Key", type="delta", receiveFunc=recieveKey},
+	[0xF381] = {flag="skey", name="Swamp Palace Key", type="delta", receiveFunc=recieveKey},
+	[0xF382] = {flag="skey", name="Palace of Darkness Key", type="delta", receiveFunc=recieveKey},
+	[0xF383] = {flag="skey", name="Misery Mire Key", type="delta", receiveFunc=recieveKey},
+	[0xF384] = {flag="skey", name="Skull Woods Key", type="delta", receiveFunc=recieveKey},
+	[0xF385] = {flag="skey", name="Ice Palace Key", type="delta", receiveFunc=recieveKey},
+	[0xF386] = {flag="skey", name="Tower of Hera Key", type="delta", receiveFunc=recieveKey},
+	[0xF387] = {flag="skey", name="Thieves Town Key", type="delta", receiveFunc=recieveKey},
+	[0xF388] = {flag="skey", name="Turtle Rock Key", type="delta", receiveFunc=recieveKey},
+	[0xF389] = {flag="skey", name="Ganon's Tower Key", type="delta", receiveFunc=recieveKey},
 }
 
 
@@ -1152,19 +1211,29 @@ end
 function getRAM() 
 	newRAM = {}
 	for address, item in pairs(ramItems) do
-		-- Default byte length to 1
-		if (not item.size) then
-			item.size = 1
+		local skip = false
+		if not config.ramconfig.ammo and item.flag == "ammo" then
+			skip = true
+		end
+		if not config.ramconfig.skey and item.flag == "skey" then
+			skip = true
 		end
 
-		local ramval = readRAM("WRAM", address, item.size)
+		if not skip then
+			-- Default byte length to 1
+			if (not item.size) then
+				item.size = 1
+			end
 
-		-- Apply bit mask if it exist
-		if (item.mask) then
-			ramval = bit.band(ramval, item.mask)
+			local ramval = readRAM("WRAM", address, item.size)
+
+			-- Apply bit mask if it exist
+			if (item.mask) then
+				ramval = bit.band(ramval, item.mask)
+			end
+
+			newRAM[address] = ramval
 		end
-
-		newRAM[address] = ramval
 	end
 
 	return newRAM
@@ -1280,9 +1349,14 @@ function removeItems()
 	client.reboot_core()
 	prevDomain = ""
 
+	local junkItemsCount = tableCount(junkItems)
+	math.randomseed(os.time())
+	math.random(junkItemsCount)
+
 	for ID, location in pairs(locations) do
 		-- Remove item if it's not yours
 		if (splitItems[ID] ~= my_ID) then
+			local oldVal = readRAM("CARTROM", location.address, 1)
 			if (location.type == "Key") then
 				-- Move last enemy in list over the key item
 				writeRAM("CARTROM", location.address, 2, readRAM("CARTROM", location.address2, 2))
@@ -1290,8 +1364,17 @@ function removeItems()
 				writeRAM("CARTROM", location.address2, 1, 0xFF)
 			elseif (location.type == "Pot") then
 				writeRAM("CARTROM", location.address, 1, 0x01) -- Remove pot key
-			elseif (items[readRAM("CARTROM", location.address, 1)]) then
-				writeRAM("CARTROM", location.address, 1, 0x5A) -- Remove item
+			elseif (items[oldVal]) and
+				(config.ramconfig.bkey or not bigKeys[oldVal]) and 
+				(config.ramconfig.skey or not smallKeys[oldVal]) then
+				-- Remove Item
+				if config.ramconfig.junk then
+					-- Fill with junk
+					writeRAM("CARTROM", location.address, 1, junkItems[math.random(junkItemsCount)].val)
+				else
+					-- Empty chest
+					writeRAM("CARTROM", location.address, 1, 0x5A)
+				end
 			end
 		end
 	end
@@ -1389,7 +1472,7 @@ function lttp_ram.getMessage()
 	end
 
 	-- Checked for queued death and apply when safe
-	if tableCount(deathQueue) > 0 and not deathQueue[config.user] then
+	if not config.ramconfig.ammo and tableCount(deathQueue) > 0 and not deathQueue[config.user] then
 		-- Main mode: 07 = Dungeon, 09 = Overworld, 0B = Special Overworld
 		-- Sub mode: Non 0 = game is paused, transitioning between modes
 		if (gameMode == 0x07 or gameMode == 0x09 or gameMode == 0x0B) and (readRAM("WRAM", 0x0011, 1) == 0x00) then 
@@ -1402,7 +1485,7 @@ function lttp_ram.getMessage()
 		end
 	end
 
-	if (gameMode == 0x12) then
+	if not config.ramconfig.ammo and gameMode == 0x12 then
 		local deathCount = tableCount(deathQueue)
 		if (deathCount > 0 and deathCount < playercount) then
 			-- Lock the death until everyone is dying
@@ -1460,17 +1543,19 @@ function lttp_ram.getMessage()
 	prevRAM = newRAM
 
 	-- Get boss damages
-	local damages = getBossDamage()
-	if damages then
-		setBossDamage(damages, config.user, true)
-		if message == false then
-			message = {}
+	if config.ramconfig.boss then
+		local damages = getBossDamage()
+		if damages then
+			setBossDamage(damages, config.user, true)
+			if message == false then
+				message = {}
+			end
+			message["b"] = damages
 		end
-		message["b"] = damages
 	end
 
 	-- Check for death message
-	if (gameMode == 0x12) then
+	if not config.ramconfig.ammo and gameMode == 0x12 then
 		if (prevGameMode ~= 0x12) then
 			if message == false then
 				message = {}
@@ -1515,6 +1600,53 @@ function lttp_ram.processMessage(their_user, message)
 		prevRAM = setRAMchanges(prevRAM, their_user, message)
 	else
 		messageQueue.pushRight({["their_user"]=their_user, ["message"]=message})
+	end
+end
+
+local configformState
+
+function configOK() 
+	configformState = "OK"
+end
+function configCancel() 
+	configformState = "Cancel"
+end
+
+
+function lttp_ram.getConfig()
+	configformState = "Idle"
+
+	forms.setproperty(mainform, "Enabled", false)
+
+	local configform = forms.newform(130, 195, "")
+	local chkAmmo = forms.checkbox(configform, "Health and Ammo", 10, 10)
+	forms.setproperty(chkAmmo, 'Width', 200)
+	local chkBKey = forms.checkbox(configform, "Split Big Keys", 10, 30)
+	local chkSKey = forms.checkbox(configform, "Split Small Keys", 10, 50)
+	local chkBoss = forms.checkbox(configform, "Raid Bosses", 10, 70)
+	local chkJunk = forms.checkbox(configform, "Junk Chests", 10, 90)
+	local btnOK = forms.button(configform, "OK", configOK, 10, 120, 50, 23)
+	local btnCancel = forms.button(configform, "Cancel", configCancel, 70, 120, 50, 23)
+
+	while configformState == "Idle" do
+		coroutine.yield()
+	end
+
+	local config = {
+		['ammo'] = forms.ischecked(chkAmmo),
+		['bkey'] = forms.ischecked(chkBKey),
+		['skey'] = forms.ischecked(chkSKey),
+		['boss'] = forms.ischecked(chkBoss),
+		['junk'] = forms.ischecked(chkJunk)
+	}
+
+	forms.destroy(configform)
+	forms.setproperty(mainform, "Enabled", true)
+
+	if configformState == "OK" then
+		return config
+	else
+		return false
 	end
 end
 
