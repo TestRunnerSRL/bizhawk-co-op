@@ -2,7 +2,7 @@
 --author: TheOnlyOne and TestRunner
 local sync = {}
 
-local messenger = require("mzm_coop\\messenger")
+local messenger = require("bizhawk-co-op\\messenger")
 local ram_controller 
 
 my_ID = nil
@@ -10,7 +10,7 @@ my_ID = nil
 
 function sync.loadramcontroller()
   require_status, ram_controller = pcall(function()
-    return dofile("mzm_coop\\ramcontroller\\" .. config.ramcode)
+    return dofile("bizhawk-co-op\\ramcontroller\\" .. config.ramcode)
   end)
   if not require_status then
     printOutput("The RAM controller file could not be loaded: " .. ram_controller)
@@ -31,15 +31,15 @@ end
 function sync.syncconfig(client_socket, their_id)
   printOutput("Checking configuration consistency...")
   
-  local sha1 = require("mzm_coop\\sha1")
+  local sha1 = require("bizhawk-co-op\\sha1")
 
   --construct a value representing the sync code that is in use
   local sync_code = ""
-  for line in io.lines("mzm co-op.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("mzm_coop\\host.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("mzm_coop\\messenger.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("mzm_coop\\sync.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("mzm_coop\\ramcontroller\\" .. config.ramcode) do sync_code = sync_code .. line .. "\n" end
+  for line in io.lines("bizhawk co-op.lua") do sync_code = sync_code .. line .. "\n" end
+  for line in io.lines("bizhawk-co-op\\host.lua") do sync_code = sync_code .. line .. "\n" end
+  for line in io.lines("bizhawk-co-op\\messenger.lua") do sync_code = sync_code .. line .. "\n" end
+  for line in io.lines("bizhawk-co-op\\sync.lua") do sync_code = sync_code .. line .. "\n" end
+  for line in io.lines("bizhawk-co-op\\ramcontroller\\" .. config.ramcode) do sync_code = sync_code .. line .. "\n" end
   local sync_hash = sha1.sha1(sync_code)
   
   -- only host sends config

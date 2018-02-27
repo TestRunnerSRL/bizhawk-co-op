@@ -28,7 +28,7 @@ end
 
 
 
-local sync = require("mzm_coop\\sync")
+local sync = require("bizhawk-co-op\\sync")
 
 
 --stringList contains the output text
@@ -68,7 +68,7 @@ function printOutput(str)
 end
 
 
-host = require("mzm_coop\\host")
+host = require("bizhawk-co-op\\host")
 
 
 local roomlist = false
@@ -195,7 +195,7 @@ lblRooms = forms.label(mainform, "Rooms:", 34, 13)
 
 txtUser = forms.textbox(mainform, "", 200, 20, nil, 80, 40, false, false)
 txtPass = forms.textbox(mainform, "", 200, 20, nil, 80, 66, false, false)
-ddRamCode = forms.dropdown(mainform, os.dir("mzm_coop\\ramcontroller"), 80, 93, 200, 10)
+ddRamCode = forms.dropdown(mainform, os.dir("bizhawk-co-op\\ramcontroller"), 80, 93, 200, 10)
 lblUser = forms.label(mainform, "Username:", 19, 41)
 lblPass = forms.label(mainform, "Password:", 21, 68)
 lblRamCode = forms.label(mainform, "RAM Script:", 13, 95)
