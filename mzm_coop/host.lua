@@ -29,7 +29,19 @@ function host.start()
 		return
 	end
 
-	itemcount = sync.loadramcontroller()
+	local ramcontroller = sync.loadramcontroller()
+	if (ramcontroller == false) then
+		return
+	end
+
+	if ramcontroller.getConfig then
+		config.ramconfig = ramcontroller.getConfig()
+		if (config.ramconfig == false) then
+			return
+		end
+	end
+
+	itemcount = ramcontroller.itemcount
 	if (itemcount == false) then
 		return
 	end
@@ -116,6 +128,7 @@ function host.listen()
 		host.clients[clientID] = client
 		host.users[their_user] = clientID
 	else 
+		printOutput("Error in Listen: " .. their_user)
 		client:close()
 		return false
 	end

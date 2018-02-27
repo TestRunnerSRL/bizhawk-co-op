@@ -23,7 +23,7 @@ function sync.loadramcontroller()
         return false
   end
 
-  return ram_controller.itemcount
+  return ram_controller
 end
 
 
@@ -42,8 +42,13 @@ function sync.syncconfig(client_socket, their_id)
   for line in io.lines("mzm_coop\\ramcontroller\\" .. config.ramcode) do sync_code = sync_code .. line .. "\n" end
   local sync_hash = sha1.sha1(sync_code)
   
+  -- only host sends config
+  if (their_id == nil) then
+    config.ramconfig = nil
+  end
+
   --send the configuration
-  messenger.send(client_socket, config.user, messenger.CONFIG, sync_hash, their_id)
+  messenger.send(client_socket, config.user, messenger.CONFIG, sync_hash, their_id, config.ramconfig)
 
   --receive their configuration
   local received_message_type, their_user, received_data = messenger.receive(client_socket)
@@ -59,6 +64,7 @@ function sync.syncconfig(client_socket, their_id)
 
   local their_sync_hash = received_data[1]
   local my_new_id = received_data[2]
+  local newconfig = received_data[3]
 
   --check consistency of configurations
   --check sync code
@@ -73,6 +79,10 @@ function sync.syncconfig(client_socket, their_id)
     my_ID = my_new_id
   elseif their_id ~= nil then
     my_ID = 1
+  end
+
+  if newconfig ~= nil then
+    config.ramconfig = newconfig
   end
 
   printOutput("Configuration consistency check passed")

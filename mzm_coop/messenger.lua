@@ -98,11 +98,12 @@ local encode_message = {
   [messenger.CONFIG] = function(data)
     local sync_hash = data[1]
     local their_id = data[2]
+    local ramconfig = data[3]
     local message
     if their_id == nil then
       message = sync_hash
     else
-      message = sync_hash .. "," .. their_id
+      message = sync_hash .. "," .. their_id .. "," .. tabletostring(ramconfig)
     end
     return message
   end,
@@ -157,8 +158,14 @@ local decode_message = {
     if (their_id ~= nil) then
       their_id = tonumber(their_id)
     end
+    split_message[1] = nil
+    split_message[2] = nil
+    local ramconfig = nil
+    if split_message[3] ~= nil then
+      ramconfig = stringtotable(split_message)
+    end
 
-    return {their_sync_hash, their_id}
+    return {their_sync_hash, their_id, ramconfig}
   end,
 
   [messenger.QUIT] = function(split_message)
