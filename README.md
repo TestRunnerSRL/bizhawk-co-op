@@ -1,4 +1,4 @@
-# Bizhawk - Co-op Netplay
+# Bizhawk Co-op Netplay
 
 bizhawk-co-op is a Lua script for BizHawk that allows two or more people to play a co-op experience by sharing inventory/ammo/hp over the network. This will work with vanilla versions of the games and also randomizers.
 
@@ -22,13 +22,14 @@ Items obtained by a player are given to everyone. Items locations are split such
 | 3 | 9.5x  |
 | 4 | 23.5x |
 | 5 | 55.5x |
+| ... | ... |
 
 * **Junk Chests** If enabled then item locations not owned by players are filled with random junk items. Having this enabled will make it harder to coordinate who still needs to chest some item location. When disabled they are instead replaced with empty chests. If you find an empty location it means that someone else owns that item location and should check it still.
 
 ## Setup
 
 There are two methods to install. 
-1) Run the PowerShell script. Download, right-click and select "Run with PowerShell". [mzm-co-op.ps1]()
+1) Run the PowerShell script. Download, right-click and select "Run with PowerShell". [mzm-co-op.ps1](https://raw.githubusercontent.com/TestRunnerSRL/bizhawk-co-op/master/bizhawk-co-op.ps1)
 2) Download the files and move them in the correct locations as described below.
 
 ### You will need the following:
