@@ -28,47 +28,22 @@ function strsplit(inputstr, sep, max)
 end
 
 
-
 local sync = require("bizhawk-co-op\\sync")
-
-
---stringList contains the output text
-local stringList = {last = -1, first = 0}
-
---add a new line to the string list
-function stringList.push(value)
-  stringList.last = stringList.last + 1
-  stringList[stringList.last] = value
-
-  if (stringList.last > 100) then
-    stringList[stringList.first] = nil
-    stringList.first = stringList.first + 1
-  end
-end
-
-
---get the entire string list as a single string
-function stringList.tostring()
-	local outputstr = ""
-	for i = stringList.first, stringList.last do
-		outputstr = outputstr .. stringList[i] .. "\r\n"
-	end
-	outputstr = string.sub(outputstr, 0, -2)
-
-	return outputstr
-end
 
 
 --Add a line to the output. Inserts a timestamp to the string
 function printOutput(str) 
+	local text = forms.gettext(text1)
+	local pos = #text
+	forms.setproperty(text1, "SelectionStart", pos)
+
 	str = string.gsub (str, "\n", "\r\n")
 	str = "[" .. os.date("%H:%M:%S", os.time()) .. "] " .. str
-	stringList.push(str)
+	if pos > 0 then
+		str = "\r\n" .. str
+	end
 
-	forms.settext(text1, "")
-	-- This is slower but seems to be the only way to autoscroll the text
-	--forms.setproperty(text1, "SelectionStart", 0)
-	forms.setproperty(text1, "SelectedText", stringList.tostring())
+	forms.setproperty(text1, "SelectedText", str)
 end
 
 
