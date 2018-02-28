@@ -195,17 +195,14 @@ local smallKeys = {
 }
 
 local junkItems = {
-	[1]={['val']=0x27, ['name']='Bomb'},
-	{['val']=0x28, ['name']='Three Bombs'},
+	[1]={['val']=0x28, ['name']='Three Bombs'},
 	{['val']=0x34, ['name']='One Rupee'},
 	{['val']=0x35, ['name']='Five Rupees'},
 	{['val']=0x36, ['name']='Twenty Rupees'},
-	{['val']=0x41, ['name']='Fifty Rupees'},
 	{['val']=0x42, ['name']='Heart'},
 	{['val']=0x43, ['name']='Arrow'},
 	{['val']=0x44, ['name']='Ten Arrows'},
 	{['val']=0x45, ['name']='Small Magic'},
-	{['val']=0x59, ['name']='Rupoor'},
 }
 
 local locations = {
