@@ -1024,13 +1024,13 @@ bosses = {
 }
 
 
+local bossIDmap = {}
 local function getBossDamage()
 	local damages = {}
 	local changes = false
 
 	local room = readRAM("WRAM", 0x00A0, 1)
 
-	local bossIDs = {}
 	for spriteID=0x00,0x0F do
 		-- search the sprite list for a matching type
 		local spriteType = readRAM("WRAM", 0x0E20 + spriteID, 1)
@@ -1040,13 +1040,28 @@ local function getBossDamage()
 		local damage = false
 		if (boss) then
 			-- boss detected
+
 			-- get boss ID for multiple bosses in one room
-			if bossIDs[spriteType] == nil then
-				bossIDs[spriteType] = 0
-			else
-				bossIDs[spriteType] = bossIDs[spriteType] + 1
+			if bossIDmap[room] == nil then
+				bossIDmap[room] = {}
 			end
-			bossID = bossIDs[spriteType]
+			if bossIDmap[room][spriteType] == nil then
+				bossIDmap[room][spriteType] = {}
+			end
+
+			if bossIDmap[room][spriteType][spriteID] == nil then
+				-- Assign the next available ID
+				bossID = -1
+				for _,ID in pairs(bossIDmap[room][spriteType]) do
+					bossID = math.max(bossID, ID)
+				end
+				bossID = bossID + 1
+
+				bossIDmap[room][spriteType][spriteID] = bossID
+			else
+				-- Use a previously assigned ID
+				bossID = bossIDmap[room][spriteType][spriteID]
+			end		
 
 			-- initialize boss damage table if nil
 			if (boss.units == nil) then
