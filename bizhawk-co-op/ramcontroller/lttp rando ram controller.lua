@@ -1472,7 +1472,7 @@ function lttp_ram.getMessage()
 	end
 
 	-- Checked for queued death and apply when safe
-	if not config.ramconfig.ammo and tableCount(deathQueue) > 0 and not deathQueue[config.user] then
+	if config.ramconfig.ammo and tableCount(deathQueue) > 0 and not deathQueue[config.user] then
 		-- Main mode: 07 = Dungeon, 09 = Overworld, 0B = Special Overworld
 		-- Sub mode: Non 0 = game is paused, transitioning between modes
 		if (gameMode == 0x07 or gameMode == 0x09 or gameMode == 0x0B) and (readRAM("WRAM", 0x0011, 1) == 0x00) then 
@@ -1485,7 +1485,7 @@ function lttp_ram.getMessage()
 		end
 	end
 
-	if not config.ramconfig.ammo and gameMode == 0x12 then
+	if config.ramconfig.ammo and gameMode == 0x12 then
 		local deathCount = tableCount(deathQueue)
 		if (deathCount > 0 and deathCount < playercount) then
 			-- Lock the death until everyone is dying
@@ -1555,7 +1555,7 @@ function lttp_ram.getMessage()
 	end
 
 	-- Check for death message
-	if not config.ramconfig.ammo and gameMode == 0x12 then
+	if config.ramconfig.ammo and gameMode == 0x12 then
 		if (prevGameMode ~= 0x12) then
 			if message == false then
 				message = {}
