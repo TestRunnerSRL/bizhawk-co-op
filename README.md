@@ -27,17 +27,16 @@ Items obtained by a player are given to everyone. Items locations are split such
 * **Junk Chests** If enabled then item locations not owned by players are filled with random junk items. Having this enabled will make it harder to coordinate who still needs to chest some item location. When disabled they are instead replaced with empty chests. If you find an empty location it means that someone else owns that item location and should check it still.
 
 ## Setup
-
-There are two methods to install. 
-1) Run the PowerShell script. Download, right-click and select "Run with PowerShell". [mzm-co-op.ps1](https://raw.githubusercontent.com/TestRunnerSRL/bizhawk-co-op/master/bizhawk-co-op.ps1)
-2) Download the files and move them in the correct locations as described below.
+There are two different methods to install.
+* Run the PowerShell script. Download [bizhawk-co-op.ps1](https://github.com/TestRunnerSRL/bizhawk-co-op/releases), right-click and select "Run with PowerShell". This will install a fresh copy of BizHawk with all the files downloaded to their correct locations.
+* Maually download the files and move them in the correct locations as described below.
 
 ### You will need the following:
 
 * (1) [BizHawk 1.12.0](https://github.com/TASVideos/BizHawk/releases/tag/1.12.0)
 * (2) [BizHawk prerequisite installer](https://github.com/TASVideos/BizHawk-Prereqs/releases/tag/1.4) (run this)
 * (3) [luasocket](http://files.luaforge.net/releases/luasocket/luasocket/luasocket-2.0.2/luasocket-2.0.2-lua-5.1.2-Win32-vc8.zip)
-* (4) [bizhawk-co-op](https://github.com/TestRunnerSRL/bizhawk-co-op/archive/master.zip)
+* (4) [bizhawk-co-op](https://github.com/TestRunnerSRL/bizhawk-co-op/releases)
 
 ### Directory structure
 
