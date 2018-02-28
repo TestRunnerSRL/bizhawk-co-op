@@ -933,7 +933,7 @@ bosses = {
 	[0xD6] = {name="Ganon",			baseHP=0xC0, death={[0x0DD0]=0x04, [0x0DF0]=0xFF, [0x0EF0]=0xFF, [0x0D90]=0x00}, 
 		getDmgFunc = function (room, bossID, spriteID) 
 			local ganonAIPhase = {
-		        [0x00] = 1, -- Sets up the initial Ganon text, and his music.
+		        [0x00] = 0, -- Sets up the initial Ganon text, and his music.
 		        [0x01] = 1, -- spin trident + throw [phase 1]
 		        [0x02] = 1, -- catching trident [phase 1]
 		        [0x03] = 1, -- caught trident [phase 1]
