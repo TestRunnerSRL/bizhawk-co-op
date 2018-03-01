@@ -1,12 +1,17 @@
 local guiClick = {}
 
-local form1 = nil
+mainform = nil
 local text1, lblRooms, btnGetRooms, ddRooms, btnQuit, btnJoin, btnHost
 local txtUser, txtPass, lblUser, lblPass, ddRamCode, lblRamCode
+local lblPort, txtPort
 config = {}
 
 
 function strsplit(inputstr, sep, max)
+  if not inputstr then
+    return {}
+  end
+
   if not sep then
     sep = ","
   end
@@ -23,48 +28,26 @@ function strsplit(inputstr, sep, max)
 end
 
 
-
-local sync = require("mzm_coop\\sync")
-
-
---stringList contains the output text
-local stringList = {last = 1, first = 10}
-for i = stringList.first, stringList.last, -1 do
-	stringList[i] = ""
-end
-
-
---add a new line to the string list
-function stringList.push(value)
-  stringList.first = stringList.first + 1
-  stringList[stringList.first] = value
-  stringList[stringList.last] = nil
-  stringList.last = stringList.last + 1
-end
-
-
---get the entire string list as a single string
-function stringList.tostring()
-	local outputstr = ""
-	for i = stringList.first, stringList.last, -1 do
-		outputstr = outputstr .. stringList[i] .. "\r\n"
-	end
-
-	return outputstr
-end
+local sync = require("bizhawk-co-op\\sync")
 
 
 --Add a line to the output. Inserts a timestamp to the string
 function printOutput(str) 
+	local text = forms.gettext(text1)
+	local pos = #text
+	forms.setproperty(text1, "SelectionStart", pos)
+
 	str = string.gsub (str, "\n", "\r\n")
 	str = "[" .. os.date("%H:%M:%S", os.time()) .. "] " .. str
-	stringList.push(str)
+	if pos > 0 then
+		str = "\r\n" .. str
+	end
 
-	forms.settext(text1, stringList.tostring())
+	forms.setproperty(text1, "SelectedText", str)
 end
 
 
-host = require("mzm_coop\\host")
+host = require("bizhawk-co-op\\host")
 
 
 local roomlist = false
@@ -92,6 +75,7 @@ function updateGUI()
 		forms.setproperty(ddRamCode, "Enabled", true)
 		forms.setproperty(txtUser, "Enabled", true)
 		forms.setproperty(txtPass, "Enabled", true)
+		forms.setproperty(txtPort, "Enabled", true)
 		forms.setproperty(btnQuit, "Enabled", false)
 		forms.setproperty(btnJoin, "Enabled", true)
 		forms.setproperty(btnHost, "Enabled", true)
@@ -102,6 +86,7 @@ function updateGUI()
 		forms.setproperty(ddRooms, "Enabled", false)
 		forms.setproperty(txtUser, "Enabled", false)
 		forms.setproperty(txtPass, "Enabled", false)
+		forms.setproperty(txtPort, "Enabled", false)
 		forms.setproperty(btnQuit, "Enabled", true)
 		forms.setproperty(btnJoin, "Enabled", false)
 		forms.setproperty(btnHost, "Enabled", not host.locked)
@@ -111,7 +96,7 @@ end
 
 
 --If the script ends, makes sure the sockets and form are closed
-event.onexit(function () host.close(); forms.destroy(form1) end)
+event.onexit(function () host.close(); forms.destroy(mainform) end)
 
 
 --furthermore, override error with a function that closes the connection
@@ -134,7 +119,7 @@ function prepareConnection()
 	config.ramcode = forms.gettext(ddRamCode)
 	config.user = forms.gettext(txtUser)
 	config.pass = forms.gettext(txtPass)
-	config.port = 50000
+	config.port = forms.gettext(txtPort)
 	--config.hostname = forms.gettext(txtIP)
 end
 
@@ -162,53 +147,55 @@ end
 
 
 --Create the form
-form1 = forms.newform(310, 310, "Bizhawk Co-op")
+mainform = forms.newform(310, 336, "Bizhawk Co-op")
 
-text1 = forms.textbox(form1, "", 263, 105, nil, 16, 153, true, false)
+text1 = forms.textbox(mainform, "", 263, 105, nil, 16, 179, true, true, 'Vertical')
 forms.setproperty(text1, "ReadOnly", true)
-forms.setproperty(text1, "MaxLength", 1028)
+--forms.setproperty(text1, "MaxLength", 32767)
+
 
 if forms.setdropdownitems then -- can't update list prior to bizhawk 1.12.0
-	btnGetRooms = forms.button(form1, "Refresh Rooms", refreshRooms, 220, 10, 60, 23)
-	ddRooms = forms.dropdown(form1, {['(Fetching rooms...)']='(Fetching rooms...)'}, 80, 11, 135, 20)
+	btnGetRooms = forms.button(mainform, "Refresh Rooms", refreshRooms, 220, 10, 60, 23)
+	ddRooms = forms.dropdown(mainform, {['(Fetching rooms...)']='(Fetching rooms...)'}, 80, 11, 135, 20)
 	forms.setproperty(ddRooms, 'Enabled', false)
 	guiClick["Refresh Rooms"] = refreshRooms;
 else
-	btnGetRooms = forms.button(form1, "", function() end, 15, 10, 60, 23)
+	btnGetRooms = forms.button(mainform, "", function() end, 15, 10, 60, 23)
 	forms.setproperty(btnGetRooms, 'Enabled', false)
 
 	roomlist = host.getRooms()
 	if roomlist then
-		ddRooms = forms.dropdown(form1, roomlist, 80, 11, 200, 20)
+		ddRooms = forms.dropdown(mainform, roomlist, 80, 11, 200, 20)
 		forms.setproperty(ddRooms, 'Enabled', true)
 	else 
-		ddRooms = forms.dropdown(form1, {['(No rooms available)']='(No rooms available)'}, 80, 11, 200, 20)
+		ddRooms = forms.dropdown(mainform, {['(No rooms available)']='(No rooms available)'}, 80, 11, 200, 20)
 		forms.setproperty(ddRooms, 'Enabled', false)
 	end
 end
-lblRooms = forms.label(form1, "Rooms:", 34, 13)
+lblRooms = forms.label(mainform, "Rooms:", 34, 13)
 
 
-txtUser = forms.textbox(form1, "", 200, 20, nil, 80, 40, false, false)
-txtPass = forms.textbox(form1, "", 200, 20, nil, 80, 66, false, false)
-ddRamCode = forms.dropdown(form1, os.dir("mzm_coop\\ramcontroller"), 80, 93, 200, 10)
-lblUser = forms.label(form1, "Username:", 19, 41)
-lblPass = forms.label(form1, "Password:", 21, 68)
-lblRamCode = forms.label(form1, "RAM Script:", 13, 95)
+txtUser = forms.textbox(mainform, "", 200, 20, nil, 80, 40, false, false)
+txtPass = forms.textbox(mainform, "", 200, 20, nil, 80, 66, false, false)
+txtPort = forms.textbox(mainform, '50000', 200, 20, nil, 80, 92, false, false)
+ddRamCode = forms.dropdown(mainform, os.dir("bizhawk-co-op\\ramcontroller"), 80, 119, 200, 10)
+lblUser = forms.label(mainform, "Username:", 19, 41)
+lblPass = forms.label(mainform, "Password:", 21, 68)
+lblPort = forms.label(mainform, "Port:", 48, 94)
+lblRamCode = forms.label(mainform, "RAM Script:", 13, 121)
+
+forms.setproperty(txtPass, 'UseSystemPasswordChar', true)
 
 
-
-
-
-btnQuit = forms.button(form1, "Leave Room", leaveRoom, 
-	15, 120, 85, 25)
+btnQuit = forms.button(mainform, "Leave Room", leaveRoom, 
+	15, 146, 85, 25)
 forms.setproperty(btnQuit, 'Enabled', false)
-btnHost = forms.button(form1, "Create Room", 
+btnHost = forms.button(mainform, "Create Room", 
 	function() prepareConnection(); guiClick["Host Server"] = host.start end, 
-	105, 120, 85, 25)
-btnJoin = forms.button(form1, "Join Room", 
+	105, 146, 85, 25)
+btnJoin = forms.button(mainform, "Join Room", 
 	function() prepareConnection(); guiClick["Join Server"] = host.join end, 
-	195, 120, 85, 25)
+	195, 146, 85, 25)
 
 sendMessage = {}
 local thread
@@ -225,7 +212,7 @@ emu.yield()
 ---------------------
 while 1 do
 	--End script if form is closed
-	if forms.gettext(form1) == "" then
+	if forms.gettext(mainform) == "" then
 		return
 	end
 

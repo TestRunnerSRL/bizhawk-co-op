@@ -2,7 +2,7 @@
 
 local socket = require("socket")
 local http = require("socket.http")
-local sync = require("mzm_coop\\sync")
+local sync = require("bizhawk-co-op\\sync")
 
 local host = {}
 
@@ -29,7 +29,19 @@ function host.start()
 		return
 	end
 
-	itemcount = sync.loadramcontroller()
+	local ramcontroller = sync.loadramcontroller()
+	if (ramcontroller == false) then
+		return
+	end
+
+	if ramcontroller.getConfig then
+		config.ramconfig = ramcontroller.getConfig()
+		if (config.ramconfig == false) then
+			return
+		end
+	end
+
+	itemcount = ramcontroller.itemcount
 	if (itemcount == false) then
 		return
 	end
@@ -51,7 +63,7 @@ function host.start()
 	--create the server
 	server = socket.bind("*", config.port, 1)
 	if (server == nil) then
-		printOutput("Error creating server.")
+		printOutput("Error creating server. Port is probably in use.")
 		host.status = 'Idle'
 		updateGUI()
 		return false
@@ -111,11 +123,12 @@ function host.listen()
 	client:settimeout(5)
 
 	--sync the gameplay
-	local their_user = sync.syncconfig(client, clientID)
-	if their_user then
+	local success, their_user = pcall(sync.syncconfig, client, clientID)
+	if success and their_user then
 		host.clients[clientID] = client
 		host.users[their_user] = clientID
 	else 
+		printOutput("Error in Listen: " .. their_user)
 		client:close()
 		return false
 	end
