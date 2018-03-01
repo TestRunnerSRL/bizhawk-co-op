@@ -206,7 +206,7 @@ local junkItems = {
 }
 
 local locations = {
-	{["address"]=0x180159, ["name"]="Turtle Rock - Trinexx",	["type"]="Drop"},
+	[0]={["address"]=0x180159, ["name"]="Turtle Rock - Trinexx",	["type"]="Drop"},
 	{["address"]=0x180162, ["name"]="Tower of Hera - Basement Cage",	["type"]="Standing\HeraBasement"},
 	{["address"]=0x180152, ["name"]="Tower of Hera - Moldorm",	["type"]="Drop"},
 	{["address"]=0x180156, ["name"]="Thieves' Town - Blind",	["type"]="Drop"},
