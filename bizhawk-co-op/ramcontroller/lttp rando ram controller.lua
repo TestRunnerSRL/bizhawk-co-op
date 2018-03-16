@@ -1225,7 +1225,6 @@ function removeItems()
 			elseif (location.type == "Pot") then
 				writeRAM("CARTROM", location.address, 1, 0x01) -- Remove pot key
 			elseif (location.type == "Shop") then
-				printOutput(tabletostring(location))
 				for _,shopitem in pairs(location.items) do
 					writeRAM("CARTROM", shopitem.address, 1, shopitem.newval)
 				end
