@@ -200,10 +200,9 @@ local junkItems = {
 	{['val']=0x35, ['name']='Five Rupees'},
 	{['val']=0x36, ['name']='Twenty Rupees'},
 	{['val']=0x42, ['name']='Heart'},
-	{['val']=0x43, ['name']='Arrow'},
-	{['val']=0x44, ['name']='Ten Arrows'},
 	{['val']=0x45, ['name']='Small Magic'},
 }
+
 
 local locations = {
 	[0]={["address"]=0x180159, ["name"]="Turtle Rock - Trinexx",	["type"]="Drop"},
@@ -573,6 +572,7 @@ ramItems = {
 		return math.max(math.min(newValue, maxBombs), 0) end}, -- Bombs
 
 	-- keys
+	[0xF36F] = {flag="gkey", name="Key", type="delta", receiveFunc=recieveKey},
 	[0xF37C] = {flag="skey", type="delta", receiveFunc=recieveKey}, -- Sewer Passage Key
 	[0xF37D] = {flag="skey", name="Hyrule Castle Key", type="delta", receiveFunc=recieveKey},
 	[0xF37E] = {flag="skey", name="Eastern Palace Key", type="delta", receiveFunc=recieveKey},
@@ -1055,16 +1055,28 @@ function getGUImessage(address, prevVal, newVal, user)
 end
 
 
+local generickeys = readRAM("CARTROM", 0x180172, 1) == 1
 -- Get the list of ram values
 function getRAM() 
+
 	newRAM = {}
 	for address, item in pairs(ramItems) do
 		local skip = false
 		if not config.ramconfig.ammo and item.flag == "ammo" then
 			skip = true
 		end
-		if not config.ramconfig.skey and item.flag == "skey" then
-			skip = true
+
+		if not config.ramconfig.skey then
+			-- Don't track any keys if keys are not split
+			if (item.flag == "skey" or item.flag == "gkey") then
+				skip = true
+			end
+		else
+			-- Don't track small keys in generic, or generic keys in standard
+			if (generickeys and item.flag == "skey") or
+			(not generickeys and item.flag == "gkey") then
+				skip = true
+			end
 		end
 
 		if not skip then
@@ -1212,6 +1224,11 @@ function removeItems()
 				writeRAM("CARTROM", location.address2, 1, 0xFF)
 			elseif (location.type == "Pot") then
 				writeRAM("CARTROM", location.address, 1, 0x01) -- Remove pot key
+			elseif (location.type == "Shop") then
+				printOutput(tabletostring(location))
+				for _,shopitem in pairs(location.items) do
+					writeRAM("CARTROM", shopitem.address, 1, shopitem.newval)
+				end
 			elseif (items[oldVal]) and
 				(config.ramconfig.bkey or not bigKeys[oldVal]) and 
 				(config.ramconfig.skey or not smallKeys[oldVal]) then
@@ -1230,6 +1247,56 @@ end
 
 client.reboot_core()
 prevDomain = ""
+
+
+-- If not rupee arrows, add arrows from junk pool
+if readRAM("CARTROM", 0x180175, 1) == 0 then
+	table.insert(junkItems, {['val']=0x43, ['name']='Arrow'})
+	table.insert(junkItems, {['val']=0x44, ['name']='Ten Arrows'})
+end
+
+
+-- Get Shop item locations
+local shopItems = {}
+local nextItemAddress = 0x184900
+local nextItem = readRAM("CARTROM", nextItemAddress + 1, 1)
+while nextItem ~= 0xFF do
+	if (nextItem == 0x30) or (nextItem == 0x3E) or (nextItem == 0x5E) then
+		local shopID = readRAM("CARTROM", nextItemAddress, 1)
+
+		local newVal
+		if (nextItem == 0x30) then
+			newVal = 0x41 -- 50 Rupees
+		elseif (nextItem == 0x3E) then
+			newVal = 0x31 -- 10 Bombs
+		elseif (nextItem == 0x5E) then
+			newVal = 0x40 -- 100 Rupees
+		end
+
+		if (shopItems[shopID] == nil) then
+			shopItems[shopID] = {
+				["items"] = {
+					{["address"] = nextItemAddress + 1,
+					["newval"] = newVal}},
+				["type"] = "Shop",
+				["address"] = nextItemAddress
+			}
+		else 
+			table.insert(shopItems[shopID].items, {
+				["address"] = nextItemAddress + 1,
+				["newval"] = newVal
+			})
+		end
+	end
+
+	nextItemAddress = nextItemAddress + 8
+	nextItem = readRAM("CARTROM", nextItemAddress + 1, 1)
+end
+for _,shop in pairs(shopItems) do
+	table.insert(locations, shop)
+end
+
+
 
 -- Get chest locations
 for ID = 0,167 do
