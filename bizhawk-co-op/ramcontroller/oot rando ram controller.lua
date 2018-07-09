@@ -8,8 +8,7 @@ local function declare (name, initval)
 	rawset(_G, name, initval or false)
 end
 
-
-
+local oot = require('bizhawk-co-op\\helpers\\oot')
 
 local junkItems = {
 [1]={['val']=0x28, ['name']='Three Bombs'},
@@ -54,7 +53,7 @@ local gameLoadedModes = {
 
 
 local deathQueue = {}
-function tableCount(table)
+local function tableCount(table)
 	local count = 0
     for _, _ in pairs(table) do
         count = count + 1
@@ -75,7 +74,7 @@ local playercount = 1
 
 -- Writes value to RAM using little endian
 local prevDomain = ""
-function writeRAM(domain, address, size, value)
+local function writeRAM(domain, address, size, value)
 	-- update domain
 	if (prevDomain ~= domain) then
 		prevDomain = domain
@@ -103,7 +102,7 @@ function writeRAM(domain, address, size, value)
 end
 
 -- Reads a value from RAM using little endian
-function readRAM(domain, address, size)
+local function readRAM(domain, address, size)
 	-- update domain
 	if (prevDomain ~= domain) then
 		prevDomain = domain
@@ -148,13 +147,13 @@ end
 
 
 -- List of ram values to track
-ramItems = {
+local ramItems = {
 
 }
 
 
 -- Display a message of the ram event
-function getGUImessage(address, prevVal, newVal, user)
+local function getGUImessage(address, prevVal, newVal, user)
 	-- Only display the message if there is a name for the address
 	local name = ramItems[address].name
 	if name and prevVal ~= newVal then
@@ -211,7 +210,7 @@ end
 
 
 -- Get the list of ram values
-function getRAM() 
+local function getRAM() 
 	newRAM = {}
 	for address, item in pairs(ramItems) do
 		-- Default byte length to 1
@@ -234,7 +233,7 @@ end
 
 
 -- Get a list of changed ram events
-function eventRAMchanges(prevRAM, newRAM)
+local function eventRAMchanges(prevRAM, newRAM)
 	local ramevents = {}
 	local changes = false
 
@@ -300,7 +299,7 @@ end
 
 
 -- set a list of ram events
-function setRAMchanges(prevRAM, their_user, newEvents)
+local function setRAMchanges(prevRAM, their_user, newEvents)
 	for address, val in pairs(newEvents) do
 		local newval
 
@@ -331,7 +330,7 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 				end
 			end
 			local newIndex = prevIndex + val
-			if (prevIndex == -1 or newIndex == -1 or ramItems[address].name[newIndex] === nil) then
+			if (prevIndex == -1 or newIndex == -1 or ramItems[address].name[newIndex] == nil) then
 				printOutput("Unknown ram list index value")
 				newval = prevRAM[address]
 			else
@@ -368,7 +367,7 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 end
 
 local splitItems = {}
-function removeItems()
+local function removeItems()
 	-- Reload Core to restore previously removed items
 	client.reboot_core()
 	prevDomain = ""
@@ -389,15 +388,6 @@ end
 
 client.reboot_core()
 prevDomain = ""
-
-
--- Get chest locations
-for ID = 0,167 do
-	table.insert(locations, {
-		["address"] = 0xE96E + (ID * 3),
-		["type"] = "Chest"
-	})
-end
 
 
 local messageQueue = {first = 0, last = -1}
