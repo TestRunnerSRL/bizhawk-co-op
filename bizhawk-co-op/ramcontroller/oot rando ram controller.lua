@@ -192,6 +192,17 @@ function getGUImessage(address, prevVal, newVal, user)
 					gui.addmessage(user .. ": " .. name[newVal])
 				end
 			end
+		elseif ramItems[address].type == "deltalist" then
+			local index = -1
+			for k,v in pairs(name) do
+				if v.value == newVal then
+					index = k
+				end
+			end
+
+			if (name[index]) then
+				gui.addmessage(user .. ": " .. name[index].name)
+			end
 		else 
 			gui.addmessage("Unknown item ram type")
 		end
@@ -257,6 +268,23 @@ function eventRAMchanges(prevRAM, newRAM)
 			elseif ramItems[address].type == "delta" then
 				ramevents[address] = val - prevRAM[address]
 				changes = true
+			elseif ramItems[address].type == "listdelta" then
+				local prevIndex = -1
+				local newIndex = -1
+				for k,v in pairs(ramItems[address].name) do
+					if v.value == val then
+						newIndex = k
+					end
+					if v.value == prevRAM[address] then
+						prevIndex = k
+					end
+				end
+
+				if (prevIndex == -1 or newIndex == -1) then
+					printOutput("Unknown ram list index value")
+				else
+					remevents[address] = newIndex - prevIndex
+				end
 			else 
 				printOutput("Unknown item ram type")
 			end
@@ -295,6 +323,20 @@ function setRAMchanges(prevRAM, their_user, newEvents)
 		-- If delta, add to the previous value
 		elseif ramItems[address].type == "delta" then
 			newval = prevRAM[address] + val
+		elseif ramItems[address].type == "listdelta" then
+			local prevIndex = -1
+			for k,v in pairs(ramItems[address].name) do
+				if v.value == prevRAM[address] then
+					prevIndex = k
+				end
+			end
+			local newIndex = prevIndex + val
+			if (prevIndex == -1 or newIndex == -1 or ramItems[address].name[newIndex] === nil) then
+				printOutput("Unknown ram list index value")
+				newval = prevRAM[address]
+			else
+				newval = ramItems[address].list[newIndex]
+			end			
 		else 
 			printOutput("Unknown item ram type")
 			newval = prevRAM[address]
