@@ -1,3 +1,16 @@
+local old_global_metatable = getmetatable(_G)
+setmetatable(_G, {
+	__newindex = function (_, n)
+		error("Created global variable \""..n.."\".\nDidn't you want this to be local?\nIf you actually wanted a global variable,\nuse the \"declare\" function instead.", 2)
+	end,
+})
+local function declare (name, initval)
+	rawset(_G, name, initval or false)
+end
+
+
+
+
 local junkItems = {
 [1]={['val']=0x28, ['name']='Three Bombs'},
 	{['val']=0x34, ['name']='One Rupee'},
@@ -511,5 +524,6 @@ function oot_rom.processMessage(their_user, message)
 	end
 end
 
+setmetatable(_G, old_global_metatable)
 
 return oot_rom
