@@ -366,6 +366,19 @@ local function setRAMchanges(prevRAM, their_user, newEvents)
 	return prevRAM
 end
 
+
+
+-- Get item override table
+local locations = {}
+local override_table = memory.read_s32_be(0xD278, "ROM") + 0x1000
+while memory.read_s32_be(override_table, "ROM") ~= 0 do
+	table.insert(locations, {
+		["address"] = override_table + 3
+	})
+	override_table = override_table + 4;
+end
+
+
 local splitItems = {}
 local function removeItems()
 	-- Reload Core to restore previously removed items
