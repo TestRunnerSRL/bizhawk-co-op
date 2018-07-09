@@ -392,11 +392,12 @@ prevDomain = ""
 
 
 -- Get chest locations
-for ID = 0,167 do
+override_table = 0x3481000
+while readRAM("CARTROM", override_table, 4) do
 	table.insert(locations, {
-		["address"] = 0xE96E + (ID * 3),
-		["type"] = "Chest"
+		["address"] = override_table + 3
 	})
+	override_table = override_table + 4;
 end
 
 
