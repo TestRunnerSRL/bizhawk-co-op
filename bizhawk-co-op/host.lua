@@ -39,6 +39,8 @@ function host.start()
 		if (config.ramconfig == false) then
 			return
 		end
+	else 
+		config.ramconfig = {}
 	end
 
 	itemcount = ramcontroller.itemcount
@@ -189,17 +191,18 @@ function host.join()
 	coroutine.yield()
 
 	local err
-	config.hostname, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/join' ..
-		'?user=' .. config.room ..
-		'&pass=' .. config.pass)
-	if (err == 200) then
-		printOutput('Joining ' .. config.room)
-	else
-		printOutput('Error joining room [Code: ' .. (err or '') .. ']')
-		host.status = 'Idle'
-		updateGUI()
-		return
-	end
+	-- config.hostname, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/join' ..
+	-- 	'?user=' .. config.room ..
+	-- 	'&pass=' .. config.pass)
+	-- if (err == 200) then
+	-- 	printOutput('Joining ' .. config.room)
+	-- else
+	-- 	printOutput('Error joining room [Code: ' .. (err or '') .. ']')
+	-- 	host.status = 'Idle'
+	-- 	updateGUI()
+	-- 	return
+	-- end
+	config.hostname = 'localhost'
 
 	local client, err = socket.connect(config.hostname, config.port)
 	if (client == nil) then

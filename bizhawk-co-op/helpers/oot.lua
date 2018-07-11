@@ -1,6 +1,4 @@
-local oot = {}
-
-console.log('------------------')
+--console.log('------------------')
 local old_global_metatable = getmetatable(_G)
 setmetatable(_G, {
 	__newindex = function (_, n)
@@ -10,6 +8,9 @@ setmetatable(_G, {
 local function declare (name, initval)
 	rawset(_G, name, initval or false)
 end
+declare('oot', {})
+
+
 -- some convinience functions
 
 -- invert a table (assumes values are unique)
@@ -61,6 +62,9 @@ function Pointer:new (offset, layout)
 	local p = { offset = offset, layout = layout }
 	setmetatable(p, Pointer)
 	return p
+end
+function Pointer:cast(layout)
+	return Pointer:new(self.offset, layout)
 end
 function Pointer:rawget(key)
 	if not self.layout[key] then
@@ -524,14 +528,52 @@ local Equipment = Layout:create {
 	hylian_shield =     e( 0x01, Bit(5) ),
 	mirror_shield =     e( 0x01, Bit(6) ),
 
-	stick_capacity = e( 0x05, Bits(1,2) ),
-	nut_capacity =   e( 0x05, Bits(4,5) ),
-	scale =          e( 0x06, Bits(1,2) ),
-	wallet =         e( 0x06, Bits(4,5) ),
-	bullet_bag =     e( 0x06, Bits(6,7) ),
-	quiver =         e( 0x07, Bits(0,1) ),
-	bomb_bag =       e( 0x07, Bits(3,4) ),
-	strength =       e( 0x07, Bits(6,7) ),
+	stick_capacity = e( 0x05, Value_Named_Layout( Bits(1,2), {
+		[0] = "No Sticks",
+		[1] = "10 Sticks",
+		[2] = "20 Sticks",
+		[3] = "30 Sticks",
+	} )),
+	nut_capacity =   e( 0x05, Value_Named_Layout( Bits(4,5), {
+		[0] = "No Nuts",
+		[1] = "20 Nuts",
+		[2] = "30 Nuts",
+		[3] = "40 Nuts",
+	} )),
+	scale =          e( 0x06, Value_Named_Layout( Bits(1,2), {
+		[0] = "No Scale",
+		[1] = "Silver Scale",
+		[2] = "Golden Scale",
+	} )),
+	wallet =         e( 0x06, Value_Named_Layout( Bits(4,5), {
+		[0] = "Child's Wallet",
+		[1] = "Adult's Wallet",
+		[2] = "Giant's Wallet",
+	} )),
+	bullet_bag =     e( 0x06, Value_Named_Layout( Bits(6,7), {
+		[0] = "No Bullet Bag",
+		[1] = "Bullet Seed Bag",
+		[2] = "Bigger Bullet Seed Bag",
+		[3] = "Biggest Bullet Seed Bag",
+	} )),
+	quiver =         e( 0x07, Value_Named_Layout( Bits(0,1), {
+		[0] = "No Quiver",
+		[1] = "Quiver",
+		[2] = "Bigger Quiver",
+		[3] = "Biggest Quiver",
+	} )),
+	bomb_bag =       e( 0x07, Value_Named_Layout( Bits(3,4), {
+		[0] = "No Bomb Bag",
+		[1] = "Bomb Bag",
+		[2] = "Bigger Bomb Bag",
+		[3] = "Biggest Bomb Bag",
+	} )),
+	strength =       e( 0x07, Value_Named_Layout( Bits(6,7), {
+		[0] = "No Strength Upgrade",
+		[1] = "Goron Bracelet",
+		[2] = "Silver Gauntlets",
+		[3] = "Golden Gauntlets",
+	} )),
 }
 
 local Dungeon_Item = Layout:create {
@@ -590,161 +632,121 @@ local Save_Context = Layout:create {
 local save_context = Pointer:new( 0x11A5D0, Save_Context )
 local global_context = Pointer:new( 0x1C84A0, Global_Context )
 
+declare('find_malon', function() 
+	local npc = global_context.actor_table.npc.first
+	while npc ~= "Null" do
+		if npc.id == 0xE7 then return npc end
+		npc = npc.next_actor
+	end
+	return "Null"
+end)
+
+
+-- SPECIAL TYPES
+
+-- A Key treats -1 keys (never found any) as 0
+local Key = Int(1)
+local old_key_get = Key.get
+Key.get = function(p)
+	local val = old_key_get(p)
+	if val == 0xFF then
+		return 0
+	end
+	return val
+end
+
+-- setting an equipment item to false will unequip it
+local function Settable_Equipment(layout, equipment_name, default)
+
+	local obj = Layout:create {}
+
+	function obj.get(p)
+		return layout.get(p)
+	end
+
+	function obj.set(p, value)
+		layout.set(p, value)
+		if value == false then
+			save_context.current_equips[equipment_name] = default
+			-- TODO remove equipment's usability on the spot
+		end
+	end
+
+	return obj
+
+end
+
+-- setting an item with a Settable_Item will update c buttons as well
+local function Settable_Item(item_num)
+	local obj = Int(1)
+
+	local old_item_set = obj.set
+
+	obj.set = function(p, val)
+		old_item_set(p, val)
+		local buttons = { c_left_item='c_left_slot', c_down_item='c_down_slot', c_right_item='c_right_slot'}
+		for item, slot in pairs(buttons) do
+			if save_context.current_equips[slot] == item_num then
+				save_context.current_equips[item] = val
+				-- TODO: update the icon
+			end
+		end
+	end
+
+	return obj
+end
+
+-- magic has a number of values that need to update together
+local Magic_Meter = Int(1)
+local old_magic_set = Magic_Meter.set
+Magic_Meter.set = function(p, val)
+	old_magic_set(p, val)
+	if val == 0 then
+		save_context.have_magic = 0
+		save_context.have_double_magic = 0
+		save_context.magic_meter_size = 0
+	elseif val == 1 then
+		save_context.have_magic = 1
+		save_context.have_double_magic = 0
+		save_context.magic_meter_size = 0x30
+	elseif val == 2 then
+		save_context.have_magic = 1
+		save_context.have_double_magic = 1
+		save_context.magic_meter_size = 0x60
+	end
+end
+
+-- when a value of this type is looked up, return the capacity implied by that value
+local function Implies_Max(layout, maxes)
+
+	local obj = Layout:create {}
+
+	obj.maxes = maxes
+
+	function obj.get(p)
+		value = layout.get(p)
+		if maxes[value] then
+	   		value = maxes[value]
+		end
+		return value
+	end
+
+	function obj.set(p, value)
+		layout.set(p, value)
+	end
+
+	return obj
+end
+
+-- public facing members
 oot.sav = save_context
 oot.ctx = global_context
-
--- declare('find_malon', function() 
--- 	local npc = global_context.actor_table.npc.first
--- 	while npc ~= "Null" do
--- 		if npc.id == 0xE7 then return npc end
--- 		npc = npc.next_actor
--- 	end
--- 	return "Null"
--- end)
-
-
--- list of tables containing information for each shared value
-oot.shared_values = {
-	{ pointer=save_context:rawget('cur_health'), 		type='delta' },
-	{ pointer=save_context:rawget('max_health'), 		type='delta' },
-	{ pointer=save_context:rawget('cur_magic'), 		type='delta' },
-	{ pointer=save_context:rawget('rupees'), 			type='delta' },
-
-	{ pointer=save_context:rawget('beans_purchased'), 	type='delta' },
-	{ pointer=save_context:rawget('gold_skulltulas'),   type='delta' },
-	{ pointer=save_context:rawget('heart_pieces'),   	type='delta' },
-
-	{ pointer=save_context:rawget('magic_meter_level'), type='delta' },
-	{ pointer=save_context:rawget('have_magic'), 		type='bool' },
-	{ pointer=save_context:rawget('have_double_magic'), type='bool' },
-	{ pointer=save_context:rawget('magic_meter_size'),  type='delta' },
-
-	{ pointer=save_context:rawget('double_defense'), 		type='bool' },
-	{ pointer=save_context:rawget('double_defense_hearts'), type='num' },
-
-	{ pointer=save_context.inventory:rawget('deku_sticks'),		type='num' },
-	{ pointer=save_context.inventory:rawget('deku_nuts'),		type='num' },
-	{ pointer=save_context.inventory:rawget('bombs'),			type='num' },
-	{ pointer=save_context.inventory:rawget('bow'),				type='num' },
-	{ pointer=save_context.inventory:rawget('fire_arrow'),		type='num' },
-	{ pointer=save_context.inventory:rawget('dins_fire'),		type='num' },
-	{ pointer=save_context.inventory:rawget('slingshot'),		type='num' },
-	{ pointer=save_context.inventory:rawget('ocarina'),			type='num' },
-	{ pointer=save_context.inventory:rawget('bombchus'),		type='num' },
-	{ pointer=save_context.inventory:rawget('hookshot'),		type='num' },
-	{ pointer=save_context.inventory:rawget('ice_arrow'),		type='num' },
-	{ pointer=save_context.inventory:rawget('farores_wind'),	type='num' },
-	{ pointer=save_context.inventory:rawget('boomerang'),		type='num' },
-	{ pointer=save_context.inventory:rawget('lens_of_truth'),	type='num' },
-	{ pointer=save_context.inventory:rawget('magic_beans'),		type='num' },
-	{ pointer=save_context.inventory:rawget('megaton_hammer'),	type='num' },
-	{ pointer=save_context.inventory:rawget('light_arrow'),		type='num' },
-	{ pointer=save_context.inventory:rawget('nayrus_love'),		type='num' },
-	{ pointer=save_context.inventory:rawget('bottle1'),			type='num' },
-	{ pointer=save_context.inventory:rawget('bottle2'),			type='num' },
-	{ pointer=save_context.inventory:rawget('bottle3'),			type='num' },
-	{ pointer=save_context.inventory:rawget('bottle4'),			type='num' },
-	{ pointer=save_context.inventory:rawget('adult_trade'),		type='num' },
-	{ pointer=save_context.inventory:rawget('child_trade'),		type='num' },
-
-	{ pointer=save_context.ammo:rawget('deku_sticks'),	type='delta' },
-	{ pointer=save_context.ammo:rawget('deku_nuts'),	type='delta' },
-	{ pointer=save_context.ammo:rawget('bombs'),		type='delta' },
-	{ pointer=save_context.ammo:rawget('bow'),			type='delta' },
-	{ pointer=save_context.ammo:rawget('slingshot'),	type='delta' },
-	{ pointer=save_context.ammo:rawget('bombchus'),		type='delta' },
-	{ pointer=save_context.ammo:rawget('magic_beans'),	type='delta' },
-
-	{ pointer=save_context.equipment:rawget('kokiri_tunic'),		type='bool' },
-	{ pointer=save_context.equipment:rawget('goron_tunic'),			type='bool' },
-	{ pointer=save_context.equipment:rawget('zora_tunic'),			type='bool' },
-	{ pointer=save_context.equipment:rawget('kokiri_boots'),		type='bool' },
-	{ pointer=save_context.equipment:rawget('iron_boots'),			type='bool' },
-	{ pointer=save_context.equipment:rawget('hover_boots'),			type='bool' },
-	{ pointer=save_context.equipment:rawget('kokiri_sword'),		type='bool' },
-	{ pointer=save_context.equipment:rawget('master_sword'),		type='bool' },
-	{ pointer=save_context.equipment:rawget('biggoron_sword'),		type='bool' },
-	{ pointer=save_context.equipment:rawget('broken_sword_icon'),	type='bool' },
-	{ pointer=save_context.equipment:rawget('kokiri_shield'),		type='bool' },
-	{ pointer=save_context.equipment:rawget('hylian_shield'),		type='bool' },
-	{ pointer=save_context.equipment:rawget('mirror_shield'),		type='bool' },
-	{ pointer=save_context:rawget('biggoron_sword_durable'), 		type='bool' },
-
-	{ pointer=save_context.equipment:rawget('stick_capacity'),	type='num' },
-	{ pointer=save_context.equipment:rawget('nut_capacity'),	type='num' },
-	{ pointer=save_context.equipment:rawget('scale'),			type='num' },
-	{ pointer=save_context.equipment:rawget('wallet'),			type='num' },
-	{ pointer=save_context.equipment:rawget('bullet_bag'),		type='num' },
-	{ pointer=save_context.equipment:rawget('quiver'),			type='num' },
-	{ pointer=save_context.equipment:rawget('bomb_bag'),		type='num' },
-	{ pointer=save_context.equipment:rawget('strength'),		type='num' },
-
-	{ pointer=save_context.quest_status:rawget('forest_medallion'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('fire_medallion'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('water_medallion'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('spirit_medallion'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('shadow_medallion'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('light_medallion'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('minuet_of_forest'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('bolero_of_fire'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('seranade_of_water'),	type='bool' },
-	{ pointer=save_context.quest_status:rawget('requiem_of_spirit'),	type='bool' },
-	{ pointer=save_context.quest_status:rawget('nocturne_of_shadow'),	type='bool' },
-	{ pointer=save_context.quest_status:rawget('prelude_of_light'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('zeldas_lullaby'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('eponas_song'),			type='bool' },
-	{ pointer=save_context.quest_status:rawget('sarias_song'),			type='bool' },
-	{ pointer=save_context.quest_status:rawget('suns_song'),			type='bool' },
-	{ pointer=save_context.quest_status:rawget('song_of_time'),			type='bool' },
-	{ pointer=save_context.quest_status:rawget('song_of_storms'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('kokiri_emerald'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('goron_ruby'),			type='bool' },
-	{ pointer=save_context.quest_status:rawget('zora_sapphire'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('stone_of_agony'),		type='bool' },
-	{ pointer=save_context.quest_status:rawget('gerudo_card'),			type='bool' },
-	{ pointer=save_context.quest_status:rawget('skulltula_icon'),		type='bool' },
-
-	{ pointer=save_context.dungeon_items.forest_temple:rawget('boss_key'),			type='bool' },
-	{ pointer=save_context.dungeon_items.fire_temple:rawget('boss_key'),			type='bool' },
-	{ pointer=save_context.dungeon_items.water_temple:rawget('boss_key'),			type='bool' },
-	{ pointer=save_context.dungeon_items.spirit_temple:rawget('boss_key'),			type='bool' },
-	{ pointer=save_context.dungeon_items.shadow_temple:rawget('boss_key'),			type='bool' },
-	{ pointer=save_context.dungeon_items.ganons_tower:rawget('boss_key'),			type='bool' },
-	{ pointer=save_context.dungeon_items.inside_ganons_castle:rawget('boss_key'),	type='bool' },
-
-	{ pointer=save_context.dungeon_items.deku_tree:rawget('compass'),			type='bool' },
-	{ pointer=save_context.dungeon_items.dodongos_cavern:rawget('compass'),		type='bool' },
-	{ pointer=save_context.dungeon_items.jabu_jabus_belly:rawget('compass'),	type='bool' },
-	{ pointer=save_context.dungeon_items.forest_temple:rawget('compass'),		type='bool' },
-	{ pointer=save_context.dungeon_items.fire_temple:rawget('compass'),			type='bool' },
-	{ pointer=save_context.dungeon_items.water_temple:rawget('compass'),		type='bool' },
-	{ pointer=save_context.dungeon_items.spirit_temple:rawget('compass'),		type='bool' },
-	{ pointer=save_context.dungeon_items.shadow_temple:rawget('compass'),		type='bool' },
-	{ pointer=save_context.dungeon_items.bottom_of_the_well:rawget('compass'),	type='bool' },
-	{ pointer=save_context.dungeon_items.ice_cavern:rawget('compass'),			type='bool' },
-
-	{ pointer=save_context.dungeon_items.deku_tree:rawget('map'),			type='bool' },
-	{ pointer=save_context.dungeon_items.dodongos_cavern:rawget('map'),		type='bool' },
-	{ pointer=save_context.dungeon_items.jabu_jabus_belly:rawget('map'),	type='bool' },
-	{ pointer=save_context.dungeon_items.forest_temple:rawget('map'),		type='bool' },
-	{ pointer=save_context.dungeon_items.fire_temple:rawget('map'),			type='bool' },
-	{ pointer=save_context.dungeon_items.water_temple:rawget('map'),		type='bool' },
-	{ pointer=save_context.dungeon_items.spirit_temple:rawget('map'),		type='bool' },
-	{ pointer=save_context.dungeon_items.shadow_temple:rawget('map'),		type='bool' },
-	{ pointer=save_context.dungeon_items.bottom_of_the_well:rawget('map'),	type='bool' },
-	{ pointer=save_context.dungeon_items.ice_cavern:rawget('map'),			type='bool' },
-
-	{ pointer=save_context.small_keys:rawget('forest_temple'),			type='bool' },
-	{ pointer=save_context.small_keys:rawget('fire_temple'),			type='bool' },
-	{ pointer=save_context.small_keys:rawget('water_temple'),			type='bool' },
-	{ pointer=save_context.small_keys:rawget('spirit_temple'),			type='bool' },
-	{ pointer=save_context.small_keys:rawget('shadow_temple'),			type='bool' },
-	{ pointer=save_context.small_keys:rawget('bottom_of_the_well'),		type='bool' },
-	{ pointer=save_context.small_keys:rawget('gerudo_training_ground'),	type='bool' },
-	-- { pointer=save_context.small_keys:rawget('thieves_hideout'),		type='bool' },
-	{ pointer=save_context.small_keys:rawget('inside_ganons_castle'),	type='bool' },
-
-}
+oot.Bits = Bits
+oot.Key = Key
+oot.Settable_Item = Settable_Item
+oot.Settable_Equipment = Settable_Equipment
+oot.Implies_Max = Implies_Max
+oot.Magic_Meter = Magic_Meter
 
 
 setmetatable(_G, old_global_metatable)
