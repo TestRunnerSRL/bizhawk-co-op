@@ -12,46 +12,9 @@ end
 
 local oot = require('bizhawk-co-op\\helpers\\oot')
 
--- local junkItems = {
--- [1]={['val']=0x28, ['name']='Three Bombs'},
--- 	{['val']=0x34, ['name']='One Rupee'},
--- 	{['val']=0x35, ['name']='Five Rupees'},
--- 	{['val']=0x36, ['name']='Twenty Rupees'},
--- 	{['val']=0x42, ['name']='Heart'},
--- 	{['val']=0x45, ['name']='Small Magic'},
--- }
-
-
--- local gameLoadedModes = {
---     [0x00]=false,  --Triforce / Zelda startup screens
---     [0x01]=false,  --Game Select screen
---     [0x02]=false,  --Copy Player Mode
---     [0x03]=false,  --Erase Player Mode
---     [0x04]=false,  --Name Player Mode
---     [0x05]=false,  --Loading Game Mode
---     [0x06]=true,  --Pre Dungeon Mode
---     [0x07]=true,  --Dungeon Mode
---     [0x08]=true,  --Pre Overworld Mode
---     [0x09]=true,  --Overworld Mode
---     [0x0A]=true,  --Pre Overworld Mode (special overworld)
---     [0x0B]=true,  --Overworld Mode (special overworld)
---     [0x0C]=true,  --???? I think we can declare this one unused, almost with complete certainty.
---     [0x0D]=true,  --Blank Screen
---     [0x0E]=true,  --Text Mode/Item Screen/Map
---     [0x0F]=true,  --Closing Spotlight
---     [0x10]=true,  --Opening Spotlight
---     [0x11]=true,  --Happens when you fall into a hole from the OW.
---     [0x12]=true,  --Death Mode
---     [0x13]=true,  --Boss Victory Mode (refills stats)
---     [0x14]=false,  --History Mode (Title Screen Demo)
---     [0x15]=true,  --Module for Magic Mirror
---     [0x16]=true,  --Module for refilling stats after boss.
---     [0x17]=false,  --Restart mode (save and quit)
---     [0x18]=true,  --Ganon exits from Agahnim's body. Chase Mode.
---     [0x19]=true,  --Triforce Room scene
---     [0x1A]=false,  --End sequence
---     [0x1B]=false,  --Screen to select where to start from (House, sanctuary, etc.)
--- }
+local junkItems = {
+[1]={['val']=0x4C, ['name']='Green Rupee'},
+}
 
 
 local deathQueue = {}
@@ -74,68 +37,6 @@ local prevmode = 0
 local oot_rom = {}
 local playercount = 1
 
--- Writes value to RAM using little endian
--- local prevDomain = ""
--- local function writeRAM(domain, address, size, value)
--- 	-- update domain
--- 	if (prevDomain ~= domain) then
--- 		prevDomain = domain
--- 		if not memory.usememorydomain(domain) then
--- 			return
--- 		end
--- 	end
-
--- 	-- default size short
--- 	if (size == nil) then
--- 		size = 2
--- 	end
-
--- 	if (value == nil) then
--- 		return
--- 	end
-
--- 	if size == 1 then
--- 		memory.writebyte(address, value)
--- 	elseif size == 2 then
--- 		memory.write_u16_be(address, value)
--- 	elseif size == 4 then
--- 		memory.write_u32_be(address, value)
--- 	end
--- end
-
--- -- Reads a value from RAM using little endian
--- local function readRAM(domain, address, size)
--- 	-- update domain
--- 	if (prevDomain ~= domain) then
--- 		prevDomain = domain
--- 		if not memory.usememorydomain(domain) then
--- 			return
--- 		end
--- 	end
-
--- 	-- default size short
--- 	if (size == nil) then
--- 		size = 2
--- 	end
-
--- 	if size == 1 then
--- 		return memory.readbyte(address)
--- 	elseif size == 2 then
--- 		return memory.read_u16_be(address)
--- 	elseif size == 4 then
--- 		return memory.read_u32_be(address)
--- 	end
--- end
-
-
--- Return the new value only when changing from 0
--- local function zeroChange(newValue, prevValue) 
--- 	if (newValue == 0 or (newValue ~= 0 and prevValue == 0)) then
--- 		return newValue
--- 	else
--- 		return prevValue
--- 	end
--- end
 
 -- returns a receiveFunc that will clamp the reveived value between 0 and the value at the given pointer
 local function clamp(max_pointer)
@@ -209,7 +110,7 @@ local adult_trade_name = {
 -- list of tables containing information for each shared value
 local ramItems = {
 	{ pointer=oot.sav:rawget('max_health'), 		type='delta' },
-	{ pointer=oot.sav:rawget('cur_health'), 		type='delta', receiveFunc=clamp( oot.sav:rawget('max_health') ) },
+	['chp']={ pointer=oot.sav:rawget('cur_health'), 		type='delta', receiveFunc=clamp( oot.sav:rawget('max_health') ) },
 	{ pointer=oot.sav:rawget('cur_magic'), 			type='delta', recieveFunc=clamp( oot.sav:rawget('magic_meter_size') ) },
 	{ pointer=oot.sav:rawget('rupees'), 			type='delta', recieveFunc=clamp( oot.sav.equipment:rawget('wallet'):cast(oot.Implies_Max( oot.Bits(4,5), {
 		[0] = 99,
@@ -382,27 +283,13 @@ local function getGUImessage(address, prevVal, newVal, user)
 	if name and prevVal ~= newVal then
 		-- If boolean, show 'Removed' for false
 		if ramItems[address].type == "bool" then				
-			gui.addmessage(user .. ": " .. name .. (newVal == 0 and 'Removed' or ''))
+			gui.addmessage(user .. ": " .. name .. (newVal == false and 'Removed' or ''))
 		-- If numeric, show the indexed name or name with value
 		elseif ramItems[address].type == "num" then
 			if (type(name) == 'string') then
 				gui.addmessage(user .. ": " .. name .. " = " .. newVal)
 			elseif (name[newVal]) then
 				gui.addmessage(user .. ": " .. name[newVal])
-			end
-		-- If bitflag, show each bit: the indexed name or bit index as a boolean
-		elseif ramItems[address].type == "bit" then
-			for b=0,7 do
-				local newBit = bit.check(newVal, b)
-				local prevBit = bit.check(prevVal, b)
-
-				if (newBit ~= prevBit) then
-					if (type(name) == 'string') then
-						gui.addmessage(user .. ": " .. name .. " flag " .. b .. (newBit and '' or ' Removed'))
-					elseif (name[b]) then
-						gui.addmessage(user .. ": " .. name[b] .. (newBit and '' or ' Removed'))
-					end
-				end
 			end
 		-- if delta, show the indexed name, or the differential
 		elseif ramItems[address].type == "delta" then
@@ -436,7 +323,7 @@ end
 local function getRAM() 
 	newRAM = {}
 	for address, item in pairs(ramItems) do
-		local ramval = item.pointer:get()
+		local ramval = item.pointer:rawget()
 		newRAM[address] = ramval
 	end
 
@@ -456,13 +343,12 @@ local function eventRAMchanges(prevRAM, newRAM)
 
 			-- If boolean, get T/F
 			if ramItems[address].type == "bool" then
-				ramevents[address] = (val ~= 0)
+				ramevents[address] = (val ~= false)
 				changes = true
 			-- If numeric, get value
 			elseif ramItems[address].type == "num" then
 				ramevents[address] = val				
 				changes = true
-			-- If bitflag, get the changed bits
 			-- If delta, get the change from prevRAM frame
 			elseif ramItems[address].type == "delta" then
 				ramevents[address] = val - prevRAM[address]
@@ -501,17 +387,17 @@ end
 -- set a list of ram events
 local function setRAMchanges(prevRAM, their_user, newEvents)
 	for address, val in pairs(newEvents) do
-		local newval
+		local newVal
 
 		-- If boolean type value
 		if ramItems[address].type == "bool" then
-			newval = (val and 1 or 0)
+			newVal = val
 		-- If numeric type value
 		elseif ramItems[address].type == "num" then
-			newval = val
+			newVal = val
 		-- If delta, add to the previous value
 		elseif ramItems[address].type == "delta" then
-			newval = prevRAM[address] + val
+			newVal = prevRAM[address] + val
 		elseif ramItems[address].type == "deltalist" then
 			local prevIndex = -1
 			for k,v in pairs(ramItems[address].name) do
@@ -520,32 +406,31 @@ local function setRAMchanges(prevRAM, their_user, newEvents)
 				end
 			end
 			local newIndex = prevIndex + val
-			if (prevIndex == -1 or newIndex == -1 or ramItems[address].name[newIndex] == nil) then
+			if (prevIndex == -1 or ramItems[address].name[newIndex] == nil) then
 				printOutput("Unknown ram list index value")
-				newval = prevRAM[address]
+				newVal = prevRAM[address]
 			else
-				newval = ramItems[address].list[newIndex]
+				newVal = ramItems[address].name[newIndex].value
 			end			
 		else 
 			printOutput("Unknown item ram type")
-			newval = prevRAM[address]
+			newVal = prevRAM[address]
 		end
 
 		-- Run the address's reveive function if it exists
 		if (ramItems[address].receiveFunc) then
-			newval = ramItems[address].receiveFunc(newval, prevRAM[address], address, ramItems[address], their_user)
+			newVal = ramItems[address].receiveFunc(newVal, prevRAM[address], address, ramItems[address], their_user)
 		end
 
 		-- Write the new value
-		getGUImessage(address, prevRAM[address], newval, their_user)
-		prevRAM[address] = newval
-		if gameLoadedModes[gameMode] then
-			ramItems[address].pointer:set(newval)
+		getGUImessage(address, prevRAM[address], newVal, their_user)
+		prevRAM[address] = newVal
+		if oot.is_loaded_game_mode() then
+			ramItems[address].pointer:set(newVal)
 		end
 	end	
 	return prevRAM
 end
-
 
 
 -- Get item override table
@@ -562,22 +447,22 @@ oot_rom.itemcount = #locations
 
 local splitItems = {}
 local function removeItems()
-	-- -- Reload Core to restore previously removed items
-	-- client.reboot_core()
-	-- prevDomain = ""
+	-- Reload Core to restore previously removed items
+	client.reboot_core()
+	prevDomain = ""
 
 	-- local junkItemsCount = tableCount(junkItems)
 	-- math.randomseed(os.time())
 	-- math.random(junkItemsCount)
 
-	-- for ID, location in pairs(locations) do
-	-- 	-- Remove item if it's not yours
-	-- 	if (splitItems[ID] ~= my_ID) then
-	-- 		local oldVal = readRAM("CARTROM", location.address, 1)
-	-- 		-- Remove Item, Fill with junk
-	-- 		writeRAM("CARTROM", location.address, 1, junkItems[math.random(junkItemsCount)].val)
-	-- 	end
-	-- end
+	for ID, location in pairs(locations) do
+		-- Remove item if it's not yours
+		if (splitItems[ID] ~= my_ID) then
+			-- Remove Item, Fill with junk
+			-- memory.writebyte(location.address, junkItems[math.random(junkItemsCount)].val, "ROM")
+			memory.writebyte(location.address, 0x4C, "ROM")
+		end
+	end
 end
 
 client.reboot_core()
@@ -621,14 +506,16 @@ end
 -- Returns false if no message is to be send
 function oot_rom.getMessage()
 	-- Check if game is playing
-	-- gameMode = readRAM("WRAM", 0x0010, 1)
-	-- local gameLoaded = gameLoadedModes[gameMode] == true
+	local game_mode_details = {}
+	gameMode, game_mode_details = oot.get_current_game_mode()
+	local gameLoaded = game_mode_details.loaded
+	local game_mode_name = game_mode_details.name
 
 	-- Don't check for updated when game is not running
-	-- if not gameLoaded then
-	-- 	prevGameMode = gameMode
-	-- 	return false
-	-- end
+	if not gameLoaded then
+		prevGameMode = gameMode
+		return false
+	end
 
 	-- Initilize previous RAM frame if missing
 	if prevRAM == nil then
@@ -636,62 +523,58 @@ function oot_rom.getMessage()
 	end
 
 	-- Checked for queued death and apply when safe
-	-- if tableCount(deathQueue) > 0 and not deathQueue[config.user] then
-	-- 	-- Main mode: 07 = Dungeon, 09 = Overworld, 0B = Special Overworld
-	-- 	-- Sub mode: Non 0 = game is paused, transitioning between modes
-	-- 	if (gameMode == 0x07 or gameMode == 0x09 or gameMode == 0x0B) and (readRAM("WRAM", 0x0011, 1) == 0x00) then 
-	-- 		-- If link is controllable
-	-- 		writeRAM("WRAM", 0x0010, 2, 0x0012) -- Kill link as soon as it's safe
-	-- 		writeRAM("WRAM", 0xF36D, 1, 0)
-	-- 		writeRAM("WRAM", 0x04C6, 1, 0) -- Stop any special cutscenes
-	-- 		prevRAM[0xF36D] = 0
-	-- 		gameMode = 0x12
-	-- 	end
-	-- end
+	if tableCount(deathQueue) > 0 and not deathQueue[config.user] then
+		--kill link once it's safe (idk conditions for safe yet)
+		if true then
+			oot.sav.cur_health = 0
+			prevRAM['chp'] = 0 --cur_health
+		end
+	end
 
-	-- if gameMode == 0x12 then
-	-- 	local deathCount = tableCount(deathQueue)
-	-- 	if (deathCount > 0 and deathCount < playercount) then
-	-- 		-- Lock the death until everyone is dying
-	-- 		writeRAM("WRAM", 0x0010, 2, 0x0012)
-	-- 	elseif (deathCount >= playercount) then
-	-- 		deathQueue = {}
+	if game_mode_name == "Dying Menu Start" then
+		local deathCount = tableCount(deathQueue)
+		if (deathCount > 0 and deathCount < playercount) then
+			-- Lock the death until everyone is dying
+			oot.freeze_death()
+		elseif (deathCount >= playercount) then
+			deathQueue = {}
 
-	-- 		local hasFairy = false
-	-- 		for bottleID=0,3 do
-	-- 			if prevRAM[0xF35C + bottleID] == 0x06 then
-	-- 				-- has fairy
-	-- 				hasFairy = true
-	-- 			end
-	-- 		end
+			-- local hasFairy = false
+			-- for bottleID=0,3 do
+			-- 	if prevRAM[0xF35C + bottleID] == 0x06 then
+			-- 		-- has fairy
+			-- 		hasFairy = true
+			-- 	end
+			-- end
 
-	-- 		local maxHP = readRAM("WRAM", 0xF36C, 1)
-	-- 		local contHP
-	-- 		if (hasFairy) then
-	-- 			contHP = 7 * 8
-	-- 		else
-	-- 		 	contHP = (continueHP[maxHP / 8] or 10) * 8
-	-- 		end
-	-- 		prevRAM[0xF36D] = math.max(math.min(prevRAM[0xF36D] + contHP, maxHP), 0)
-	-- 		writeRAM("WRAM", 0xF36D, 1, prevRAM[0xF36D])		
-	-- 	end
+			-- local maxHP = readRAM("WRAM", 0xF36C, 1)
+			local contHP = 0x30
+			-- if (hasFairy) then
+			-- 	contHP = 7 * 8
+			-- else
+			--  	contHP = (continueHP[maxHP / 8] or 10) * 8
+			-- end
+			-- prevRAM[0xF36D] = math.max(math.min(prevRAM[0xF36D] + contHP, maxHP), 0)
+			-- writeRAM("WRAM", 0xF36D, 1, prevRAM[0xF36D])
+			prevRAM['chp'] = contHP --cur_health
+		end
 
-	-- 	if (prevGameMode == 0x12) then
-	-- 		-- discard continue HP/fairy HP
-	-- 		writeRAM("WRAM", 0xF36D, 1, prevRAM[0xF36D])
-	-- 	end
-	-- end
+		-- if (prevGameMode == 0x12) then
+		-- 	-- discard continue HP/fairy HP
+		-- 	writeRAM("WRAM", 0xF36D, 1, prevRAM[0xF36D])
+		-- end
+	end
 
 	-- -- Game was just loaded, restore to previous known RAM state
-	-- if (gameLoaded and not gameLoadedModes[prevGameMode]) then
-	-- 	 -- get changes to prevRAM and apply them to game RAM
-	-- 	local newRAM = getRAM()
-	-- 	local message = eventRAMchanges(newRAM, prevRAM)
-	-- 	prevRAM = newRAM
-	-- 	if (message) then
-	-- 		oot_rom.processMessage("Save Restore", message)
-	-- 	end
-	-- end
+	if (gameLoaded and not oot.game_modes[prevGameMode].loaded) then
+		 -- get changes to prevRAM and apply them to game RAM
+		local newRAM = getRAM()
+		local message = eventRAMchanges(newRAM, prevRAM)
+		prevRAM = newRAM
+		if (message) then
+			oot_rom.processMessage("Save Restore", message)
+		end
+	end
 
 	-- Load all queued changes
 	while not messageQueue.isEmpty() do
@@ -706,21 +589,21 @@ function oot_rom.getMessage()
 	-- Update the RAM frame pointer
 	prevRAM = newRAM
 
-	-- -- Check for death message
-	-- if gameMode == 0x12 then
-	-- 	if (prevGameMode ~= 0x12) then
-	-- 		if message == false then
-	-- 			message = {}
-	-- 		end
+	-- Check for death message
+	if game_mode_name == "Dying Menu Start" then
+		if (oot.game_modes[prevGameMode].name ~= "Dying Menu Start") then
+			if message == false then
+				message = {}
+			end
 
-	-- 		message[0xF36D] = -0x100 -- death message is a large HP loss
-	-- 		deathQueue[config.user] = true
-	-- 	else 
-	-- 		-- suppress all non death messages during death sequence
-	-- 		return false
-	-- 	end
-	-- end
-	-- prevGameMode = gameMode
+			message['chp'] = -0x100 -- death message is a large HP loss
+			deathQueue[config.user] = true
+		else 
+			-- suppress all non death messages during death sequence
+			return false
+		end
+	end
+	prevGameMode = gameMode
 
 	return message
 end
@@ -743,12 +626,14 @@ function oot_rom.processMessage(their_user, message)
 		end
 	end
 
-	--if gameLoadedModes[gameMode] then
+	if oot.is_loaded_game_mode() then
 		prevRAM = setRAMchanges(prevRAM, their_user, message)
-	--else
-	--	messageQueue.pushRight({["their_user"]=their_user, ["message"]=message})
-	--end
+	else
+		messageQueue.pushRight({["their_user"]=their_user, ["message"]=message})
+	end
 end
+
+declare('getRAM', getRAM)
 
 setmetatable(_G, old_global_metatable)
 

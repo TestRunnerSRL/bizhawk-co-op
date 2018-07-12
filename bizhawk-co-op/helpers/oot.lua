@@ -632,14 +632,14 @@ local Save_Context = Layout:create {
 local save_context = Pointer:new( 0x11A5D0, Save_Context )
 local global_context = Pointer:new( 0x1C84A0, Global_Context )
 
-declare('find_malon', function() 
-	local npc = global_context.actor_table.npc.first
-	while npc ~= "Null" do
-		if npc.id == 0xE7 then return npc end
-		npc = npc.next_actor
-	end
-	return "Null"
-end)
+-- declare('find_malon', function() 
+-- 	local npc = global_context.actor_table.npc.first
+-- 	while npc ~= "Null" do
+-- 		if npc.id == 0xE7 then return npc end
+-- 		npc = npc.next_actor
+-- 	end
+-- 	return "Null"
+-- end)
 
 
 -- SPECIAL TYPES
@@ -738,6 +738,74 @@ local function Implies_Max(layout, maxes)
 	return obj
 end
 
+
+-- GAME STATE
+local state_main = Pointer:new( 0x11B92F, Int(1) )
+local state_sub = Pointer:new( 0x11B933, Int(1) )
+local state_menu = Pointer:new( 0x1D8DD5, Int(1) )
+local state_logo = Pointer:new( 0x11F200, Int(4) )
+local state_link = Pointer:new( 0x1DB09C, Bit_Array( 0x8, {dying=0x27} ) )
+local state_fairy_queued = Pointer:new( 0x1DB26F, Int(1) )
+
+
+local game_modes = {
+	[-1]={name="Unknown", loaded=false},
+	[0]={name="N64 Logo", loaded=false},
+	[1]={name="Title Screen", loaded=false},
+	[2]={name="File Select", loaded=false},
+	[3]={name="Normal Gameplay", loaded=true},
+	[4]={name="Cutscene", loaded=true},
+	[5]={name="Paused", loaded=true},
+	[6]={name="Dying", loaded=true},
+	[7]={name="Dying Menu Start", loaded=true},
+	[8]={name="Dead", loaded=true},
+}
+
+local function get_current_game_mode()
+	local mode = -1
+	local logo_state = state_logo:get()
+	if logo_state == 0x802C5880 or logo_state == 0x00000000 then
+		mode = 0
+	else
+		if state_main:get() == 1 then
+			mode = 1
+		elseif state_main:get() == 2 then
+			mode = 2
+		else
+			local menu_state = state_menu:get()
+			if menu_state == 0 then
+				if state_link.dying then
+					mode = 6
+				else
+					if state_sub:get() == 4 then
+						mode = 4
+					else
+						mode = 3
+					end
+				end
+			elseif (0 < menu_state and menu_state < 9) or menu_state == 13 then
+				mode = 5
+			elseif menu_state == 9 or menu_state == 0xB then
+				mode = 7
+			else
+				mode = 8
+			end
+		end
+	end
+	return mode, game_modes[mode]
+end
+
+local function is_loaded_game_mode()
+	return game_modes[get_current_game_mode()].loaded
+end
+
+local function freeze_death()
+	local menu_state = state_main:get()
+	if menu_state == 9 or menu_state == 0xB then
+		state_main:set(9)
+	end
+end
+
 -- public facing members
 oot.sav = save_context
 oot.ctx = global_context
@@ -747,6 +815,41 @@ oot.Settable_Item = Settable_Item
 oot.Settable_Equipment = Settable_Equipment
 oot.Implies_Max = Implies_Max
 oot.Magic_Meter = Magic_Meter
+oot.game_modes = game_modes
+oot.get_current_game_mode = get_current_game_mode
+oot.is_loaded_game_mode = is_loaded_game_mode
+oot.freeze_death = freeze_death
+
+-- oot.should_freeze = false
+
+-- local dying = false
+-- 	client.SetGameExtraPadding(0, 16, 0, 0)
+-- 	local mode = 0
+-- 	local details = {}
+-- 	while 1 do
+-- 		mode, details = get_current_game_mode()
+-- 		if mode == -1 then
+-- 			error("unknown state:\n" ..
+-- 				  "main: " .. state_main:get() .. "\n" ..
+-- 				  "sub:  " .. state_sub:get() .. "\n" ..
+-- 				  "menu: " .. state_menu:get() .. "\n" ..
+-- 				  "logo: " .. hex(state_logo:get()) .. "\n")
+-- 		end
+-- 		if mode == 6 then
+-- 			dying = true
+-- 		end
+-- 		if dying then
+-- 			if oot.should_freeze then
+-- 				console.log("dying")
+-- 				state_menu:set(9)
+-- 			else
+-- 				dying = false
+-- 			end
+-- 		end
+-- 		gui.drawString(0, 0, details.name)
+-- 		emu.yield()
+-- 		emu.yield()
+-- 	end
 
 
 setmetatable(_G, old_global_metatable)
