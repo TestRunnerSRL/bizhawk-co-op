@@ -59,6 +59,7 @@ local function monotonic(newValue, prevValue)
     if newValue < prevValue then
         return prevValue
     end
+    return newValue
 end
 
 local bottle_names = {
@@ -107,19 +108,44 @@ local adult_trade_name = {
 	[ 0x37 ] = "Claim Check",
 }
 
+-- TODO: death/fairys
+-- TODO: skulltulas
+
+local function receiveHealth(newValue, prevValue, address, item, their_user)
+	-- local delta = newValue - prevValue
+
+	-- if (tableCount(deathQueue) > 0) then
+	-- 	if (delta < -0x1FF) then
+	-- 		deathQueue[their_user] = true
+	-- 	end
+	-- 	return prevValue
+	-- end
+
+	-- if (delta < -0x1FF) then
+	-- 	-- death message
+	-- 	newValue = 0
+	-- 	gui.addmessage(their_user .. " killed you.")
+	-- 	deathQueue[their_user] = true
+	-- end
+
+	newValue = clamp( oot.sav:rawget('max_health') )(newValue)
+
+	return newValue
+end
+
 -- list of tables containing information for each shared value
 local ramItems = {
 	{ pointer=oot.sav:rawget('max_health'), 		type='delta' },
-	['chp']={ pointer=oot.sav:rawget('cur_health'), 		type='delta', receiveFunc=clamp( oot.sav:rawget('max_health') ) },
-	{ pointer=oot.sav:rawget('cur_magic'), 			type='delta', recieveFunc=clamp( oot.sav:rawget('magic_meter_size') ) },
-	{ pointer=oot.sav:rawget('rupees'), 			type='delta', recieveFunc=clamp( oot.sav.equipment:rawget('wallet'):cast(oot.Implies_Max( oot.Bits(4,5), {
+	['chp']={ pointer=oot.sav:rawget('cur_health'), type='delta', receiveFunc=receiveHealth },
+	{ pointer=oot.sav:rawget('cur_magic'), 			type='delta', receiveFunc=clamp( oot.sav:rawget('magic_meter_size') ) },
+	{ pointer=oot.sav:rawget('rupees'), 			type='delta', receiveFunc=clamp( oot.sav.equipment:rawget('wallet'):cast(oot.Implies_Max( oot.Bits(4,5), {
 		[0] = 99,
 		[1] = 200,
 		[2] = 500,
 	})))},
 
 	-- { pointer=oot.sav:rawget('beans_purchased'), 	type='delta' },
-	{ pointer=oot.sav:rawget('gold_skulltulas'),    type='delta', name="Skulltula Token" },
+	['skc']={ pointer=oot.sav:rawget('gold_skulltulas'),    type='tokencount' },
 	{ pointer=oot.sav:rawget('heart_pieces'),   	type='delta', receiveFunc=function(newValue, prevValue) return newValue % 4 end },
 
 	{ pointer=oot.sav:rawget('magic_meter_level'):cast( oot.Magic_Meter ), type='delta', name={ [1]="Magic", [2]="Double Magic" } },
@@ -130,59 +156,59 @@ local ramItems = {
 	{ pointer=oot.sav.inventory:rawget('deku_sticks'):cast( oot.Settable_Item(0) ),			type='num' },
 	{ pointer=oot.sav.inventory:rawget('deku_nuts'):cast( oot.Settable_Item(1) ),			type='num' },
 	{ pointer=oot.sav.inventory:rawget('bombs'):cast( oot.Settable_Item(2) ),				type='num' },
-	{ pointer=oot.sav.inventory:rawget('bow'):cast( oot.Settable_Item(3) ),					type='num' },
-	{ pointer=oot.sav.inventory:rawget('fire_arrow'):cast( oot.Settable_Item(4) ),			type='num' },
-	{ pointer=oot.sav.inventory:rawget('dins_fire'):cast( oot.Settable_Item(5) ),			type='num' },
-	{ pointer=oot.sav.inventory:rawget('slingshot'):cast( oot.Settable_Item(6) ),			type='num' },
+	{ pointer=oot.sav.inventory:rawget('bow'):cast( oot.Settable_Item(3) ),					type='num', name="Bow" },
+	{ pointer=oot.sav.inventory:rawget('fire_arrow'):cast( oot.Settable_Item(4) ),			type='num', name="Fire Arrow" },
+	{ pointer=oot.sav.inventory:rawget('dins_fire'):cast( oot.Settable_Item(5) ),			type='num', name="Din's Fire" },
+	{ pointer=oot.sav.inventory:rawget('slingshot'):cast( oot.Settable_Item(6) ),			type='num', name="slingshot" },
 	{ pointer=oot.sav.inventory:rawget('ocarina'):cast( oot.Settable_Item(7) ),				type='deltalist', name={ {name='Ocarina Removed', value=0xFF}, {name='Fairy Ocarina', value=0x07}, {name='Ocarina of Time', value=0x08} } },
-	{ pointer=oot.sav.inventory:rawget('bombchus'):cast( oot.Settable_Item(8) ),			type='num' },
+	{ pointer=oot.sav.inventory:rawget('bombchus'):cast( oot.Settable_Item(8) ),			type='num', name="Bombchus" },
 	{ pointer=oot.sav.inventory:rawget('hookshot'):cast( oot.Settable_Item(9) ),			type='deltalist', name={ {name='Hookshot Removed', value=0xFF}, {name='Hookshot', value=0x0A}, {name='Longshot', value=0x0B} } },
-	{ pointer=oot.sav.inventory:rawget('ice_arrow'):cast( oot.Settable_Item(10) ),			type='num' },
-	{ pointer=oot.sav.inventory:rawget('farores_wind'):cast( oot.Settable_Item(11) ),		type='num' },
-	{ pointer=oot.sav.inventory:rawget('boomerang'):cast( oot.Settable_Item(12) ),			type='num' },
-	{ pointer=oot.sav.inventory:rawget('lens_of_truth'):cast( oot.Settable_Item(13) ),		type='num' },
-	{ pointer=oot.sav.inventory:rawget('magic_beans'):cast( oot.Settable_Item(14) ),		type='num' },
-	{ pointer=oot.sav.inventory:rawget('megaton_hammer'):cast( oot.Settable_Item(15) ),		type='num' },
-	{ pointer=oot.sav.inventory:rawget('light_arrow'):cast( oot.Settable_Item(16) ),		type='num' },
-	{ pointer=oot.sav.inventory:rawget('nayrus_love'):cast( oot.Settable_Item(17) ),		type='num' },
+	{ pointer=oot.sav.inventory:rawget('ice_arrow'):cast( oot.Settable_Item(10) ),			type='num', name="Ice Arrow" },
+	{ pointer=oot.sav.inventory:rawget('farores_wind'):cast( oot.Settable_Item(11) ),		type='num', name="Farore's Wind" },
+	{ pointer=oot.sav.inventory:rawget('boomerang'):cast( oot.Settable_Item(12) ),			type='num', name="Boomerang" },
+	{ pointer=oot.sav.inventory:rawget('lens_of_truth'):cast( oot.Settable_Item(13) ),		type='num', name="Lens of Truth" },
+	-- { pointer=oot.sav.inventory:rawget('magic_beans'):cast( oot.Settable_Item(14) ),		type='num', name="Magic Beans" },
+	{ pointer=oot.sav.inventory:rawget('megaton_hammer'):cast( oot.Settable_Item(15) ),		type='num', name="Megaton Hammer" },
+	{ pointer=oot.sav.inventory:rawget('light_arrow'):cast( oot.Settable_Item(16) ),		type='num', name="Light Arrow" },
+	{ pointer=oot.sav.inventory:rawget('nayrus_love'):cast( oot.Settable_Item(17) ),		type='num', name="Nayru's Love" },
 	{ pointer=oot.sav.inventory:rawget('bottle1'):cast( oot.Settable_Item(18) ),			type='num', name=bottle_names },
 	{ pointer=oot.sav.inventory:rawget('bottle2'):cast( oot.Settable_Item(19) ),			type='num', name=bottle_names },
 	{ pointer=oot.sav.inventory:rawget('bottle3'):cast( oot.Settable_Item(20) ),			type='num', name=bottle_names },
 	{ pointer=oot.sav.inventory:rawget('bottle4'):cast( oot.Settable_Item(21) ),			type='num', name=bottle_names },
-	{ pointer=oot.sav.inventory:rawget('adult_trade'):cast( oot.Settable_Item(22) ),		type='num', name=adult_trade },
-	{ pointer=oot.sav.inventory:rawget('child_trade'):cast( oot.Settable_Item(23) ),		type='num', name=child_trade },
+	{ pointer=oot.sav.inventory:rawget('adult_trade'):cast( oot.Settable_Item(22) ),		type='num', name=adult_trade_name },
+	{ pointer=oot.sav.inventory:rawget('child_trade'):cast( oot.Settable_Item(23) ),		type='num', name=child_trade_name },
 
-	{ pointer=oot.sav.ammo:rawget('deku_sticks'),	type='delta', recieveFunc=clamp( oot.sav.equipment:rawget('stick_capacity'):cast(oot.Implies_Max(oot.Bits(1,2), {
+	{ pointer=oot.sav.ammo:rawget('deku_sticks'),	type='delta', receiveFunc=clamp( oot.sav.equipment:rawget('stick_capacity'):cast(oot.Implies_Max(oot.Bits(1,2), {
 		[0] = 10,
 		[1] = 10,
 		[2] = 20,
 		[2] = 30,
 	})))},
-	{ pointer=oot.sav.ammo:rawget('deku_nuts'),		type='delta', recieveFunc=clamp( oot.sav.equipment:rawget('nut_capacity'):cast(oot.Implies_Max(oot.Bits(4,5), {
+	{ pointer=oot.sav.ammo:rawget('deku_nuts'),		type='delta', receiveFunc=clamp( oot.sav.equipment:rawget('nut_capacity'):cast(oot.Implies_Max(oot.Bits(4,5), {
 		[0] = 20,
 		[1] = 20,
 		[2] = 30,
 		[2] = 40,
 	})))},
-	{ pointer=oot.sav.ammo:rawget('bombs'),			type='delta', recieveFunc=clamp( oot.sav.equipment:rawget('bomb_bag'):cast(oot.Implies_Max(oot.Bits(3,4), {
+	{ pointer=oot.sav.ammo:rawget('bombs'),			type='delta', receiveFunc=clamp( oot.sav.equipment:rawget('bomb_bag'):cast(oot.Implies_Max(oot.Bits(3,4), {
 		[0] = 0,
 		[1] = 20,
 		[2] = 30,
 		[2] = 40,
 	})))},
-	{ pointer=oot.sav.ammo:rawget('bow'),			type='delta', recieveFunc=clamp( oot.sav.equipment:rawget('quiver'):cast(oot.Implies_Max(oot.Bits(0,1), {
+	{ pointer=oot.sav.ammo:rawget('bow'),			type='delta', receiveFunc=clamp( oot.sav.equipment:rawget('quiver'):cast(oot.Implies_Max(oot.Bits(0,1), {
 		[0] = 0,
 		[1] = 30,
 		[2] = 40,
 		[2] = 50,
 	})))},
-	{ pointer=oot.sav.ammo:rawget('slingshot'),		type='delta', recieveFunc=clamp( oot.sav.equipment:rawget('bullet_bag'):cast(oot.Implies_Max(oot.Bits(6,7), {
+	{ pointer=oot.sav.ammo:rawget('slingshot'),		type='delta', receiveFunc=clamp( oot.sav.equipment:rawget('bullet_bag'):cast(oot.Implies_Max(oot.Bits(6,7), {
 		[0] = 0,
 		[1] = 30,
 		[2] = 40,
 		[2] = 50,
 	})))},
-	{ pointer=oot.sav.ammo:rawget('bombchus'),		type='delta', recieveFunc=const_clamp(50) },
+	{ pointer=oot.sav.ammo:rawget('bombchus'),		type='delta', receiveFunc=const_clamp(50) },
 	-- { pointer=oot.sav.ammo:rawget('magic_beans'),	type='delta' },
 
 	{ pointer=oot.sav.equipment:rawget('kokiri_tunic'),			type='bool', name="Kokiri Tunic" }, -- TODO: settable equipment
@@ -231,7 +257,7 @@ local ramItems = {
 	{ pointer=oot.sav.quest_status:rawget('goron_ruby'),			type='bool', name="Goron Ruby" },
 	{ pointer=oot.sav.quest_status:rawget('zora_sapphire'),			type='bool', name="Zora Sapphire" },
 	{ pointer=oot.sav.quest_status:rawget('stone_of_agony'),		type='bool', name="Stone of Agony" },
-	{ pointer=oot.sav.quest_status:rawget('gerudo_card'),			type='bool' },
+	-- { pointer=oot.sav.quest_status:rawget('gerudo_card'),			type='bool' },
 	{ pointer=oot.sav.quest_status:rawget('skulltula_icon'),		type='bool' },
 
 	{ pointer=oot.sav.dungeon_items.forest_temple:rawget('boss_key'),			type='bool', name="Forest Temple Boss Key" },
@@ -263,18 +289,35 @@ local ramItems = {
 	{ pointer=oot.sav.dungeon_items.bottom_of_the_well:rawget('map'),	type='bool', name="Bottom of the Well Map" },
 	{ pointer=oot.sav.dungeon_items.ice_cavern:rawget('map'),			type='bool', name="Ice Cavern Map" },
 
-	{ pointer=oot.sav.small_keys:rawget('forest_temple'):cast( oot.Key ),			type='delta', name="Forest Temple Small Key", recieveFunc=monotonic },
-	{ pointer=oot.sav.small_keys:rawget('fire_temple'):cast( oot.Key ),				type='delta', name="Fire Temple Small Key", recieveFunc=monotonic },
-	{ pointer=oot.sav.small_keys:rawget('water_temple'):cast( oot.Key ),			type='delta', name="Water Temple Small Key", recieveFunc=monotonic },
-	{ pointer=oot.sav.small_keys:rawget('spirit_temple'):cast( oot.Key ),			type='delta', name="Spirit Temple Small Key", recieveFunc=monotonic },
-	{ pointer=oot.sav.small_keys:rawget('shadow_temple'):cast( oot.Key ),			type='delta', name="Shadow Temple Small Key", recieveFunc=monotonic },
-	{ pointer=oot.sav.small_keys:rawget('bottom_of_the_well'):cast( oot.Key ),		type='delta', name="Bottom of the Well Small Key", recieveFunc=monotonic },
-	{ pointer=oot.sav.small_keys:rawget('gerudo_training_ground'):cast( oot.Key ),	type='delta', name="Gerudo Training Ground Small Key", recieveFunc=monotonic },
-	-- { pointer=oot.sav.small_keys:rawget('thieves_hideout'),		type='delta', name="Gerudo Fortress Small Key", recieveFunc=monotonic },
-	{ pointer=oot.sav.small_keys:rawget('inside_ganons_castle'):cast( oot.Key ),	type='delta', name="Ganon's Castle Small Key", recieveFunc=monotonic },
+	{ pointer=oot.sav.small_keys:rawget('forest_temple'):cast( oot.Key ),			type='delta', name="Forest Temple Small Key", receiveFunc=monotonic },
+	{ pointer=oot.sav.small_keys:rawget('fire_temple'):cast( oot.Key ),				type='delta', name="Fire Temple Small Key", receiveFunc=monotonic },
+	{ pointer=oot.sav.small_keys:rawget('water_temple'):cast( oot.Key ),			type='delta', name="Water Temple Small Key", receiveFunc=monotonic },
+	{ pointer=oot.sav.small_keys:rawget('spirit_temple'):cast( oot.Key ),			type='delta', name="Spirit Temple Small Key", receiveFunc=monotonic },
+	{ pointer=oot.sav.small_keys:rawget('shadow_temple'):cast( oot.Key ),			type='delta', name="Shadow Temple Small Key", receiveFunc=monotonic },
+	{ pointer=oot.sav.small_keys:rawget('bottom_of_the_well'):cast( oot.Key ),		type='delta', name="Bottom of the Well Small Key", receiveFunc=monotonic },
+	{ pointer=oot.sav.small_keys:rawget('gerudo_training_ground'):cast( oot.Key ),	type='delta', name="Gerudo Training Ground Small Key", receiveFunc=monotonic },
+	-- { pointer=oot.sav.small_keys:rawget('thieves_hideout'),		type='delta', name="Gerudo Fortress Small Key", receiveFunc=monotonic },
+	{ pointer=oot.sav.small_keys:rawget('inside_ganons_castle'):cast( oot.Key ),	type='delta', name="Ganon's Castle Small Key", receiveFunc=monotonic },
+
+	{ pointer=oot.sav.events[1]:rawget(4),			type='bool', name="[EVENT] Talon has fled the Castle" },
+	{ pointer=oot.sav.events[3]:rawget(3),			type='bool', name="[EVENT] King Zora has Moved Aside" },
+	{ pointer=oot.sav.events[4]:rawget(0),			type='bool', name="[EVENT] Obtained Zelda's Letter" },
+
+
+	-- ['res']={ pointer=oot.state_fairy_queued:cast(oot.Fairy_Flag()), type='bool' },
 
 }
 
+-- add skulltula flags
+for scene = 0x00, 0x17 do
+	for b = 0, 7 do
+		table.insert(ramItems, {
+			pointer=oot.sav.skulltula_flags[scene]:rawget(b):cast( oot.Skulltula(oot.Bit(b), scene, bit.lshift(1, b)) ),
+			type='token',
+			name="Skulltula token +1"
+		})
+	end
+end
 
 -- Display a message of the ram event
 local function getGUImessage(address, prevVal, newVal, user)
@@ -312,6 +355,10 @@ local function getGUImessage(address, prevVal, newVal, user)
 			if (name[index]) then
 				gui.addmessage(user .. ": " .. name[index].name)
 			end
+		elseif ramItems[address].type == "tokencount" then
+			gui.addmessage(user .. ": tokencount")
+		elseif ramItems[address].type == "token" then
+			gui.addmessage(user .. ": token" )
 		else 
 			gui.addmessage("Unknown item ram type")
 		end
@@ -337,8 +384,10 @@ local function eventRAMchanges(prevRAM, newRAM)
 	local changes = false
 
 	for address, val in pairs(newRAM) do
+
 		-- If change found
 		if (prevRAM[address] ~= val) then
+
 			getGUImessage(address, prevRAM[address], val, config.user)
 
 			-- If boolean, get T/F
@@ -368,8 +417,22 @@ local function eventRAMchanges(prevRAM, newRAM)
 				if (prevIndex == -1 or newIndex == -1) then
 					printOutput("Unknown ram list index value")
 				else
-					remevents[address] = newIndex - prevIndex
+					ramevents[address] = newIndex - prevIndex
+					changes = true
 				end
+			elseif ramItems[address].type == "tokencount" then
+				-- supress token gets from the game
+				oot.sav.gold_skulltulas = prevRAM[address]
+				newRAM[address] = prevRAM[address]
+				console.log('suppressed')
+			elseif ramItems[address].type == "token" then
+				ramevents[address] = (val ~= false)
+				local tokens = oot.sav.gold_skulltulas + 1
+				oot.sav.gold_skulltulas = tokens
+				newRAM['skc'] = tokens
+				prevRAM['skc'] = tokens
+				changes = true
+				console.log('tokened')
 			else 
 				printOutput("Unknown item ram type")
 			end
@@ -382,6 +445,10 @@ local function eventRAMchanges(prevRAM, newRAM)
 		return false
 	end
 end
+
+declare('ramItems', ramItems)
+declare('getRAM', getRAM)
+declare('eventRAMchanges', eventRAMchanges)
 
 
 -- set a list of ram events
@@ -411,7 +478,15 @@ local function setRAMchanges(prevRAM, their_user, newEvents)
 				newVal = prevRAM[address]
 			else
 				newVal = ramItems[address].name[newIndex].value
-			end			
+			end
+		elseif ramItems[address].type == "tokencount" then
+		elseif ramItems[address].type == "token" then
+			newVal = val
+			if prevRAM[address] ~= val then
+				local tokens = oot.sav.gold_skulltulas + 1
+				oot.sav.gold_skulltulas = tokens
+				prevRAM['skc'] = tokens
+			end
 		else 
 			printOutput("Unknown item ram type")
 			newVal = prevRAM[address]
@@ -523,47 +598,34 @@ function oot_rom.getMessage()
 	end
 
 	-- Checked for queued death and apply when safe
-	if tableCount(deathQueue) > 0 and not deathQueue[config.user] then
-		--kill link once it's safe (idk conditions for safe yet)
-		if true then
-			oot.sav.cur_health = 0
-			prevRAM['chp'] = 0 --cur_health
-		end
-	end
+	-- if tableCount(deathQueue) > 0 and not deathQueue[config.user] then
+	-- 	--kill link once it's safe (idk conditions for safe yet)
+	-- 	if true then
+	-- 		oot.sav.cur_health = 0
+	-- 		prevRAM['chp'] = 0 --cur_health
+	-- 	end
+	-- end
 
-	if game_mode_name == "Dying Menu Start" then
-		local deathCount = tableCount(deathQueue)
-		if (deathCount > 0 and deathCount < playercount) then
-			-- Lock the death until everyone is dying
-			oot.freeze_death()
-		elseif (deathCount >= playercount) then
-			deathQueue = {}
+	-- if game_mode_name == "Dying" then
+	-- 	local deathCount = tableCount(deathQueue)
+	-- 	console.log(deathQueue)
+	-- 	if (deathCount > 0 and deathCount < playercount) then
+	-- 		-- Lock the death until everyone is dying
+	-- 		oot.freeze_death()
+	-- 	elseif (deathCount >= playercount) then
+	-- 		deathQueue = {}
 
-			-- local hasFairy = false
-			-- for bottleID=0,3 do
-			-- 	if prevRAM[0xF35C + bottleID] == 0x06 then
-			-- 		-- has fairy
-			-- 		hasFairy = true
-			-- 	end
-			-- end
+	-- 		-- local hasFairy = ramItems['res'].pointer:get()
 
-			-- local maxHP = readRAM("WRAM", 0xF36C, 1)
-			local contHP = 0x30
-			-- if (hasFairy) then
-			-- 	contHP = 7 * 8
-			-- else
-			--  	contHP = (continueHP[maxHP / 8] or 10) * 8
-			-- end
-			-- prevRAM[0xF36D] = math.max(math.min(prevRAM[0xF36D] + contHP, maxHP), 0)
-			-- writeRAM("WRAM", 0xF36D, 1, prevRAM[0xF36D])
-			prevRAM['chp'] = contHP --cur_health
-		end
-
-		-- if (prevGameMode == 0x12) then
-		-- 	-- discard continue HP/fairy HP
-		-- 	writeRAM("WRAM", 0xF36D, 1, prevRAM[0xF36D])
-		-- end
-	end
+	-- 		local maxHP = oot.sav.max_health
+	-- 		local contHP = 0x30
+	-- 		-- if (hasFairy) then
+	-- 		-- 	contHP = maxHP
+	-- 		-- 	console.log('fairy')
+	-- 		-- end
+	-- 		prevRAM['chp'] = clamp( oot.sav:rawget('max_health') )(contHP) --cur_health
+	-- 	end
+	-- end
 
 	-- -- Game was just loaded, restore to previous known RAM state
 	if (gameLoaded and not oot.game_modes[prevGameMode].loaded) then
@@ -590,19 +652,21 @@ function oot_rom.getMessage()
 	prevRAM = newRAM
 
 	-- Check for death message
-	if game_mode_name == "Dying Menu Start" then
-		if (oot.game_modes[prevGameMode].name ~= "Dying Menu Start") then
-			if message == false then
-				message = {}
-			end
+	-- if game_mode_name == "Dying" then
+	-- 	if (oot.game_modes[prevGameMode].name ~= "Dying") then
+	-- 		console.log('dead frame 1')
+	-- 		if message == false then
+	-- 			message = {}
+	-- 		end
 
-			message['chp'] = -0x100 -- death message is a large HP loss
-			deathQueue[config.user] = true
-		else 
-			-- suppress all non death messages during death sequence
-			return false
-		end
-	end
+	-- 		message['chp'] = -0x400 -- death message is a large HP loss
+	-- 		-- message['res'] = ramItems['res'].pointer:get()
+	-- 		deathQueue[config.user] = true
+	-- 	else 
+	-- 		-- suppress all non death messages during death sequence
+	-- 		return false
+	-- 	end
+	-- end
 	prevGameMode = gameMode
 
 	return message

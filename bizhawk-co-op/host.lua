@@ -202,7 +202,7 @@ function host.join()
 		updateGUI()
 		return
 	end
-	-- config.hostname = 'localhost'
+	--config.hostname = 'localhost'
 
 	local client, err = socket.connect(config.hostname, config.port)
 	if (client == nil) then

@@ -1,4 +1,4 @@
---console.log('------------------')
+console.log('------------------')
 local old_global_metatable = getmetatable(_G)
 setmetatable(_G, {
 	__newindex = function (_, n)
@@ -361,10 +361,6 @@ local Actor = Layout:create {
 Actor.prev_actor = e( 0x0120, Address(Actor) )
 Actor.next_actor = e( 0x0124, Address(Actor) )
 
--- skulltula location variables (variable & 0x1F00) -> array index in save context
--- 0x00: deku tree     -> 0x03
--- 0x0C: kokiri forest -> 0x0F
-
 local Actor_Table_Entry = Layout:create {
 	count = e( 0x00, Int_32 ),
 	first = e( 0x04, Address(Actor) ),
@@ -625,8 +621,16 @@ local Save_Context = Layout:create {
 
 	skulltula_flags = e( 0xE9C, Array( 0x1, Bit_Array( 0x1 ) ) ),
 
+	events = e( 0xED4, Array( 0x2, Bit_Array( 0x2 ) ) ),
+
 	magic_meter_size = e( 0x13F4, Int_16 ),
+
 }
+
+-- events:
+-- [1][4] Talon has fled castle
+-- [3][3] King Zora Moved
+-- [4][0] Obtained Zelda's Letter
 
 
 local save_context = Pointer:new( 0x11A5D0, Save_Context )
@@ -640,6 +644,106 @@ local global_context = Pointer:new( 0x1C84A0, Global_Context )
 -- 	end
 -- 	return "Null"
 -- end)
+
+
+
+
+-- finds an actor in a given linked list of actor by id
+-- if filter is given, only take one for which filter returns true
+-- returns the first valid actor in the list, or "Null" (a string) if none are found
+local function find_actor(table_entry, id, filter)
+	local actor = table_entry.first
+	while actor ~= "Null" do
+		if actor.id == id then
+			if filter then
+				if filter(actor) then
+					return actor
+				end
+			else
+				return actor
+			end
+		end
+		actor = actor.next_actor
+	end
+	return "Null"
+end
+
+-- remove a given actor from the given list
+-- I guess this leaks memory? hopefully oot doesn't mind lol
+local function remove_actor(table_entry, actor)
+	-- remove the pointer to this actor from the next actor in the list
+	local next_actor = actor.next_actor
+	if next_actor ~= "Null" then
+		next_actor.prev_actor = actor.prev_actor
+	end
+	-- remove the pointer to this actor from the previous actor (or the table entry)
+	local prev_actor = actor.prev_actor
+	if prev_actor ~= "Null" then
+		prev_actor.next_actor = actor.next_actor
+	else
+		table_entry.first = actor.next_actor
+	end
+	-- reduce the count in the actor table
+	table_entry.count = table_entry.count - 1
+end
+
+
+
+-- skulltula location variables (variable & 0x1F00) -> array index in save context
+-- 0x00: deku tree     -> 0x03
+-- 0x01: dodongo       -> 0x02
+-- 0x02: jabu          -> 0x01
+-- 0x03: forest temple -> 0x00
+-- 0x04: fire temple   -> 0x07
+-- 0x0C: kokiri forest -> 0x0F
+-- 0x0D: lost woods    -> 0x0E
+-- 0x0E: market/castle -> 0x0D
+-- 0x0F: death mountain-> 0x0C
+-- 0x10: kak           -> 0x13
+-- 0x11: zora river    -> 0x12
+-- this implies a nice pattern...
+
+-- this function is an involution
+local function skulltula_scene_to_array_index(i)
+	return  (i + 3) - 2 * (i % 4)
+end
+
+local function find_gold_skulltula(scene, flag)
+	local filter = function(actor)
+		local actor_scene = bit.rshift(bit.band(actor.variable, 0x1F00), 8)
+		local actor_flag = bit.band(actor.variable, 0xFF)
+		return scene == actor_scene and flag == actor_flag
+	end
+
+	return find_actor(global_context.actor_table.npc, 0x95, filter)
+end
+
+local function find_skulltula_token(scene, flag)
+	local filter = function(actor)
+		local actor_scene = bit.rshift(bit.band(actor.variable, 0x1F00), 8)
+		local actor_flag = bit.band(actor.variable, 0xFF)
+		return scene == actor_scene and flag == actor_flag
+	end
+
+	return find_actor(global_context.actor_table.item, 0x19C, filter)
+end
+
+local function remove_skulltula(scene, flag)
+	-- remove any enemy with this scene/flag
+	local skulltula = find_gold_skulltula(scene, flag)
+	if skulltula ~= "Null" then
+		remove_actor(global_context.actor_table.npc, skulltula)
+	end
+	-- remove any token with this scene/flag
+	local token = find_skulltula_token(scene, flag)
+	if token ~= "Null" then
+		remove_actor(global_context.actor_table.item, token)
+	end
+end
+
+
+
+
 
 
 -- SPECIAL TYPES
@@ -702,16 +806,16 @@ local old_magic_set = Magic_Meter.set
 Magic_Meter.set = function(p, val)
 	old_magic_set(p, val)
 	if val == 0 then
-		save_context.have_magic = 0
-		save_context.have_double_magic = 0
+		save_context.have_magic = false
+		save_context.have_double_magic = false
 		save_context.magic_meter_size = 0
 	elseif val == 1 then
-		save_context.have_magic = 1
-		save_context.have_double_magic = 0
+		save_context.have_magic = true
+		save_context.have_double_magic = false
 		save_context.magic_meter_size = 0x30
 	elseif val == 2 then
-		save_context.have_magic = 1
-		save_context.have_double_magic = 1
+		save_context.have_magic = true
+		save_context.have_double_magic = true
 		save_context.magic_meter_size = 0x60
 	end
 end
@@ -738,6 +842,54 @@ local function Implies_Max(layout, maxes)
 	return obj
 end
 
+-- sending fairy messages will only have an effect when dead
+local function Fairy_Flag()
+	local obj = Bit(0)
+
+	local old_item_get = obj.get
+
+	obj.get = function(p)
+		if save_context.cur_health > 0 then
+			return 0
+		end
+		return old_item_get(p)
+	end
+
+	local old_item_set = obj.set
+
+	obj.set = function(p, val)
+		if save_context.cur_health <= 0 then
+			if val then
+				old_item_set(p, val)
+			end
+		end
+	end
+
+	return obj
+end
+
+-- a Skulltula pointer knows to delete a skulltula actor on the spot if it's around
+local function Skulltula(layout, scene, flag)
+	local obj = Layout:create {}
+
+	function obj.get(p)
+		return layout.get(p)
+	end
+
+	function obj.set(p, value)
+		layout.set(p, value)
+		-- delete skulltula that's already collected
+		if value then
+			remove_skulltula(skulltula_scene_to_array_index(scene), flag)
+		end
+	end
+
+	return obj
+end
+
+
+
+
 
 -- GAME STATE
 local state_main = Pointer:new( 0x11B92F, Int(1) )
@@ -745,7 +897,7 @@ local state_sub = Pointer:new( 0x11B933, Int(1) )
 local state_menu = Pointer:new( 0x1D8DD5, Int(1) )
 local state_logo = Pointer:new( 0x11F200, Int(4) )
 local state_link = Pointer:new( 0x1DB09C, Bit_Array( 0x8, {dying=0x27} ) )
-local state_fairy_queued = Pointer:new( 0x1DB26F, Int(1) )
+local state_fairy_queued = Pointer:new( 0x1DB26F, Bit(0) )
 
 
 local game_modes = {
@@ -757,8 +909,8 @@ local game_modes = {
 	[4]={name="Cutscene", loaded=true},
 	[5]={name="Paused", loaded=true},
 	[6]={name="Dying", loaded=true},
-	[7]={name="Dying Menu Start", loaded=true},
-	[8]={name="Dead", loaded=true},
+	[7]={name="Dying Menu Start", loaded=false},
+	[8]={name="Dead", loaded=false},
 }
 
 local function get_current_game_mode()
@@ -774,7 +926,7 @@ local function get_current_game_mode()
 		else
 			local menu_state = state_menu:get()
 			if menu_state == 0 then
-				if state_link.dying then
+				if state_link.dying or save_context.cur_health <= 0 then
 					mode = 6
 				else
 					if state_sub:get() == 4 then
@@ -800,27 +952,28 @@ local function is_loaded_game_mode()
 end
 
 local function freeze_death()
-	local menu_state = state_main:get()
-	if menu_state == 9 or menu_state == 0xB then
-		state_main:set(9)
-	end
+	state_link.dying = false
 end
 
 -- public facing members
 oot.sav = save_context
 oot.ctx = global_context
+oot.Bit = Bit
 oot.Bits = Bits
 oot.Key = Key
 oot.Settable_Item = Settable_Item
 oot.Settable_Equipment = Settable_Equipment
 oot.Implies_Max = Implies_Max
 oot.Magic_Meter = Magic_Meter
+oot.Fairy_Flag = Fairy_Flag
+oot.Skulltula = Skulltula
 oot.game_modes = game_modes
 oot.get_current_game_mode = get_current_game_mode
 oot.is_loaded_game_mode = is_loaded_game_mode
 oot.freeze_death = freeze_death
+oot.state_fairy_queued = state_fairy_queued
 
--- oot.should_freeze = false
+-- oot.should_freeze = true
 
 -- local dying = false
 -- 	client.SetGameExtraPadding(0, 16, 0, 0)
@@ -840,8 +993,7 @@ oot.freeze_death = freeze_death
 -- 		end
 -- 		if dying then
 -- 			if oot.should_freeze then
--- 				console.log("dying")
--- 				state_menu:set(9)
+-- 				freeze_death()
 -- 			else
 -- 				dying = false
 -- 			end
