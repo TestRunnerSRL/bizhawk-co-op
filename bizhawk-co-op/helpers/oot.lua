@@ -180,7 +180,7 @@ local function Value_Named_Layout(layout, lookup)
 	obj.lookup = lookup
 
 	function obj.get(p)
-		value = layout.get(p)
+		local value = layout.get(p)
 		if lookup[value] then
 	   		value = lookup[value]
 		end
@@ -588,6 +588,7 @@ local Scene_Flags_Type = Layout:create {
 }
 
 local Save_Context = Layout:create {
+	time = 					 e( 0x000C, Int_16 ),
 	max_health =             e( 0x002E, Int_16 ),
 	cur_health =             e( 0x0030, Int_16 ),
 	magic_meter_level =      e( 0x0032, Int_8 ),
@@ -958,6 +959,7 @@ end
 -- public facing members
 oot.sav = save_context
 oot.ctx = global_context
+oot.find_actor = find_actor
 oot.Bit = Bit
 oot.Bits = Bits
 oot.Key = Key
@@ -972,6 +974,111 @@ oot.get_current_game_mode = get_current_game_mode
 oot.is_loaded_game_mode = is_loaded_game_mode
 oot.freeze_death = freeze_death
 oot.state_fairy_queued = state_fairy_queued
+
+-- give the good stuff
+oot.deck_me_out = function()
+	oot.sav.max_health = 0x140
+	oot.sav.cur_health = 0x140
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.cur_magic = 0x60
+	oot.sav.magic_meter_size = 0x60
+	oot.sav.have_magic = true
+	oot.sav.have_double_magic = true
+	oot.sav.biggoron_sword_durable = true
+	oot.sav.double_defense = true
+	oot.sav.rupees = 500
+	oot.sav.double_defense_hearts = 0x140
+	oot.sav.beans_purchased = 0
+
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.magic_meter_level = 0x2
+	oot.sav.magic_meter_level = 0x2
+
+	for dungeon = 0x00, 0x0D do
+		oot.sav.dungeon_items[dungeon].map = true
+		oot.sav.dungeon_items[dungeon].compass = true
+		oot.sav.dungeon_items[dungeon].boss_key = true
+		oot.sav.small_keys[dungeon] = 9
+	end
+
+	oot.sav.inventory.deku_sticks = "Deku Sticks"
+	oot.sav.inventory.deku_nuts = "Deku Nuts"
+	oot.sav.inventory.bombs = "Bombs"
+	oot.sav.inventory.bow = "Bow"
+	oot.sav.inventory.fire_arrow = "Fire Arrow"
+	oot.sav.inventory.dins_fire = "Dins Fire"
+	oot.sav.inventory.slingshot = "Slingshot"
+	oot.sav.inventory.ocarina = "Ocarina of Time"
+	oot.sav.inventory.bombchus = "Bombchus"
+	oot.sav.inventory.hookshot = "Longshot"
+	oot.sav.inventory.ice_arrow = "Ice Arrow"
+	oot.sav.inventory.farores_wind = "Farores Wind"
+	oot.sav.inventory.boomerang = "Boomerang"
+	oot.sav.inventory.lens_of_truth = "Lens of Truth"
+	oot.sav.inventory.magic_beans = "Magic Beans"
+	oot.sav.inventory.megaton_hammer = "Megaton Hammer"
+	oot.sav.inventory.light_arrow = "Light Arrow"
+	oot.sav.inventory.nayrus_love = "Nayrus Love"
+	oot.sav.inventory.bottle1 = "Bug"
+	oot.sav.inventory.bottle2 = "Fish"
+	oot.sav.inventory.bottle3 = "Blue Fire"
+	oot.sav.inventory.bottle4 = "Rutos Letter"
+	oot.sav.inventory.adult_trade = "Sold Out"
+	oot.sav.inventory.child_trade = "Chicken"
+
+	oot.sav.ammo.deku_sticks = 30
+	oot.sav.ammo.deku_nuts = 40
+	oot.sav.ammo.bombs = 40
+	oot.sav.ammo.bow = 50
+	oot.sav.ammo.slingshot = 50
+	oot.sav.ammo.bombchus = 50
+	oot.sav.ammo.magic_beans = 10
+
+	oot.sav.equipment.kokiri_tunic = true
+	oot.sav.equipment.goron_tunic = true
+	oot.sav.equipment.zora_tunic = true
+	oot.sav.equipment.kokiri_boots = true
+	oot.sav.equipment.iron_boots = true
+	oot.sav.equipment.hover_boots = true
+	oot.sav.equipment.kokiri_sword = true
+	oot.sav.equipment.master_sword = true
+	oot.sav.equipment.biggoron_sword = true
+	oot.sav.equipment.broken_sword_icon = true
+	oot.sav.equipment.kokiri_shield = true
+	oot.sav.equipment.hylian_shield = true
+	oot.sav.equipment.mirror_shield = true
+
+	oot.sav.equipment.stick_capacity = "30 Sticks"
+	oot.sav.equipment.nut_capacity = "40 Nuts"
+	oot.sav.equipment.scale = "Golden Scale"
+	oot.sav.equipment.wallet = "Giant's Wallet"
+	oot.sav.equipment.bullet_bag = "Biggest Bullet Seed Bag"
+	oot.sav.equipment.quiver = "Biggest Quiver"
+	oot.sav.equipment.bomb_bag = "Biggest Bomb Bag"
+	oot.sav.equipment.strength = "Golden Gauntlets"
+
+	oot.sav.quest_status.minuet_of_forest = true
+	oot.sav.quest_status.bolero_of_fire = true
+	oot.sav.quest_status.seranade_of_water = true
+	oot.sav.quest_status.requiem_of_spirit = true
+	oot.sav.quest_status.nocturne_of_shadow = true
+	oot.sav.quest_status.prelude_of_light = true
+	oot.sav.quest_status.zeldas_lullaby = true
+	oot.sav.quest_status.eponas_song = true
+	oot.sav.quest_status.sarias_song = true
+	oot.sav.quest_status.suns_song = true
+	oot.sav.quest_status.song_of_time = true
+	oot.sav.quest_status.song_of_storms = true
+
+end
 
 -- oot.should_freeze = true
 
