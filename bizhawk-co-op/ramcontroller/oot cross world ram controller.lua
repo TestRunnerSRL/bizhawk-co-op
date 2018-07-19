@@ -110,7 +110,7 @@ function oot_rom.getMessage()
 		local item = mainmemory.read_u8(0x402003)
 		message = {m = { p = player, i = item } }
 		-- clear the pending item
-		mainmemory.write_u8(0x402001, 0)
+		mainmemory.write_u32_be(0x402000, 0)
 	end
 
 	return message
