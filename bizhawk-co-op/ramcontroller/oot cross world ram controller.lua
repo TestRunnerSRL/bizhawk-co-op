@@ -82,7 +82,8 @@ end
 
 local function processQueue()
 
-	if safeToGiveItem() and not messageQueue.isEmpty() then
+	local pending_item = mainmemory.read_u8(0x402014)
+	if safeToGiveItem() and not messageQueue.isEmpty() and pending_item == 0 then
 		-- pop from the queue and give the item
 		local item = messageQueue.popLeft()
 		get_item(item)
