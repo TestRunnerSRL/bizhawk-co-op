@@ -95,7 +95,7 @@ end
 -- Returns the message as a dictionary object
 -- Returns false if no message is to be send
 function oot_rom.getMessage()
-	message = {}
+	message = false
 
 	-- runs every frame
 	local scene = oot.ctx:rawget('cur_scene'):rawget()
@@ -108,7 +108,7 @@ function oot_rom.getMessage()
 		-- create the message
 		local player = mainmemory.read_u8(0x402002)
 		local item = mainmemory.read_u8(0x402003)
-		message['m'] = { p = player, i = item }
+		message = {m = { p = player, i = item } }
 		-- clear the pending item
 		mainmemory.write_u8(0x402001, 0)
 	end
