@@ -54,9 +54,13 @@ local roomlist = false
 function refreshRooms() 
 	roomlist = host.getRooms()
 	if roomlist then
+		roomlist['(Custom IP)']='(Custom IP)'
 		forms.setdropdownitems(ddRooms, roomlist)
 	else 
-		forms.setdropdownitems(ddRooms, {['(No rooms available)']='(No rooms available)'})
+		forms.setdropdownitems(ddRooms, 
+			{
+				['(Custom IP)']='(Custom IP)'			
+			})
 	end
 
 	updateGUI()
@@ -80,6 +84,12 @@ function updateGUI()
 		forms.setproperty(btnJoin, "Enabled", true)
 		forms.setproperty(btnHost, "Enabled", true)
 		forms.settext(btnHost, "Create Room")
+
+		if forms.gettext(ddRooms) == '(Custom IP)' then
+			forms.setproperty(txtIP, "Enabled", true)
+		else
+			forms.setproperty(txtIP, "Enabled", false)
+		end
 	else 
 		forms.setproperty(btnGetRooms, "Enabled", false)
 		forms.setproperty(ddRamCode, "Enabled", false)
@@ -91,6 +101,7 @@ function updateGUI()
 		forms.setproperty(btnJoin, "Enabled", false)
 		forms.setproperty(btnHost, "Enabled", not host.locked)
 		forms.settext(btnHost, "Lock Room")
+		forms.setproperty(txtIP, "Enabled", false)
 	end
 end
 
@@ -120,7 +131,7 @@ function prepareConnection()
 	config.user = forms.gettext(txtUser)
 	config.pass = forms.gettext(txtPass)
 	config.port = forms.gettext(txtPort)
-	--config.hostname = forms.gettext(txtIP)
+	config.hostname = forms.gettext(txtIP)
 end
 
 
@@ -147,9 +158,9 @@ end
 
 
 --Create the form
-mainform = forms.newform(310, 336, "Bizhawk Co-op")
+mainform = forms.newform(310, 356, "Bizhawk Co-op")
 
-text1 = forms.textbox(mainform, "", 263, 105, nil, 16, 179, true, true, 'Vertical')
+text1 = forms.textbox(mainform, "", 263, 105, nil, 16, 199, true, true, 'Vertical')
 forms.setproperty(text1, "ReadOnly", true)
 --forms.setproperty(text1, "MaxLength", 32767)
 
@@ -168,34 +179,35 @@ else
 		ddRooms = forms.dropdown(mainform, roomlist, 80, 11, 200, 20)
 		forms.setproperty(ddRooms, 'Enabled', true)
 	else 
-		ddRooms = forms.dropdown(mainform, {['(No rooms available)']='(No rooms available)'}, 80, 11, 200, 20)
+		ddRooms = forms.dropdown(mainform, {['(Custom IP)']='(Custom IP)'}, 80, 11, 200, 20)
 		forms.setproperty(ddRooms, 'Enabled', false)
 	end
 end
 lblRooms = forms.label(mainform, "Rooms:", 34, 13)
 
-
-txtUser = forms.textbox(mainform, "", 200, 20, nil, 80, 40, false, false)
-txtPass = forms.textbox(mainform, "", 200, 20, nil, 80, 66, false, false)
-txtPort = forms.textbox(mainform, '50000', 200, 20, nil, 80, 92, false, false)
-ddRamCode = forms.dropdown(mainform, os.dir("bizhawk-co-op\\ramcontroller"), 80, 119, 200, 10)
-lblUser = forms.label(mainform, "Username:", 19, 41)
-lblPass = forms.label(mainform, "Password:", 21, 68)
-lblPort = forms.label(mainform, "Port:", 48, 94)
-lblRamCode = forms.label(mainform, "RAM Script:", 13, 121)
+txtIP = forms.textbox(mainform, "", 200, 20, nil, 80, 40, false, false)
+txtUser = forms.textbox(mainform, "", 200, 20, nil, 80, 64, false, false)
+txtPass = forms.textbox(mainform, "", 200, 20, nil, 80, 88, false, false)
+txtPort = forms.textbox(mainform, '50000', 200, 20, nil, 80, 112, false, false)
+ddRamCode = forms.dropdown(mainform, os.dir("bizhawk-co-op\\ramcontroller"), 80, 138, 200, 10)
+lblIP = forms.label(mainform, "Host IP:", 32, 42)
+lblUser = forms.label(mainform, "Username:", 19, 66)
+lblPass = forms.label(mainform, "Password:", 21, 90)
+lblPort = forms.label(mainform, "Port:", 48, 115)
+lblRamCode = forms.label(mainform, "RAM Script:", 13, 140)
 
 forms.setproperty(txtPass, 'UseSystemPasswordChar', true)
 
 
 btnQuit = forms.button(mainform, "Leave Room", leaveRoom, 
-	15, 146, 85, 25)
+	15, 166, 85, 25)
 forms.setproperty(btnQuit, 'Enabled', false)
 btnHost = forms.button(mainform, "Create Room", 
 	function() prepareConnection(); guiClick["Host Server"] = host.start end, 
-	105, 146, 85, 25)
+	105, 166, 85, 25)
 btnJoin = forms.button(mainform, "Join Room", 
 	function() prepareConnection(); guiClick["Join Server"] = host.join end, 
-	195, 146, 85, 25)
+	195, 166, 85, 25)
 
 sendMessage = {}
 local thread
@@ -214,6 +226,11 @@ while 1 do
 	--End script if form is closed
 	if forms.gettext(mainform) == "" then
 		return
+	end
+
+	if (forms.gettext(ddRooms) ~= prevRoom) then
+		prevRoom = forms.gettext(ddRooms)
+		updateGUI()
 	end
 
 	host.listen()

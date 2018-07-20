@@ -73,7 +73,7 @@ function host.start()
 
 	local ip, setport = server:getsockname()
 	server:settimeout(0) -- non-blocking
-	printOutput("Created server at " .. ip .. " on port " .. setport)
+	printOutput("Created server on port " .. setport)
 
 	local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/create' ..
 		'?user=' .. config.user ..
@@ -174,6 +174,11 @@ function host.join()
 		return false
 	end
 
+	if config.room == '(Custom IP)' and (not config.hostname or config.hostname == '') then
+		printOutput('Enter the IP to join.')
+		return false
+	end
+
 	if not config.user or config.user == '' then
 		printOutput('Set your username before joining a room.')
 		return false
@@ -190,19 +195,20 @@ function host.join()
 
 	coroutine.yield()
 
-	local err
-	config.hostname, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/join' ..
-		'?user=' .. config.room ..
-		'&pass=' .. config.pass)
-	if (err == 200) then
-		printOutput('Joining ' .. config.room)
-	else
-		printOutput('Error joining room [Code: ' .. (err or '') .. ']')
-		host.status = 'Idle'
-		updateGUI()
-		return
+	if config.room ~= '(Custom IP)' then
+		local err
+		config.hostname, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/join' ..
+			'?user=' .. config.room ..
+			'&pass=' .. config.pass)
+		if (err == 200) then
+			printOutput('Joining ' .. config.room)
+		else
+			printOutput('Error joining room [Code: ' .. (err or '') .. ']')
+			host.status = 'Idle'
+			updateGUI()
+			return
+		end
 	end
-	--config.hostname = 'localhost'
 
 	local client, err = socket.connect(config.hostname, config.port)
 	if (client == nil) then
@@ -226,6 +232,7 @@ function host.join()
 	if (sync.syncconfig(client, nil)) then	
 		host.clients[1] = client
 	else
+		host.status = 'Idle'
 		client:close()
 	end
 
