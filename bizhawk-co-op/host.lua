@@ -39,6 +39,8 @@ function host.start()
 		if (config.ramconfig == false) then
 			return
 		end
+	else 
+		config.ramconfig = {}
 	end
 
 	itemcount = ramcontroller.itemcount
@@ -200,6 +202,7 @@ function host.join()
 		updateGUI()
 		return
 	end
+	--config.hostname = 'localhost'
 
 	local client, err = socket.connect(config.hostname, config.port)
 	if (client == nil) then
