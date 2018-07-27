@@ -27,7 +27,7 @@ local player_num = mainmemory.read_u8(0x401C00)
 
 -- gives an item
 local get_item = function(id)
-	mainmemory.write_u8(0x402014, 0x7F)
+	mainmemory.write_u8(0x402018, 0x7F)
 
 	local scene = oot.ctx:rawget('cur_scene'):rawget()
 
@@ -40,38 +40,9 @@ end
 
 oot_rom.itemcount = 1
 
-
-
-local messageQueue = {first = 0, last = -1}
-function messageQueue.isEmpty()
-	return messageQueue.first > messageQueue.last
-end
-function messageQueue.pushLeft (value)
-  local first = messageQueue.first - 1
-  messageQueue.first = first
-  messageQueue[first] = value
-end
-function messageQueue.pushRight (value)
-  local last = messageQueue.last + 1
-  messageQueue.last = last
-  messageQueue[last] = value
-end
-function messageQueue.popLeft ()
-  local first = messageQueue.first
-  if messageQueue.isEmpty() then error("list is empty") end
-  local value = messageQueue[first]
-  messageQueue[first] = nil        -- to allow garbage collection
-  messageQueue.first = first + 1
-  return value
-end
-function messageQueue.popRight ()
-  local last = messageQueue.last
-  if messageQueue.isEmpty() then error("list is empty") end
-  local value = messageQueue[last]
-  messageQueue[last] = nil         -- to allow garbage collection
-  messageQueue.last = last - 1
-  return value
-end
+local sent_items = {}
+local received_items = { [0] = 0 }
+local received_counter = 0
 
 
 local function safeToGiveItem()
@@ -82,11 +53,19 @@ end
 
 local function processQueue()
 
-	local pending_item = mainmemory.read_u8(0x402014)
-	if safeToGiveItem() and not messageQueue.isEmpty() and pending_item == 0 then
-		-- pop from the queue and give the item
-		local item = messageQueue.popLeft()
-		get_item(item)
+	local pending_item = mainmemory.read_u8(0x402018)
+	if safeToGiveItem() and pending_item == 0 then
+		local internal_count = mainmemory.read_u16_be(0x11A660)
+		-- fill the queue to the current counter
+		while received_counter < internal_count do
+			table.insert(received_items, 0)
+			received_counter = received_counter + 1
+		end
+		-- if the internal counter is behind, give the next item
+		if received_counter > internal_count then
+			local item = received_items[internal_count + 1]
+			get_item(item)
+		end
 	end
 end
 
@@ -108,9 +87,14 @@ function oot_rom.getMessage()
 		-- create the message
 		local player = mainmemory.read_u8(0x402002)
 		local item = mainmemory.read_u8(0x402003)
-		message = {m = { p = player, i = item } }
-		-- clear the pending item
+		local key = mainmemory.read_u32_be(0x402004)
+		if not sent_items[key] then
+			message = {m = { p = player, i = item } }
+			sent_items[key] = true
+		end
+		-- clear the pending item data
 		mainmemory.write_u32_be(0x402000, 0)
+		mainmemory.write_u32_be(0x402004, 0)
 	end
 
 	return message
@@ -127,7 +111,8 @@ function oot_rom.processMessage(their_user, message)
 		-- check if this is for this player, otherwise, ignore it
 		if message["m"].p == player_num then
 			-- queue up the item get
-			messageQueue.pushRight(message["m"].i)
+			table.insert(received_items, message["m"].i)
+			received_counter = received_counter + 1
 		end
 	end
 
