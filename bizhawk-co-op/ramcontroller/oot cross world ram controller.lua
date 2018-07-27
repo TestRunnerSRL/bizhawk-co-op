@@ -27,7 +27,7 @@ local player_num = mainmemory.read_u8(0x401C00)
 
 -- gives an item
 local get_item = function(id)
-	mainmemory.write_u8(0x402014, 0x7F)
+	mainmemory.write_u8(0x402018, 0x7F)
 
 	local scene = oot.ctx:rawget('cur_scene'):rawget()
 
@@ -53,7 +53,7 @@ end
 
 local function processQueue()
 
-	local pending_item = mainmemory.read_u8(0x402014)
+	local pending_item = mainmemory.read_u8(0x402018)
 	if safeToGiveItem() and pending_item == 0 then
 		local internal_count = mainmemory.read_u16_be(0x11A660)
 		-- fill the queue to the current counter
@@ -63,7 +63,7 @@ local function processQueue()
 		end
 		-- if the internal counter is behind, give the next item
 		if received_counter > internal_count then
-			local item = received_counter(internal_count + 1)
+			local item = received_items[internal_count + 1]
 			get_item(item)
 		end
 	end
