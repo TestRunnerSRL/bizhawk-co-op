@@ -26,10 +26,6 @@ Items obtained by a player are given to everyone. Items locations are split such
 
 * **Junk Chests** If enabled then item locations not owned by players are filled with random junk items. Having this enabled will make it harder to coordinate who still needs to chest some item location. When disabled they are instead replaced with empty chests. If you find an empty location it means that someone else owns that item location and should check it still.
 
-## Ocarina of Time Single World Co-op
-
-Health and ammo is shared. Items obtained by a player are given to everyone. Items locations are split such that each item can be optained by only one player. Items that are not yours will be replaced with a Green Rupee. Similar to LTTP and MZM coop. It's a bit buggy, but is mostly functional if you don't die.
-
 ## Ocarina of Time Cross World Co-op
 
 Nothing is shared, however there are now player specic items which are mixed between all the worlds. So if you obtain an item for yourself only you get it. If you obtain an item for another player then only they get it. This effectively means everyone will be playing different intermingled seeds.
