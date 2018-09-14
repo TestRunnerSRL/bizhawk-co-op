@@ -30,7 +30,7 @@ Items obtained by a player are given to everyone. Items locations are split such
 
 Nothing is shared, however there are now player specic items which are mixed between all the worlds. So if you obtain an item for yourself only you get it. If you obtain an item for another player then only they get it. This effectively means everyone will be playing different intermingled seeds.
 
-This is only works with [My OoT Rando](https://github.com/TestRunnerSRL/OoT-Randomizer/tree/Dev). Set the Player Count to the number of players and have each people use the same settings and use different Player IDs. The logic will guarantee that every player can beat the game.
+This is only works with [My OoT Rando](https://github.com/TestRunnerSRL/OoT-Randomizer/tree/Dev). Set the Player Count to the number and use the same settings and seed. Each player should then set a unique Player ID (from 1 to the Player Count). The output filename should be the same for every player except the last number which indicates the player ID (excluding `-comp`). The logic will guarantee that every player can beat the game.
 
 ## Setup
 There are two different methods to install.
