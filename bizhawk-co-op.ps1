@@ -2,17 +2,17 @@
 
 $shell_app=new-object -com shell.application
 
-mkdir BizHawk-1.12.0
+mkdir BizHawk-2.3
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 #Download Bizhawk
-$url = "https://github.com/TASVideos/BizHawk/releases/download/1.12.0/BizHawk-1.12.0.zip"
-$filename = "bizHawk-1.12.0.zip"
+$url = "https://github.com/TASVideos/BizHawk/releases/download/2.3/BizHawk-2.3.zip"
+$filename = "bizHawk-2.3.zip"
 Invoke-WebRequest -Uri $url -OutFile $filename -UserAgent [Microsoft.PowerShell.Commands.PSUserAgent]::FireFox
 #Unzip
 $zip_file = $shell_app.namespace((Get-Location).Path + "\$filename")
-$destination = $shell_app.namespace((Get-Location).Path + "\BizHawk-1.12.0")
+$destination = $shell_app.namespace((Get-Location).Path + "\BizHawk-2.3")
 $destination.Copyhere($zip_file.items())
 Remove-Item $filename
 
@@ -43,15 +43,15 @@ $filename = "bizhawk-co-op.zip"
 Invoke-WebRequest -Uri $url -OutFile $filename -UserAgent [Microsoft.PowerShell.Commands.PSUserAgent]::FireFox
 #unzip
 $zip_file = $shell_app.namespace((Get-Location).Path + "\$filename")
-$destination = $shell_app.namespace((Get-Location).Path + "\BizHawk-1.12.0")
+$destination = $shell_app.namespace((Get-Location).Path + "\BizHawk-2.3")
 $destination.Copyhere($zip_file.items())
 Remove-Item $filename
 
 #Copy files into Bizhawk
-Move-Item -Path .\luasocket\mime -Destination .\BizHawk-1.12.0\
-Move-Item -Path .\luasocket\socket -Destination .\BizHawk-1.12.0\
-Move-Item -Path .\luasocket\lua\* -Destination .\BizHawk-1.12.0\Lua\
-Move-Item -Path .\luasocket\lua5.1.dll -Destination .\BizHawk-1.12.0\dll\
+Move-Item -Path .\luasocket\mime -Destination .\BizHawk-2.3\
+Move-Item -Path .\luasocket\socket -Destination .\BizHawk-2.3\
+Move-Item -Path .\luasocket\lua\* -Destination .\BizHawk-2.3\Lua\
+Move-Item -Path .\luasocket\lua5.1.dll -Destination .\BizHawk-2.3\dll\
 Remove-Item .\luasocket -Recurse
 
 Start-Process .\bizhawk_prereqs.exe -Wait
