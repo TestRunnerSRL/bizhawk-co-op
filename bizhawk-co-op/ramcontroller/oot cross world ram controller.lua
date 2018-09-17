@@ -48,7 +48,9 @@ local received_counter = 0
 local function safeToGiveItem()
 	local details
 	_, details = oot.get_current_game_mode()
-	return details.name == "Normal Gameplay"
+	scene = oot.ctx:rawget('cur_scene'):rawget()
+	shop_scenes = {[0x2C]=1, [0x2D]=1, [0x2E]=1, [0x2F]=1, [0x30]=1, [0x31]=1, [0x32]=1, [0x33]=1}
+	return details.name == "Normal Gameplay" and scene_scenes[scene] == nil
 end
 
 local function processQueue()
