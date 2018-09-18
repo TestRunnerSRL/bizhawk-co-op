@@ -194,7 +194,7 @@ lblIP = forms.label(mainform, "Host IP:", 32, 42)
 lblUser = forms.label(mainform, "Username:", 19, 66)
 lblPass = forms.label(mainform, "Password:", 21, 90)
 lblPort = forms.label(mainform, "Port:", 48, 115)
-lblRamCode = forms.label(mainform, "RAM Script:", 13, 140)
+lblRamCode = forms.label(mainform, "Game Script:", 10, 140)
 
 forms.setproperty(txtPass, 'UseSystemPasswordChar', true)
 
