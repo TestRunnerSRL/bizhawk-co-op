@@ -18,7 +18,11 @@ function strsplit(inputstr, sep, max)
   local t={} ; i=1
   for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
     if max and i > max then
-      t[i] = (t[i] or '') .. sep .. str
+      if t[i] then
+        t[i] = t[i] .. sep .. str
+      else
+      	t[i] = str
+      end
     else
       t[i] = str
       i = i + 1

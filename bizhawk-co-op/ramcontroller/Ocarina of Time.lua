@@ -45,6 +45,47 @@ local received_items = { [0] = 0 }
 local received_counter = 0
 
 
+local save_entry = function(key, value)
+	-- opten file
+	local file_loc = '.\\bizhawk-co-op\\savedata\\' .. gameinfo.getromname() .. '.dat'
+	local f = io.open(file_loc, "a")
+
+	if f then
+		f:write(key .. ',' .. string.format("%X", value) .. '\n')
+		f:close()
+	end
+end
+
+
+local load_save = function()
+	-- opten file
+	local file_loc = '.\\bizhawk-co-op\\savedata\\' .. gameinfo.getromname() .. '.dat'
+	local f = io.open(file_loc, "r")
+
+	if f then
+		sent_items = {}
+		received_items = { [0] = 0 }
+		received_counter = 0
+
+		for line in f:lines() do
+			splitline = strsplit(line, ',', 1)
+			key = splitline[1]
+			value = tonumber(splitline[2], 16)
+
+			if key == "sent" then
+				sent_items[value] = true
+			elseif key == "received" then
+				table.insert(received_items, value)
+				received_counter = received_counter + 1
+			end
+		end
+		f:close()
+	end
+end
+
+
+
+
 
 local shop_scenes = {[0x2C]=1, [0x2D]=1, [0x2E]=1, [0x2F]=1, [0x30]=1, [0x31]=1, [0x32]=1, [0x33]=1, [0x42]=1, [0x4B]=1}
 local function safeToGiveItem()
@@ -64,6 +105,7 @@ local function processQueue()
 		while received_counter < internal_count do
 			table.insert(received_items, 0)
 			received_counter = received_counter + 1
+			save_entry("received", 0)
 		end
 		-- if the internal counter is behind, give the next item
 		if received_counter > internal_count then
@@ -95,6 +137,7 @@ function oot_rom.getMessage()
 		if not sent_items[key] then
 			message = {m = { p = player, i = item } }
 			sent_items[key] = true
+			save_entry("sent", key)
 		end
 		-- clear the pending item data
 		mainmemory.write_u32_be(0x402000, 0)
@@ -108,7 +151,7 @@ end
 -- Process a message from another player and update RAM
 function oot_rom.processMessage(their_user, message)
 	if message["i"] then
-		-- do literally nothing
+		load_save()
 	end
 
 	if message["m"] then
@@ -117,6 +160,7 @@ function oot_rom.processMessage(their_user, message)
 			-- queue up the item get
 			table.insert(received_items, message["m"].i)
 			received_counter = received_counter + 1
+			save_entry("received", message["m"].i)
 		end
 	end
 
