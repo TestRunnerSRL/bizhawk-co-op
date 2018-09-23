@@ -200,7 +200,7 @@ lblPass = forms.label(mainform, "Password:", 21, 90)
 lblPort = forms.label(mainform, "Port:", 48, 115)
 lblRamCode = forms.label(mainform, "Game Script:", 10, 140)
 
-forms.setproperty(txtPass, 'UseSystemPasswordChar', true)
+forms.setproperty(txtPass, 'PasswordChar', '*')
 
 
 btnQuit = forms.button(mainform, "Leave Room", leaveRoom, 
