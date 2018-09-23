@@ -77,8 +77,10 @@ function sync.syncconfig(client_socket, their_id)
 
   if my_new_id ~= nil then
     my_ID = my_new_id
+    host.hostname = their_user
   elseif their_id ~= nil then
     my_ID = 1
+    host.hostname = config.user
   end
 
   if newconfig ~= nil then
@@ -113,6 +115,7 @@ function sync.syncRAM(clients)
       for _,client in pairs(clients) do
         messenger.send(client, config.user, messenger.QUIT)
       end
+      gui.addmessage("You closed the connection.")
       error("You closed the connection.")
     end
 
@@ -146,7 +149,21 @@ function sync.syncRAM(clients)
         ram_controller.processMessage(their_user, received_data)
       elseif (received_message_type == messenger.QUIT) then
         --we received quit
-        error(their_user .. " closed the connection.")
+        if their_user == host.hostname then
+          -- host sent the message, room is closed
+          gui.addmessage(their_user .. " closed the room.")
+          error(their_user .. " closed the room.")
+        else
+          -- client sent the message, room is still open
+          gui.addmessage(their_user .. " left the room.")
+          printOutput(their_user .. " left the room.")
+          if host.users[their_user] then
+            local their_id = host.users[their_user]
+            clients[their_id]:close()
+            clients[their_id] = nil
+            host.users[their_user] = nil
+          end
+        end
       elseif (received_message_type == nil) then
         --no message received
       else

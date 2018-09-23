@@ -11,6 +11,7 @@ host.clients = {}
 host.users = {}
 host.status = 'Idle'
 host.locked = false
+host.hostname = nil
 local itemcount
 
 function host.start()
