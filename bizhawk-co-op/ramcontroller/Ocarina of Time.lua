@@ -27,6 +27,17 @@ local player_num = mainmemory.read_u8(0x401C00)
 
 -- gives an item
 local get_item = function(id)
+	if (id == 0) then
+		-- Trying to place padded items
+		printOutput("[Warn] Attempting to give invalid item!")
+
+		-- Don't give the item but increment the internal_count
+		local internal_count = mainmemory.read_u16_be(0x11A660)
+		internal_count = internal_count + 1
+		mainmemory.write_u16_be(0x11A660, internal_count)
+		return
+	end
+
 	mainmemory.write_u8(0x402018, 0x7F)
 
 	local scene = oot.ctx:rawget('cur_scene'):rawget()
@@ -34,7 +45,7 @@ local get_item = function(id)
 	mainmemory.write_u8(override_table_end + 0, scene)
 	mainmemory.write_u8(override_table_end + 1, bit.lshift(player_num, 3))
 	mainmemory.write_u8(override_table_end + 2, 0x7F)
-	mainmemory.write_u8(override_table_end + 3, id)
+	mainmemory.write_u8(override_table_end + 3, id)	
 end
 
 
@@ -106,6 +117,7 @@ local function processQueue()
 			table.insert(received_items, 0)
 			received_counter = received_counter + 1
 			save_entry("received", 0)
+			printOutput("[Warn] Game has more items than in Script's Cache.")
 		end
 		-- if the internal counter is behind, give the next item
 		if received_counter > internal_count then
