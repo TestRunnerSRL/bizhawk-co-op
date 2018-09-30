@@ -130,8 +130,10 @@ function host.listen()
 	if success and their_user then
 		host.clients[clientID] = client
 		host.users[their_user] = clientID
-	else 
-		printOutput("Error in Listen: " .. their_user)
+	else
+		if not success then
+			printOutput("Error in Listen: " .. their_user)
+		end
 		client:close()
 		return false
 	end
