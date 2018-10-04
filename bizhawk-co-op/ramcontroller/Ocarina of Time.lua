@@ -16,12 +16,6 @@ local oot_rom = {}
 
 local playercount = 1
 
--- get the end of the override table
-local override_table_end = 0x401000
-while mainmemory.read_u32_be(override_table_end) ~= 0 do
-	override_table_end = override_table_end + 4
-end
-
 -- get your player num
 local player_num = mainmemory.read_u8(0x401C00)
 
@@ -38,14 +32,8 @@ local get_item = function(item)
 		return
 	end
 
-	mainmemory.write_u8(0x402018, 0x7F)
-
-	local scene = oot.ctx:rawget('cur_scene'):rawget()
-
-	mainmemory.write_u8(override_table_end + 0, scene)
-	mainmemory.write_u8(override_table_end + 1, bit.lshift(player_num, 3))
-	mainmemory.write_u8(override_table_end + 2, 0x7F)
-	mainmemory.write_u8(override_table_end + 3, item.i)	
+	mainmemory.write_u8(0x402018, 0x7F)   -- 7F is the coop item ID
+	mainmemory.write_u8(0x401C01, item.i) -- this is the actual item to give
 end
 
 
@@ -131,6 +119,22 @@ local function processQueue()
 end
 
 
+local table_has_key = function(table, key)
+	for _,item in pairs(table) do
+		local found = true
+		for k,v in pairs(item) do
+			if v ~= key[k] then
+				found = false
+			end
+		end
+		if found then
+			return true
+		end
+	end
+	return false
+end
+
+
 -- Gets a message to send to the other player of new changes
 -- Returns the message as a dictionary object
 -- Returns false if no message is to be send
@@ -138,8 +142,6 @@ function oot_rom.getMessage()
 	local message = false
 
 	-- runs every frame
-	local scene = oot.ctx:rawget('cur_scene'):rawget()
-	mainmemory.write_u8(override_table_end + 0, scene)
 	processQueue()
 
 	-- if there is a item pending to give to another player, make a message for it and clear it
@@ -162,22 +164,6 @@ function oot_rom.getMessage()
 	end
 
 	return message
-end
-
-
-local table_has_key = function(table, key)
-	for _,item in pairs(table) do
-		local found = true
-		for k,v in pairs(item) do
-			if v ~= key[k] then
-				found = false
-			end
-		end
-		if found then
-			return true
-		end
-	end
-	return false
 end
 
 
