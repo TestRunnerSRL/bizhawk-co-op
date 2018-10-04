@@ -26,8 +26,8 @@ end
 local player_num = mainmemory.read_u8(0x401C00)
 
 -- gives an item
-local get_item = function(id)
-	if (id == 0) then
+local get_item = function(item)
+	if (item.i == 0) then
 		-- Trying to place padded items
 		printOutput("[Warn] Attempting to give invalid item!")
 
@@ -45,46 +45,51 @@ local get_item = function(id)
 	mainmemory.write_u8(override_table_end + 0, scene)
 	mainmemory.write_u8(override_table_end + 1, bit.lshift(player_num, 3))
 	mainmemory.write_u8(override_table_end + 2, 0x7F)
-	mainmemory.write_u8(override_table_end + 3, id)	
+	mainmemory.write_u8(override_table_end + 3, item.i)	
 end
 
 
 oot_rom.itemcount = 1
 
 local sent_items = {}
-local received_items = { [0] = 0 }
+local received_items = { [0] = {f = player_num, t = 0, k = 0, i = 0} }
 local received_counter = 0
 
 
 local save_entry = function(key, value)
-	-- opten file
+	if value.i == 0 then
+		return
+	end
+
+	-- open file
 	local file_loc = '.\\bizhawk-co-op\\savedata\\' .. gameinfo.getromname() .. '.dat'
 	local f = io.open(file_loc, "a")
 
 	if f then
-		f:write(key .. ',' .. string.format("%X", value) .. '\n')
+		f:write(key .. ',' .. tabletostring(value) .. '\n')
 		f:close()
 	end
 end
 
 
 local load_save = function()
-	-- opten file
+	-- open file
 	local file_loc = '.\\bizhawk-co-op\\savedata\\' .. gameinfo.getromname() .. '.dat'
 	local f = io.open(file_loc, "r")
 
 	if f then
 		sent_items = {}
-		received_items = { [0] = 0 }
+		received_items = { [0] = {f = player_num, t = 0, k = 0, i = 0} }
 		received_counter = 0
 
 		for line in f:lines() do
-			splitline = strsplit(line, ',', 1)
-			key = splitline[1]
-			value = tonumber(splitline[2], 16)
+			local splitline = strsplit(line, ',', 1)
+			local key = splitline[1]
+			local splitvalue = strsplit(splitline[2], ',')
+			local value = stringtotable(splitvalue)
 
 			if key == "sent" then
-				sent_items[value] = true
+				table.insert(sent_items, value)
 			elseif key == "received" then
 				table.insert(received_items, value)
 				received_counter = received_counter + 1
@@ -93,9 +98,6 @@ local load_save = function()
 		f:close()
 	end
 end
-
-
-
 
 
 local shop_scenes = {[0x2C]=1, [0x2D]=1, [0x2E]=1, [0x2F]=1, [0x30]=1, [0x31]=1, [0x32]=1, [0x33]=1, [0x42]=1, [0x4B]=1}
@@ -114,9 +116,10 @@ local function processQueue()
 		local internal_count = mainmemory.read_u16_be(0x11A660)
 		-- fill the queue to the current counter
 		while received_counter < internal_count do
-			table.insert(received_items, 0)
+			pad_item = {f = player_num, t = 0, k = 0, i = 0}
+			table.insert(received_items, pad_item)
 			received_counter = received_counter + 1
-			save_entry("received", 0)
+			save_entry("received", pad_item)
 			printOutput("[Warn] Game has more items than in Script's Cache.")
 		end
 		-- if the internal counter is behind, give the next item
@@ -132,7 +135,7 @@ end
 -- Returns the message as a dictionary object
 -- Returns false if no message is to be send
 function oot_rom.getMessage()
-	message = false
+	local message = false
 
 	-- runs every frame
 	local scene = oot.ctx:rawget('cur_scene'):rawget()
@@ -146,17 +149,35 @@ function oot_rom.getMessage()
 		local player = mainmemory.read_u8(0x402002)
 		local item = mainmemory.read_u8(0x402003)
 		local key = mainmemory.read_u32_be(0x402004)
-		if not sent_items[key] then
-			message = {m = { p = player, i = item } }
-			sent_items[key] = true
-			save_entry("sent", key)
+
+		message = {m = { f = player_num, t = player, k = key, i = item } }
+		if not table_has_key(sent_items, message.m) then
+			table.insert(sent_items, message.m)
+			save_entry("sent", message.m)
 		end
+
 		-- clear the pending item data
 		mainmemory.write_u32_be(0x402000, 0)
 		mainmemory.write_u32_be(0x402004, 0)
 	end
 
 	return message
+end
+
+
+local table_has_key = function(table, key)
+	for _,item in pairs(table) do
+		local found = true
+		for k,v in pairs(item) do
+			if v ~= key[k] then
+				found = false
+			end
+		end
+		if found then
+			return true
+		end
+	end
+	return false
 end
 
 
@@ -168,11 +189,14 @@ function oot_rom.processMessage(their_user, message)
 
 	if message["m"] then
 		-- check if this is for this player, otherwise, ignore it
-		if message["m"].p == player_num then
-			-- queue up the item get
-			table.insert(received_items, message["m"].i)
-			received_counter = received_counter + 1
-			save_entry("received", message["m"].i)
+		if message["m"].t == player_num then
+			-- Check if this item has been received already
+			if not table_has_key(received_items, message["m"]) then
+				-- queue up the item get
+				table.insert(received_items, message["m"])
+				received_counter = received_counter + 1
+				save_entry("received", message["m"])
+			end
 		end
 	end
 
