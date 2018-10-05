@@ -14,8 +14,6 @@ local oot = require('bizhawk-co-op\\helpers\\oot')
 
 local oot_rom = {}
 
-local playercount = 1
-
 -- get your player num
 local player_num = mainmemory.read_u8(0x401C00)
 
@@ -42,6 +40,7 @@ oot_rom.itemcount = 1
 local sent_items = {}
 local received_items = { [0] = {f = player_num, t = 0, k = 0, i = 0} }
 local received_counter = 0
+local send_player_name = false
 
 
 local save_entry = function(key, value)
@@ -163,14 +162,67 @@ function oot_rom.getMessage()
 		mainmemory.write_u32_be(0x402004, 0)
 	end
 
+	if send_player_name then
+		send_player_name = false
+
+		if not message then
+			message = {}
+		end
+
+		message["n"] = player_num
+	end
+
 	return message
+end
+
+
+local write_name = function(name, id)
+	local name_address = 0x401C03 + (id * 8)
+	local name_index = 0
+
+	for _,c in pairs({string.byte(name, 1, 100)}) do
+		if c >= string.byte('0') and c <= string.byte('9') then
+			c = c - string.byte('0')
+		elseif c >= string.byte('A') and c <= string.byte('Z') then
+			c = c + 0x6A
+		elseif c >= string.byte('a') and c <= string.byte('z') then
+			c = c + 0x64
+		elseif c == string.byte('.') then
+			c = 0xEA
+		elseif c == string.byte('-') then
+			c = 0xE4
+		elseif c == string.byte(' ') then
+			c = 0xDF
+		else
+			c = nil
+		end
+
+		if c ~= nil then
+			mainmemory.write_u8(name_address + name_index, c)
+
+			name_index = name_index + 1
+			if name_index >= 8 then
+				break
+			end
+		end	
+	end
+
+	for i = name_index, 7 do
+		mainmemory.write_u8(name_address + i, 0xDF)
+	end
 end
 
 
 -- Process a message from another player and update RAM
 function oot_rom.processMessage(their_user, message)
 	if message["i"] then
+		write_name(config.user, player_num)
+		send_player_name = true
 		load_save()
+	end
+
+	if message["n"] then
+		write_name(their_user, message["n"])
 	end
 
 	if message["m"] then
@@ -185,7 +237,6 @@ function oot_rom.processMessage(their_user, message)
 			end
 		end
 	end
-
 end
 
 
