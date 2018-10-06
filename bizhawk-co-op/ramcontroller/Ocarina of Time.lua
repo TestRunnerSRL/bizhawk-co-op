@@ -41,6 +41,7 @@ local sent_items = {}
 local received_items = { [0] = {f = player_num, t = 0, k = 0, i = 0} }
 local received_counter = 0
 local send_player_name = false
+local player_names = {}
 
 
 local save_entry = function(key, value)
@@ -80,6 +81,8 @@ local load_save = function()
 			elseif key == "received" then
 				table.insert(received_items, value)
 				received_counter = received_counter + 1
+			elseif key == "name" then
+				player_names[value["i"]] = value["n"]
 			end
 		end
 		f:close()
@@ -134,49 +137,7 @@ local table_has_key = function(table, key)
 end
 
 
--- Gets a message to send to the other player of new changes
--- Returns the message as a dictionary object
--- Returns false if no message is to be send
-function oot_rom.getMessage()
-	local message = false
-
-	-- runs every frame
-	processQueue()
-
-	-- if there is a item pending to give to another player, make a message for it and clear it
-	local pending_item = mainmemory.read_u8(0x402001)
-	if pending_item ~= 0 then
-		-- create the message
-		local player = mainmemory.read_u8(0x402002)
-		local item = mainmemory.read_u8(0x402003)
-		local key = mainmemory.read_u32_be(0x402004)
-
-		message = {m = { f = player_num, t = player, k = key, i = item } }
-		if not table_has_key(sent_items, message.m) then
-			table.insert(sent_items, message.m)
-			save_entry("sent", message.m)
-		end
-
-		-- clear the pending item data
-		mainmemory.write_u32_be(0x402000, 0)
-		mainmemory.write_u32_be(0x402004, 0)
-	end
-
-	if send_player_name then
-		send_player_name = false
-
-		if not message then
-			message = {}
-		end
-
-		message["n"] = player_num
-	end
-
-	return message
-end
-
-
-local write_name = function(name, id)
+local write_name = function(id, name)
 	local name_address = 0x401C03 + (id * 8)
 	local name_index = 0
 
@@ -213,16 +174,69 @@ local write_name = function(name, id)
 end
 
 
+-- Gets a message to send to the other player of new changes
+-- Returns the message as a dictionary object
+-- Returns false if no message is to be send
+function oot_rom.getMessage()
+	local message = false
+
+	-- runs every frame
+	processQueue()
+
+	for id, name in pairs(player_names) do
+		if mainmemory.read_u32_be(0x401C03 + (id * 8) + 0) == 0xDFDFDFDF and 
+		   mainmemory.read_u32_be(0x401C03 + (id * 8) + 4) == 0xDFDFDFDF then
+			write_name(id, name)
+		end
+	end
+
+	-- if there is a item pending to give to another player, make a message for it and clear it
+	local pending_item = mainmemory.read_u8(0x402001)
+	if pending_item ~= 0 then
+		-- create the message
+		local player = mainmemory.read_u8(0x402002)
+		local item = mainmemory.read_u8(0x402003)
+		local key = mainmemory.read_u32_be(0x402004)
+
+		message = {m = { f = player_num, t = player, k = key, i = item } }
+		if not table_has_key(sent_items, message.m) then
+			table.insert(sent_items, message.m)
+			save_entry("sent", message.m)
+		end
+
+		-- clear the pending item data
+		mainmemory.write_u32_be(0x402000, 0)
+		mainmemory.write_u32_be(0x402004, 0)
+	end
+
+	if send_player_name then
+		send_player_name = false
+
+		if not message then
+			message = {}
+		end
+
+		message["n"] = player_num
+	end
+
+	return message
+end
+
+
 -- Process a message from another player and update RAM
 function oot_rom.processMessage(their_user, message)
 	if message["i"] then
-		write_name(config.user, player_num)
+		player_names[player_num] = config.user
+		save_entry("name", {i=player_num, n=config.user})
+		write_name(player_num, config.user)
 		send_player_name = true
 		load_save()
 	end
 
 	if message["n"] then
-		write_name(their_user, message["n"])
+		player_names[message["n"]] = their_user
+		save_entry("name", {i=message["n"], n=their_user})
+		write_name(message["n"], their_user)
 	end
 
 	if message["m"] then
