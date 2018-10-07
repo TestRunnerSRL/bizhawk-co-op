@@ -39,8 +39,9 @@ There are two different methods to install.
 
 ### You will need the following:
 
-* (1) [BizHawk 1.12.0](https://github.com/TASVideos/BizHawk/releases/tag/1.12.0)
-* (2) [BizHawk prerequisite installer](https://github.com/TASVideos/BizHawk-Prereqs/releases/tag/1.4) (run this)
+* (1) [BizHawk 2.3](https://github.com/TASVideos/BizHawk/releases/tag/2.3)
+- The co-op script should be capatible for Bizhawk `1.12.0+` and `2.2.2+`
+* (2) [BizHawk prerequisite installer](https://github.com/TASVideos/BizHawk-Prereqs/releases/tag/2.1) (run this)
 * (3) [luasocket](http://files.luaforge.net/releases/luasocket/luasocket/luasocket-2.0.2/luasocket-2.0.2-lua-5.1.2-Win32-vc8.zip)
 * (4) [bizhawk-co-op](https://github.com/TestRunnerSRL/bizhawk-co-op/releases)
 
@@ -56,7 +57,7 @@ Next, the mzm-coop distribution includes two important things: the main lua scri
 Once this is done, your directory structure should look like this:
 
 ```
-(1) BizHawk-1.12.0/ 
+(1) BizHawk-2.3/ 
 (4)   bizhawk-co-op/
 (1)   dll/
 (3)     lua5.1.dll
@@ -78,7 +79,9 @@ Once this is done, your directory structure should look like this:
 
 ### bizhawk-co-op Configuration
 
-Once you have everything else properly set up, you can run the mzm-coop script to do some final setup before syncing and playing a game. To run the script in BizHawk, go to `Tools -> Lua Console`, and the Lua Console should open up. At this point, I suggest checking `Settings -> Disable Script on Load` and `Settings -> Autoload`. The former will allow you to choose when to start the script after opening it instead of it running automatically, and the latter will open the Lua Console automatically when you load EmuHawk.
+If using Bizhawk 2.2.2+, go to `Config -> Customize... -> Advanced` and set `Lua Core` to `Lua+LuaInterface`. NLua does not support LuaSockets properly. 
+
+Once you have everything else properly set up, you can run the bizhawk-coop script to do some final setup before syncing and playing a game. To run the script in BizHawk, go to `Tools -> Lua Console`, and the Lua Console should open up. At this point, I suggest checking `Settings -> Disable Script on Load` and `Settings -> Autoload`. The former will allow you to choose when to start the script after opening it instead of it running automatically, and the latter will open the Lua Console automatically when you load EmuHawk.
 
 Next, go to `Script -> Open Script...` and open `bizhawk co-op.lua` (it should be in `BizHawk-1.12.0/` root.) Make sure you are running a game, and then double click mzm-coop (or click it and then press the green check mark) to run the script. The window has the following important configurations:
 
