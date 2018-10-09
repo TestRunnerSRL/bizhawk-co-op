@@ -52,6 +52,11 @@ function sync.syncconfig(client_socket, their_id)
 
   --receive their configuration
   local received_message_type, their_user, received_data = messenger.receive(client_socket)
+  if (received_message_type == messenger.ERROR) then
+    printOutput("Configuration consistency check failed: " .. their_user)
+    return false
+  end
+
   if (received_message_type ~= messenger.CONFIG) then
     printOutput("Configuration consistency check failed: Unexpected message type received.")
     return false
@@ -101,38 +106,117 @@ function sync.sendItems(itemlist)
 end
 
 
+local close_client = function(clientID, err)
+  local their_user = "The other player"
+  for name, id in pairs(host.users) do
+    if id == clientID then
+      their_user = name
+      break
+    end
+  end
+  gui.addmessage(their_user .. " is not responding " .. err)
+  printOutput("[Error] " .. their_user .. " is not responding " .. err)
+
+  -- close sockets
+  if clientID == 1 then
+    -- host sent the message, room is closed
+    gui.addmessage("The room is closed.")        
+    host.close()
+    error("The room is closed.")
+  else
+    -- client sent the message, room is still open
+    gui.addmessage(their_user .. " left the room.")
+    printOutput(their_user .. " left the room.")
+    host.client_ping[clientID] = nil
+    host.clients[clientID]:close()
+    host.clients[clientID] = nil
+    host.users[their_user] = nil
+  end
+end
+
+
+local ping_func = function()
+  for clientID, client in pairs(host.clients) do
+    -- send PING message
+    messenger.send(client, config.user, messenger.PING)
+
+    -- check if they have timedout
+    host.client_ping[clientID] = (host.client_ping[clientID] or 4) - 1
+    if host.client_ping[clientID] <= 0 then
+      -- ping timeout
+      close_client(clientID, "[PING TIMEOUT]")
+    end
+  end
+  return false
+end
+
+
+function timer_coroutine(time, callback)
+    local init = os.time()
+    local now
+
+    while true do
+      now = os.time()
+      if os.difftime(now, init) < time then
+        coroutine.yield(false)
+      else
+        init = now
+        coroutine.yield(callback())
+      end
+    end
+end
+local ping_timer = coroutine.create(timer_coroutine)
+coroutine.resume(ping_timer, 1, ping_func)
 
 
 --shares the input between two players, making sure that the same input is
 --pressed for both players on every frame. Sends and receives instructions
 --that must be performed simultaneously; such as pausing and saving
-function sync.syncRAM(clients)
+function sync.syncRAM()
   while true do
+    -- check for PING TIMEOUT and send PINGS
+    if coroutine.status(ping_timer) == "dead" then
+      ping_timer = coroutine.create(timer_coroutine)
+      coroutine.resume(ping_timer, 1, ping_func)
+    else
+      local timer_status, err = coroutine.resume(ping_timer)
+      if not timer_status then
+        printOutput(err)
+      end
+    end
+
     --Send Quit request
     if sendMessage["Quit"] == true then 
       sendMessage["Quit"] = nil
 
-      for _,client in pairs(clients) do
+      for _,client in pairs(host.clients) do
         messenger.send(client, config.user, messenger.QUIT)
       end
       gui.addmessage("You closed the connection.")
+      host.close()
       error("You closed the connection.")
     end
 
     local ram_message = ram_controller.getMessage()
     if ram_message then
-      for _,client in pairs(clients) do
+      for _,client in pairs(host.clients) do
         messenger.send(client, config.user, messenger.RAMEVENT, ram_message)
       end
     end
 
     --receive this frame's input from the other player and other messages
-    for clientID, client in pairs(clients) do
+    for clientID, client in pairs(host.clients) do
       local received_message_type, their_user, received_data = messenger.receive(client, true)
+
+      -- close client on error
+      if (received_message_type == messenger.ERROR) then
+        close_client(clientID, their_user)
+        break
+      end
 
       -- echo messages
       if (received_message_type ~= nil) then
-        for otherClientID, otherClient in pairs(clients) do
+        for otherClientID, otherClient in pairs(host.clients) do
           if (otherClientID ~= clientID) then
             messenger.send(otherClient, their_user, received_message_type, received_data)
           end
@@ -152,18 +236,23 @@ function sync.syncRAM(clients)
         if their_user == host.hostname then
           -- host sent the message, room is closed
           gui.addmessage(their_user .. " closed the room.")
+          host.close()
           error(their_user .. " closed the room.")
         else
           -- client sent the message, room is still open
           gui.addmessage(their_user .. " left the room.")
           printOutput(their_user .. " left the room.")
+          -- disconnect if player is connected directly
           if host.users[their_user] then
             local their_id = host.users[their_user]
-            clients[their_id]:close()
-            clients[their_id] = nil
+            host.client_ping[their_id] = nil
+            host.clients[their_id]:close()
+            host.clients[their_id] = nil
             host.users[their_user] = nil
           end
         end
+      elseif (received_message_type == messenger.PING) then
+        host.client_ping[clientID] = 4
       elseif (received_message_type == nil) then
         --no message received
       else
@@ -171,7 +260,7 @@ function sync.syncRAM(clients)
       end
     end
 
-    clients = coroutine.yield()
+    coroutine.yield()
   end
 end
 

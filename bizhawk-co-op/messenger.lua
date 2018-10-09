@@ -3,8 +3,10 @@
 local messenger = {}
 
 --list of message types
+messenger.ERROR = -1
 messenger.MEMORY = 0
 messenger.CONFIG = 1
+messenger.PING = 2
 messenger.QUIT = 4
 messenger.RAMEVENT = 5
 
@@ -12,6 +14,7 @@ messenger.RAMEVENT = 5
 local message_type_to_char = {
   [messenger.MEMORY] = "m",
   [messenger.RAMEVENT] = "r",
+  [messenger.PING] = "p",
   [messenger.CONFIG] = "c",
   [messenger.QUIT] = "q",
 }
@@ -93,6 +96,10 @@ local encode_message = {
     return tabletostring(data[1])
   end,
 
+  [messenger.PING] = function(data)
+    return ""
+  end,
+
   --a config message expects 1 arguments:
   --the hash of the code used in gameplay sync
   [messenger.CONFIG] = function(data)
@@ -124,6 +131,7 @@ function messenger.send(client_socket, user, message_type, ...)
   --get the function that should encode the message
   local encoder = encode_message[message_type]
   if (encoder == nil) then
+    host.close()
     error("Attempted to send an unknown message type")
   end
   --encode the message
@@ -149,6 +157,10 @@ local decode_message = {
 
   [messenger.RAMEVENT] = function(split_message)
     return stringtotable(split_message)
+  end,
+
+  [messenger.PING] = function(data)
+    return {}
   end,
 
   [messenger.CONFIG] = function(split_message)
@@ -192,14 +204,14 @@ function messenger.receive(client_socket, nonblocking)
   if(message == nil) then
     if err == "timeout" then
       if not nonblocking then 
-        error("Timed out waiting for a message from the other player (the other player may have disconnected.)")
+        return messenger.ERROR, "[TIMEOUT]"
       else
         return nil
       end
     elseif err == "closed" then
-      error("Other player closed the connection.")
+      return messenger.ERROR, "[CLOSED]"
     else
-      error("Unexpected error.")
+      return messenger.ERROR, "[UNEXPECTED ERROR]"
     end
   end
 

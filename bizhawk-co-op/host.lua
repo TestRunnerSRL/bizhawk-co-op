@@ -12,19 +12,33 @@ host.users = {}
 host.status = 'Idle'
 host.locked = false
 host.hostname = nil
+host.client_ping = {}
 local itemcount
 
 function host.start()
 	if (host.status == 'Host') then
-		local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/destroy' ..
-			'?user=' .. config.user ..
-			'&pass=' .. config.pass)
-		if (err == 200) then
-			host.locked = true
-			updateGUI()
-			printOutput('Room locked.')
+		if host.locked then
+			local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/create' ..
+				'?user=' .. config.user ..
+				'&pass=' .. config.pass)
+			if (err == 200) then
+				host.locked = false
+				updateGUI()
+				printOutput('Room unlocked.')
+			else
+				printOutput('Error unlocking room [Code: ' .. (err or '') .. ']')
+			end
 		else
-			printOutput('Error locking room [Code: ' .. (err or '') .. ']')
+			local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/destroy' ..
+				'?user=' .. config.user ..
+				'&pass=' .. config.pass)
+			if (err == 200) then
+				host.locked = true
+				updateGUI()
+				printOutput('Room locked.')
+			else
+				printOutput('Error locking room [Code: ' .. (err or '') .. ']')
+			end
 		end
 
 		return
@@ -59,6 +73,7 @@ function host.start()
 	end
 
 	host.status = 'Host'
+	host.locked = true
 	updateGUI()
 
 	coroutine.yield()
@@ -68,6 +83,7 @@ function host.start()
 	if (server == nil) then
 		printOutput("Error creating server. Port is probably in use.")
 		host.status = 'Idle'
+		host.locked = false
 		updateGUI()
 		return false
 	end
@@ -87,15 +103,16 @@ function host.start()
 		return false
 	end
 
-	host.users[config.user] = 1
 	host.locked = false
+	host.users[config.user] = 1
+	updateGUI()
 
 	return true
 end
 
 
 function host.listen()
-	if (server == nil) then
+	if (server == nil or host.locked) then
 		return false
 	end
 
@@ -122,14 +139,16 @@ function host.listen()
 	--display the client's information
 	printOutput("Player " .. clientID .. " connecting...")
 
-		-- make sure we don't block forever waiting for input
+	-- make sure we don't block forever waiting for input
 	client:settimeout(5)
+	client:setoption('linger', {['on']=false, ['timeout']=0})
 
 	--sync the gameplay
 	local success, their_user = pcall(sync.syncconfig, client, clientID)
 	if success and their_user then
 		host.clients[clientID] = client
 		host.users[their_user] = clientID
+		host.client_ping[clientID] = 4
 	else
 		if not success then
 			printOutput("Error in Listen: " .. their_user)
@@ -191,9 +210,9 @@ function host.join()
 		config.port = 50000
 	end
 
-	host.locked = true
 	host.close()
 	host.status = 'Join'
+	host.locked = true
 	updateGUI()
 
 	coroutine.yield()
@@ -208,6 +227,7 @@ function host.join()
 		else
 			printOutput('Error joining room [Code: ' .. (err or '') .. ']')
 			host.status = 'Idle'
+			host.locked = false
 			updateGUI()
 			return
 		end
@@ -217,6 +237,7 @@ function host.join()
 	if (client == nil) then
 		printOutput("Connection failed: " .. err)
 		host.status = 'Idle'
+		host.locked = false
 		updateGUI()
 		return
 	end
@@ -227,6 +248,7 @@ function host.join()
 
 	--make sure we don't block waiting for a response
 	client:settimeout(5)
+	client:setoption('linger', {['on']=false, ['timeout']=0})
 
 	coroutine.yield()
 	coroutine.yield()
@@ -234,9 +256,12 @@ function host.join()
 	--sync the gameplay
 	if (sync.syncconfig(client, nil)) then	
 		host.clients[1] = client
+		host.client_ping[1] = 4
+		host.users[host.hostname] = 1
 	else
-		host.status = 'Idle'
 		client:close()
+		host.close()
+		updateGUI()
 	end
 
 	return
@@ -246,6 +271,7 @@ end
 --when the script finishes, make sure to close the connection
 function host.close()
 	host.status = 'Idle'
+	host.locked = false
 
 	local changed = false
 
@@ -255,6 +281,7 @@ function host.close()
 		changed = true
 	end
 	host.users = {}
+	host.client_ping = {}
 
 	if (server ~= nil) then
 		server:close()

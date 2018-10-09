@@ -88,6 +88,7 @@ function updateGUI()
 		forms.setproperty(btnJoin, "Enabled", true)
 		forms.setproperty(btnHost, "Enabled", true)
 		forms.settext(btnHost, "Create Room")
+		forms.setproperty(btnHost, "Enabled", true)
 
 		if forms.gettext(ddRooms) == '(Custom IP)' then
 			forms.setproperty(txtIP, "Enabled", true)
@@ -103,8 +104,12 @@ function updateGUI()
 		forms.setproperty(txtPort, "Enabled", false)
 		forms.setproperty(btnQuit, "Enabled", true)
 		forms.setproperty(btnJoin, "Enabled", false)
-		forms.setproperty(btnHost, "Enabled", not host.locked)
-		forms.settext(btnHost, "Lock Room")
+		forms.setproperty(btnHost, "Enabled", true)
+		if host.locked then
+			forms.settext(btnHost, "Unlock Room")
+		else
+			forms.settext(btnHost, "Lock Room")
+		end
 		forms.setproperty(txtIP, "Enabled", false)
 	end
 end
@@ -112,16 +117,6 @@ end
 
 --If the script ends, makes sure the sockets and form are closed
 event.onexit(function () host.close(); forms.destroy(mainform) end)
-
-
---furthermore, override error with a function that closes the connection
---before the error is actually thrown
-local old_error = error
-
-error = function(str, level)
-  host.close()
-  old_error(str, 0)
-end
 
 
 --Load the changes from the form and disable any appropriate components
@@ -267,7 +262,7 @@ while 1 do
 		if thread == nil or coroutine.status(thread) == "dead" then
 			thread = coroutine.create(sync.syncRAM)
 		end
-		local status, err = coroutine.resume(thread, host.clients)
+		local status, err = coroutine.resume(thread)
 
 		if (status == false and err ~= nil) then
 			printOutput("Error during sync: " .. tostring(err))
