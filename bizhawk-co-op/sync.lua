@@ -166,7 +166,7 @@ function timer_coroutine(time, callback)
     end
 end
 local ping_timer = coroutine.create(timer_coroutine)
-coroutine.resume(ping_timer, 1, ping_func)
+coroutine.resume(ping_timer, 10, ping_func)
 
 
 --shares the input between two players, making sure that the same input is
