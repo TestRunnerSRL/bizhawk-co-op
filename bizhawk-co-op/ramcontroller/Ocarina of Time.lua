@@ -21,7 +21,7 @@ local player_num = mainmemory.read_u8(0x401C00)
 local get_item = function(item)
 	if (item.i == 0) then
 		-- Trying to place padded items
-		printOutput("[Warn] Attempting to give invalid item!")
+		printOutput("[Warn] Received an invalid item!")
 
 		-- Don't give the item but increment the internal_count
 		local internal_count = mainmemory.read_u16_be(0x11A660)
@@ -41,6 +41,7 @@ local sent_items = {}
 local received_items = { [0] = {f = player_num, t = 0, k = 0, i = 0} }
 local received_counter = 0
 local send_player_name = false
+local send_player_items = false
 local player_names = {}
 
 
@@ -104,13 +105,16 @@ local function processQueue()
 	local pending_item = mainmemory.read_u8(0x402018)
 	if safeToGiveItem() and pending_item == 0 then
 		local internal_count = mainmemory.read_u16_be(0x11A660)
-		-- fill the queue to the current counter
+		-- if internal counter is ahead, we do not know what items
+		-- that are missing. We will set the internal count down
+		-- to what the script is aware of. The sync timer should
+		-- catch this if there are indeed missing items and we should
+		-- be able to sync up again. It's possible this may cause
+		-- us to receive duplicated items, but this is a more stable
+		-- behavior.
 		while received_counter < internal_count do
-			pad_item = {f = player_num, t = 0, k = 0, i = 0}
-			table.insert(received_items, pad_item)
-			received_counter = received_counter + 1
-			save_entry("received", pad_item)
-			printOutput("[Warn] Game has more items than in Script's Cache.")
+			mainmemory.write_u16_be(0x11A660, received_counter)
+			printOutput("[Warn] Game has more items than Script is aware of.")
 		end
 		-- if the internal counter is behind, give the next item
 		if received_counter > internal_count then
@@ -174,11 +178,55 @@ local write_name = function(id, name)
 end
 
 
+local table_count = function (table)
+	local count = 0
+    for _, _ in pairs(table) do
+        count = count + 1
+    end
+    return count
+end
+
+
+local validate_received_items = function ()
+	local new_received_items = table_count(received_items) - 1
+	if new_received_items ~= received_counter then
+		printOutput("[Warn] Inconsistent table size with counter. Attempting to correct...")
+		received_counter = new_received_items
+	end
+
+	local item_counts = {}
+	for _,item in pairs(received_items) do
+		item_counts[item.f] = (item_counts[item.f] or 0) + 1
+	end
+
+	return item_counts
+end
+
+
+local validation_timer_func = function (time, callback)
+    local init = os.time()
+    local now
+
+    while true do
+    	now = os.time()
+    	if os.difftime(now, init) < time then
+	        coroutine.yield(false)
+	    else
+			init = now
+	    	coroutine.yield(callback())
+	    end
+    end
+end
+local validation_timer = coroutine.create(validation_timer_func)
+coroutine.resume(validation_timer, 60, validate_received_items)
+
+
 -- Gets a message to send to the other player of new changes
 -- Returns the message as a dictionary object
 -- Returns false if no message is to be send
 function oot_rom.getMessage()
-	local message = false
+	local message = {}
+	local has_content = false
 
 	-- runs every frame
 	processQueue()
@@ -198,10 +246,12 @@ function oot_rom.getMessage()
 		local item = mainmemory.read_u8(0x402003)
 		local key = mainmemory.read_u32_be(0x402004)
 
-		message = {m = { f = player_num, t = player, k = key, i = item } }
+		-- create the message
+		has_content = true
+		message["m"] = {[0] = { f = player_num, t = player, k = key, i = item } }
 		if not table_has_key(sent_items, message.m) then
 			table.insert(sent_items, message.m)
-			save_entry("sent", message.m)
+			save_entry("sent", message.m[0])
 		end
 
 		-- clear the pending item data
@@ -209,45 +259,102 @@ function oot_rom.getMessage()
 		mainmemory.write_u32_be(0x402004, 0)
 	end
 
+	-- send my player name if event is queued
 	if send_player_name then
+		has_content = true
 		send_player_name = false
-
-		if not message then
-			message = {}
-		end
-
 		message["n"] = player_num
 	end
 
-	return message
+	-- resend items to queued player
+	if send_player_items ~= false then
+		has_content = true
+		if message["m"] == nil then
+			message["m"] = {}
+		end
+
+		for _,item in pairs(sent_items) do
+			if item.t == send_player_items then
+				table.insert(message["m"], item)
+			end
+		end
+		send_player_items = false
+	end
+
+	-- send received item counts for validation
+	local timer_status, item_counts = coroutine.resume(validation_timer)
+	if item_counts then
+		has_content = true
+		message["c"] = {t=player_num, f=item_counts}
+	end
+
+	-- return the messages
+	if has_content then
+		return message
+	else
+		return false
+	end
 end
 
 
 -- Process a message from another player and update RAM
 function oot_rom.processMessage(their_user, message)
+	-- "i" type is for handling item split events, which
+	-- is not something this ram controller does. However
+	-- this event will happen any time a player joins,
+	-- so we will send player names again and reload the
+	-- script's save data for stability
 	if message["i"] then
 		player_names[player_num] = config.user
 		save_entry("name", {i=player_num, n=config.user})
 		write_name(player_num, config.user)
 		send_player_name = true
+
 		load_save()
 	end
 
+	-- player name message from another player
 	if message["n"] then
 		player_names[message["n"]] = their_user
 		save_entry("name", {i=message["n"], n=their_user})
 		write_name(message["n"], their_user)
 	end
 
+	-- Player item counts from another player:
+	-- We want to check for consistency with the items
+	-- we've sent. If there is an inconsistency, then 
+	-- we'll resend all the items to them.
+	if message["c"] then
+		local sent_count = 0
+		for _,item in pairs(sent_items) do
+			if item.t == message["c"].t then
+				sent_count = sent_count + 1
+			end
+		end
+
+		local other_count = message["c"].f[player_num] or 0
+		if other_count < sent_count then
+			printOutput(their_user .. " is potentially missing items. Attempting to resync...")
+			send_player_items = message["c"].t
+		end
+	end
+
+	-- item get message from another player
 	if message["m"] then
-		-- check if this is for this player, otherwise, ignore it
-		if message["m"].t == player_num then
-			-- Check if this item has been received already
-			if not table_has_key(received_items, message["m"]) then
-				-- queue up the item get
-				table.insert(received_items, message["m"])
-				received_counter = received_counter + 1
-				save_entry("received", message["m"])
+		if table_count(message["m"]) > 1 then
+			printOutput("[Warn] " .. their_user .. " detected you were missing items. Attempting to resync...")
+		end
+
+		for _,item in pairs(message["m"]) do
+			-- check if this is for this player, otherwise, ignore it
+			if item.t == player_num then
+				-- Check if this item has been received already
+				if not table_has_key(received_items, item) then
+					-- queue up the item get
+					table.insert(received_items, item)
+					received_counter = received_counter + 1
+					save_entry("received", item)
+				end
 			end
 		end
 	end
