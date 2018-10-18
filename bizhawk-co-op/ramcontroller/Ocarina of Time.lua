@@ -112,7 +112,7 @@ local function processQueue()
 		-- be able to sync up again. It's possible this may cause
 		-- us to receive duplicated items, but this is a more stable
 		-- behavior.
-		while received_counter < internal_count do
+		if received_counter < internal_count then
 			mainmemory.write_u16_be(0x11A660, received_counter)
 			printOutput("[Warn] Game has more items than Script is aware of.")
 		end
