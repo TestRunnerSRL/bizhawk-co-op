@@ -30,17 +30,21 @@ Items obtained by a player are given to everyone. Items locations are split such
 
 Nothing is shared, however there are now player specic items which are mixed between all the worlds. So if you obtain an item for yourself only you get it. If you obtain an item for another player then only they get it. This effectively means everyone will be playing different intermingled seeds.
 
-This is only works with [My OoT Rando](https://github.com/TestRunnerSRL/OoT-Randomizer/tree/Dev). Set the Player Count to the number and use the same settings and seed. Each player should then set a unique Player ID (from 1 to the Player Count). The output filename should be the same for every player except the last number which indicates the player ID (excluding `-comp`). The logic will guarantee that every player can beat the game.
+This is only works with [My OoT Rando](https://github.com/TestRunnerSRL/OoT-Randomizer/tree/Dev). Set the Player Count to the number and use the same settings and seed. Each player should then set a unique Player ID (from 1 to the Player Count). The output filename should be the **same** for every player except the last number which indicates the player ID (excluding `-comp`). The logic will guarantee that every player can beat the game.  
+* **2-Player File name example:** 
+> - `OoT_R4AR3PKKPKF8UK7DSA_TestSeed_W2P1-comp.z64`
+> - `OoT_R4AR3PKKPKF8UK7DSA_TestSeed_W2P2-comp.z64` 
 
 ## Setup
 There are two different methods to install.
-* Run the PowerShell script. Download [bizhawk-co-op.ps1](https://github.com/TestRunnerSRL/bizhawk-co-op/releases), right-click and select "Run with PowerShell". This will install a fresh copy of BizHawk with all the files downloaded to their correct locations.
-* Maually download the files and move them in the correct locations as described below.
+* Run the PowerShell script, Download it here: [bizhawk-co-op.ps1](https://github.com/TestRunnerSRL/bizhawk-co-op/releases). I suggest placing it wherever you want to install Bizhawk. To install it, right-click it and select "Run with PowerShell". This will download & install a fresh copy of BizHawk with all the required files in their correct locations.  
+**OR**  
+* You can manually download the files, install and move them in the correct locations as described below.
 
 ### You will need the following:
 
 * (1) [BizHawk 2.3](https://github.com/TASVideos/BizHawk/releases/tag/2.3)
-- The co-op script should be capatible for Bizhawk `1.12.0+` and `2.2.2+`
+- The co-op script should be compatible for Bizhawk `1.12.0+` and `2.2.2+`
 * (2) [BizHawk prerequisite installer](https://github.com/TASVideos/BizHawk-Prereqs/releases/tag/2.1) (run this)
 * (3) [luasocket](http://files.luaforge.net/releases/luasocket/luasocket/luasocket-2.0.2/luasocket-2.0.2-lua-5.1.2-Win32-vc8.zip)
 * (4) [bizhawk-co-op](https://github.com/TestRunnerSRL/bizhawk-co-op/releases)
@@ -52,7 +56,7 @@ The locations of files is very important! Make sure to put them in the right pla
 First, in luasocket (3), you should find three folders, a file, and an executable: `lua/`, `mime/`, `socket/`, `lua5.1.dll`, and `lua5.1.exe`.
 Place `mime/` and `socket/` in `BizHawkRoot/`, and place the *contents* of `lua/` in `BizHawkRoot/Lua/`. Place `lua5.1.dll` in `BizHawkRoot/dll/`. You do not need `lua5.1.exe`.
 
-Next, the mzm-coop distribution includes two important things: the main lua script `mzm co-op.lua` and a folder `mzm_coop/`. Place both of these in `BizHawkRoot/`.
+Next, the bizhawk co-op distribution includes two important things: the main lua script `bizhawk co-op.lua` and a folder `bizhawk-co-op/`. Place both of these in `BizHawkRoot/`.
 
 Once this is done, your directory structure should look like this:
 
@@ -83,16 +87,18 @@ If using Bizhawk 2.2.2+, go to `Config -> Customize... -> Advanced` and set `Lua
 
 Once you have everything else properly set up, you can run the bizhawk-coop script to do some final setup before syncing and playing a game. To run the script in BizHawk, go to `Tools -> Lua Console`, and the Lua Console should open up. At this point, I suggest checking `Settings -> Disable Script on Load` and `Settings -> Autoload`. The former will allow you to choose when to start the script after opening it instead of it running automatically, and the latter will open the Lua Console automatically when you load EmuHawk.
 
-Next, go to `Script -> Open Script...` and open `bizhawk co-op.lua` (it should be in `BizHawk-1.12.0/` root.) Make sure you are running a game, and then double click mzm-coop (or click it and then press the green check mark) to run the script. The window has the following important configurations:
+Next, go to `Script -> Open Script...` and open `bizhawk co-op.lua` (it should be in `BizHawk-2.3/` root.) Make sure you are running a game, and then double click bizhawk co-op (or click it and then press the green check mark) to run the script. The window has the following important configurations:
 
-* Host IP and Port: The client should set the IP to the host's IP address, and both players must choose the same port number. The host will have to have port forwarding enabled on this port, and will have to make sure their firewall is not blocking BizHawk. Google is your friend.
+* Host IP and Port: The client should set the IP to the host's IP address, and both players must choose the same port number. The host will have to have port forwarding enabled on this port, and will have to make sure their firewall is not blocking BizHawk. As for setting up port forwarding, Google is your friend. <ins>Note:</ins> This may not apply to everyone but make sure you don't have `UPnP IGD` enabled on your router, this setting could prevent you from joining a host or hosting a room. 
+
+* Game Script: Be sure to choose the appropriate game when creating the room or joining a room.
 
 Make sure to click Save Settings, and you should be ready to play!
 
 
 ## Syncing with bizhawk-coop
 
-The host should first enter their name and password and click `Create Room` to host. Then the clients should click `Refresh` and select the appropriate room, enter their name and the room password, and click `Join Room`. bizhawk-co-op will run some consistency checks on your configurations to make sure you are running the same code. If these all passes then the players will be connected.
+The host should first enter their name and password and click `Create Room` to host. Then the clients should click `Refresh` and select the appropriate room, enter their name and the room password, and click `Join Room`. The bizhawk-co-op script will run some consistency checks on your configurations to make sure you are running the same code. If these all passes then the players will be connected. So if you encounter any issues connecting to one another, make sure all players possess an up to date script.
 
 * `Lock Room`: The Host can click this to prevent prevent anyone else from joining the room. 
 * `Leave Room`: Click this to cleanly close down the connection. Closing the Lua Console or BizHawk directly can result in issues reconnecting for some time.
