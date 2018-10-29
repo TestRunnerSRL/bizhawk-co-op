@@ -89,7 +89,9 @@ Once you have everything else properly set up, you can run the bizhawk-coop scri
 
 Next, go to `Script -> Open Script...` and open `bizhawk co-op.lua` (it should be in `BizHawk-2.3/` root.) Make sure you are running a game, and then double click bizhawk co-op (or click it and then press the green check mark) to run the script. The window has the following important configurations:
 
-* Host IP and Port: The client should set the IP to the host's IP address, and both players must choose the same port number. The host will have to have port forwarding enabled on this port, and will have to make sure their firewall is not blocking BizHawk. As for setting up port forwarding, Google is your friend. <ins>Note:</ins> This may not apply to everyone but make sure you don't have `UPnP IGD` enabled on your router, this setting could prevent you from joining a host or hosting a room. 
+* Host IP and Port: The client should set the IP to the host's IP address, and both players must choose the same port number. The <ins>host</ins> will need to enable port forwarding on the chosen port, and will have to make sure their firewall is not blocking BizHawk. As for setting up port forwarding, Google is your best friend. 
+> > * <ins>Note:</ins> This may not apply to everyone but make sure you don't have `UPnP IGD` enabled on your router, this setting could prevent you from joining a host or hosting a room. 
+> > * <ins>Port forwarding alternative:</ins> "In the event you do not have access to your router to apply port forwarding, try using the program called, "[Hamachi](https://www.vpn.net/)". This program allows you & others to connect to one another as if you are on the same LAN (Local Area Network). Don't let the subscription stuff scare you on their site, all you need is a free account!"
 
 * Game Script: Be sure to choose the appropriate game when creating the room or joining a room.
 
