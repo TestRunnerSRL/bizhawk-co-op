@@ -28,9 +28,9 @@ Items obtained by a player are given to everyone. Items locations are split such
 
 ## Ocarina of Time Cross World Co-op
 
-Nothing is shared, however there are now player specic items which are mixed between all the worlds. So if you obtain an item for yourself only you get it. If you obtain an item for another player then only they get it. This effectively means everyone will be playing different intermingled seeds.
+Nothing is shared, however there are now player specific items which are mixed between all the worlds. So if you obtain an item for yourself only you get it. If you obtain an item for another player then only they get it. This effectively means everyone will be playing different intermingled seeds.
 
-This is only works with [My OoT Rando](https://github.com/TestRunnerSRL/OoT-Randomizer/tree/Dev). Set the Player Count to the number and use the same settings and seed. Each player should then set a unique Player ID (from 1 to the Player Count). The output filename should be the **same** for every player except the last number which indicates the player ID (excluding `-comp`). The logic will guarantee that every player can beat the game.  
+This is only works with [My OoT Rando](https://github.com/TestRunnerSRL/OoT-Randomizer/tree/Dev) or [OoT Rando 3.0 Release](https://github.com/AmazingAmpharos/OoT-Randomizer/releases/tag/v3.0). Set the Player Count to the number and use the same settings and seed. Each player should then set a unique Player ID (from 1 to the Player Count). The output filename should be the **same** for every player except the last number which indicates the player ID (excluding `-comp`). The logic will guarantee that every player can beat the game.  
 * **2-Player File name example:** 
 > - `OoT_R4AR3PKKPKF8UK7DSA_TestSeed_W2P1-comp.z64`
 > - `OoT_R4AR3PKKPKF8UK7DSA_TestSeed_W2P2-comp.z64` 
