@@ -89,6 +89,7 @@ local load_save = function()
 		f:close()
 	end
 end
+load_save()
 
 
 local shop_scenes = {[0x2C]=1, [0x2D]=1, [0x2E]=1, [0x2F]=1, [0x30]=1, [0x31]=1, [0x32]=1, [0x33]=1, [0x42]=1, [0x4B]=1}
@@ -293,8 +294,6 @@ function oot_rom.processMessage(their_user, message)
 		save_entry("name", {i=player_num, n=config.user})
 		write_name(player_num, config.user)
 		send_player_name = true
-
-		load_save()
 	end
 
 	-- player name message from another player
