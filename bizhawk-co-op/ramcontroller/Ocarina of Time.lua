@@ -14,8 +14,18 @@ local oot = require('bizhawk-co-op\\helpers\\oot')
 
 local oot_rom = {}
 
+local coop_addr = 0x400000
+local player_id_addr = coop_addr
+local player_name_id_addr = coop_addr + 1
+local incoming_item_addr = coop_addr + 2
+local outgoing_override_addr = coop_addr + 4
+local player_names_addr = coop_addr + 12
+
+local save_context = 0x11A5D0
+local internal_count_addr = save_context + 0x90
+
 -- get your player num
-local player_num = mainmemory.read_u8(0x401C00)
+local player_num = mainmemory.read_u8(player_id_addr)
 
 -- gives an item
 local get_item = function(item)
@@ -24,14 +34,13 @@ local get_item = function(item)
 		printOutput("[Warn] Received an invalid item!")
 
 		-- Don't give the item but increment the internal_count
-		local internal_count = mainmemory.read_u16_be(0x11A660)
+		local internal_count = mainmemory.read_u16_be(internal_count_addr)
 		internal_count = internal_count + 1
-		mainmemory.write_u16_be(0x11A660, internal_count)
+		mainmemory.write_u16_be(internal_count_addr, internal_count)
 		return
 	end
 
-	mainmemory.write_u8(0x402018, 0x7F)   -- 7F is the coop item ID
-	mainmemory.write_u8(0x401C01, item.i) -- this is the actual item to give
+	mainmemory.write_u16_be(incoming_item_addr, item.i) -- this is the actual item to give
 end
 
 
@@ -102,10 +111,9 @@ local function safeToGiveItem()
 end
 
 local function processQueue()
-
-	local pending_item = mainmemory.read_u8(0x402018)
-	if safeToGiveItem() and pending_item == 0 then
-		local internal_count = mainmemory.read_u16_be(0x11A660)
+	local item_id = mainmemory.read_u16_be(incoming_item_addr)
+	if safeToGiveItem() and item_id == 0 then
+		local internal_count = mainmemory.read_u16_be(internal_count_addr)
 		-- if internal counter is ahead, we do not know what items
 		-- that are missing. We will set the internal count down
 		-- to what the script is aware of. The sync timer should
@@ -113,8 +121,9 @@ local function processQueue()
 		-- be able to sync up again. It's possible this may cause
 		-- us to receive duplicated items, but this is a more stable
 		-- behavior.
+
 		if received_counter < internal_count then
-			mainmemory.write_u16_be(0x11A660, received_counter)
+			mainmemory.write_u16_be(internal_count_addr, received_counter)
 			printOutput("[Warn] Game has more items than Script is aware of.")
 		end
 		-- if the internal counter is behind, give the next item
@@ -143,7 +152,7 @@ end
 
 
 local write_name = function(id, name)
-	local name_address = 0x401C03 + (id * 8)
+	local name_address = player_names_addr + (id * 8)
 	local name_index = 0
 
 	for _,c in pairs({string.byte(name, 1, 100)}) do
@@ -181,10 +190,10 @@ end
 
 local table_count = function (table)
 	local count = 0
-    for _, _ in pairs(table) do
-        count = count + 1
-    end
-    return count
+	for _, _ in pairs(table) do
+		count = count + 1
+	end
+	return count
 end
 
 
@@ -217,31 +226,29 @@ function oot_rom.getMessage()
 	processQueue()
 
 	for id, name in pairs(player_names) do
-		if mainmemory.read_u32_be(0x401C03 + (id * 8) + 0) == 0xDFDFDFDF and 
-		   mainmemory.read_u32_be(0x401C03 + (id * 8) + 4) == 0xDFDFDFDF then
+		if mainmemory.read_u32_be(player_names_addr + (id * 8) + 0) == 0xDFDFDFDF and
+		   mainmemory.read_u32_be(player_names_addr + (id * 8) + 4) == 0xDFDFDFDF then
 			write_name(id, name)
 		end
 	end
 
 	-- if there is a item pending to give to another player, make a message for it and clear it
-	local pending_item = mainmemory.read_u8(0x402001)
-	if pending_item ~= 0 then
+	local key = mainmemory.read_u32_be(outgoing_override_addr)
+	if key ~= 0 then
 		-- create the message
-		local player = mainmemory.read_u8(0x402002)
-		local item = mainmemory.read_u8(0x402003)
-		local key = mainmemory.read_u32_be(0x402004)
-
-		-- create the message
+		local player = mainmemory.read_u8(outgoing_override_addr + 5)
+		local item = mainmemory.read_u16_be(outgoing_override_addr + 6)
 		has_content = true
 		message["m"] = {[0] = { f = player_num, t = player, k = key, i = item } }
+
 		if not table_has_key(sent_items, message.m) then
 			table.insert(sent_items, message.m)
 			save_entry("sent", message.m[0])
 		end
 
 		-- clear the pending item data
-		mainmemory.write_u32_be(0x402000, 0)
-		mainmemory.write_u32_be(0x402004, 0)
+		mainmemory.write_u32_be(outgoing_override_addr, 0)
+		mainmemory.write_u32_be(outgoing_override_addr + 4, 0)
 	end
 
 	-- send my player name if event is queued
@@ -305,7 +312,7 @@ function oot_rom.processMessage(their_user, message)
 
 	-- Player item counts from another player:
 	-- We want to check for consistency with the items
-	-- we've sent. If there is an inconsistency, then 
+	-- we've sent. If there is an inconsistency, then
 	-- we'll resend all the items to them.
 	if message["c"] then
 		local sent_count = 0
