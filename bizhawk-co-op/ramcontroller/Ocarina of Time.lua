@@ -236,8 +236,8 @@ function oot_rom.getMessage()
 	local key = mainmemory.read_u32_be(outgoing_override_addr)
 	if key ~= 0 then
 		-- create the message
-		local player = mainmemory.read_u8(outgoing_override_addr + 5)
-		local item = mainmemory.read_u16_be(outgoing_override_addr + 6)
+		local player = mainmemory.read_u8(outgoing_override_addr + 6)
+		local item = mainmemory.read_u16_be(outgoing_override_addr + 4)
 		has_content = true
 		message["m"] = {[0] = { f = player_num, t = player, k = key, i = item } }
 
