@@ -84,7 +84,7 @@ Once this is done, your directory structure should look like this:
 
 ### bizhawk-co-op Configuration
 
-If using Bizhawk 2.2.2+, go to `Config -> Customize... -> Advanced` and set `Lua Core` to `Lua+LuaInterface`. NLua does not support LuaSockets properly. 
+If using Bizhawk 2.2.2+, go to `Config -> Customize... -> Advanced` and set `Lua Core` to `Lua+LuaInterface`. NLua does not support LuaSockets properly. After changing this setting, you need to close and restart the emulator for the setting to properly update.
 
 Once you have everything else properly set up, you can run the bizhawk-coop script to do some final setup before syncing and playing a game. To run the script in BizHawk, go to `Tools -> Lua Console`, and the Lua Console should open up. At this point, I suggest checking `Settings -> Disable Script on Load` and `Settings -> Autoload`. The former will allow you to choose when to start the script after opening it instead of it running automatically, and the latter will open the Lua Console automatically when you load EmuHawk.
 
