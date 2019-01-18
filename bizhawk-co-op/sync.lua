@@ -9,7 +9,7 @@ my_ID = nil
 
 
 function sync.loadramcontroller()
-  require_status, ram_controller = pcall(function()
+  local require_status, ram_controller = pcall(function()
     return dofile("bizhawk-co-op\\ramcontroller\\" .. config.ramcode)
   end)
   if not require_status then
