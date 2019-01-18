@@ -15,14 +15,25 @@ local oot = require('bizhawk-co-op\\helpers\\oot')
 local oot_rom = {}
 
 local coop_addr = 0x400000
-local player_id_addr = coop_addr
-local player_name_id_addr = coop_addr + 1
-local incoming_item_addr = coop_addr + 2
-local outgoing_override_addr = coop_addr + 4
-local player_names_addr = coop_addr + 12
+local protocol_version_addr = coop_addr
+local player_id_addr = coop_addr + 4
+local player_name_id_addr = coop_addr + 5
+local incoming_item_addr = coop_addr + 6
+local outgoing_key_addr = coop_addr + 8
+local outgoing_item_addr = coop_addr + 12
+local outgoing_player_addr = coop_addr + 14
+local player_names_addr = coop_addr + 16
 
 local save_context = 0x11A5D0
 local internal_count_addr = save_context + 0x90
+
+-- check protocol version
+local script_protocol_version = 1
+local rom_protocol_version = mainmemory.read_u32_be(protocol_version_addr)
+if (rom_protocol_version ~= script_protocol_version) then
+	setmetatable(_G, old_global_metatable)
+	error("This ROM is not compatible with this version of the co-op script\nScript protocol version: "..script_protocol_version.."\nROM protocol version: "..rom_protocol_version)
+end
 
 -- get your player num
 local player_num = mainmemory.read_u8(player_id_addr)
@@ -233,11 +244,11 @@ function oot_rom.getMessage()
 	end
 
 	-- if there is a item pending to give to another player, make a message for it and clear it
-	local key = mainmemory.read_u32_be(outgoing_override_addr)
+	local key = mainmemory.read_u32_be(outgoing_key_addr)
 	if key ~= 0 then
 		-- create the message
-		local player = mainmemory.read_u8(outgoing_override_addr + 6)
-		local item = mainmemory.read_u16_be(outgoing_override_addr + 4)
+		local item = mainmemory.read_u16_be(outgoing_item_addr)
+		local player = mainmemory.read_u16_be(outgoing_player_addr)
 		has_content = true
 		message["m"] = {[0] = { f = player_num, t = player, k = key, i = item } }
 
@@ -247,8 +258,9 @@ function oot_rom.getMessage()
 		end
 
 		-- clear the pending item data
-		mainmemory.write_u32_be(outgoing_override_addr, 0)
-		mainmemory.write_u32_be(outgoing_override_addr + 4, 0)
+		mainmemory.write_u32_be(outgoing_key_addr, 0)
+		mainmemory.write_u16_be(outgoing_item_addr, 0)
+		mainmemory.write_u16_be(outgoing_player_addr, 0)
 	end
 
 	-- send my player name if event is queued
