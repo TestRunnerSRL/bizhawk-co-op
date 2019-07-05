@@ -2,7 +2,7 @@ local guiClick = {}
 
 mainform = nil
 local text1, lblRooms, btnGetRooms, ddRooms, btnQuit, btnJoin, btnHost
-local txtUser, txtPass, lblUser, lblPass, ddRamCode, lblRamCode
+local tempUser, txtUser, txtPass, lblUser, lblPass, ddRamCode, lblRamCode
 local lblPort, txtPort
 config = {}
 
@@ -126,8 +126,15 @@ function prepareConnection()
 	else 
 		config.room = ''
 	end
+	
+	tempUser = forms.gettext(txtUser);
+	printOutput(tempUser)
+	if (tempUser:find("[%w]") == 1) then
+		config.user = tempUser
+	else 
+		printOutput("ERROR: Username may only consist of letters and numbers.")
+	end
 	config.ramcode = forms.gettext(ddRamCode)
-	config.user = forms.gettext(txtUser)
 	config.pass = forms.gettext(txtPass)
 	config.port = forms.gettext(txtPort)
 	config.hostname = forms.gettext(txtIP)
