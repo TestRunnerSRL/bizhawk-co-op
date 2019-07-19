@@ -36,7 +36,7 @@ function sync.syncconfig(client_socket, their_id)
 
   --construct a value representing the sync code that is in use
   local sync_code = ""
-  for line in io.lines("bizhawk co-op.lua") do sync_code = sync_code .. line .. "\n" end
+  for line in io.lines("bizhawk-co-op.lua") do sync_code = sync_code .. line .. "\n" end
   for line in io.lines("bizhawk-co-op\\host.lua") do sync_code = sync_code .. line .. "\n" end
   for line in io.lines("bizhawk-co-op\\messenger.lua") do sync_code = sync_code .. line .. "\n" end
   for line in io.lines("bizhawk-co-op\\sync.lua") do sync_code = sync_code .. line .. "\n" end
