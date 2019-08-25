@@ -14,15 +14,21 @@ local oot = require('bizhawk-co-op\\helpers\\oot')
 
 local oot_rom = {}
 
-local coop_addr = 0x400000
-local protocol_version_addr = coop_addr
-local player_id_addr = coop_addr + 4
-local player_name_id_addr = coop_addr + 5
-local incoming_item_addr = coop_addr + 6
-local outgoing_key_addr = coop_addr + 8
-local outgoing_item_addr = coop_addr + 12
-local outgoing_player_addr = coop_addr + 14
-local player_names_addr = coop_addr + 16
+local rando_context = mainmemory.read_u32_be(0x1C6E90 + 0x15D4) - 0x80000000
+if (rando_context == 0) then
+	setmetatable(_G, old_global_metatable)
+	error("This ROM is not compatible with this version of the co-op script or the game is not fully loaded yet.")
+end
+
+local coop_context = mainmemory.read_u32_be(rando_context + 0x0000) - 0x80000000
+local protocol_version_addr = coop_context + 0
+local player_id_addr        = coop_context + 4
+local player_name_id_addr   = coop_context + 5
+local incoming_item_addr    = coop_context + 6
+local outgoing_key_addr     = coop_context + 8
+local outgoing_item_addr    = coop_context + 12
+local outgoing_player_addr  = coop_context + 14
+local player_names_addr     = coop_context + 16
 
 local save_context = 0x11A5D0
 local internal_count_addr = save_context + 0x90
