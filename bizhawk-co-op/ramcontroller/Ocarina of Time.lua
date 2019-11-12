@@ -24,17 +24,18 @@ local coop_context = mainmemory.read_u32_be(rando_context + 0x0000) - 0x80000000
 local protocol_version_addr = coop_context + 0
 local player_id_addr        = coop_context + 4
 local player_name_id_addr   = coop_context + 5
-local incoming_item_addr    = coop_context + 6
-local outgoing_key_addr     = coop_context + 8
-local outgoing_item_addr    = coop_context + 12
-local outgoing_player_addr  = coop_context + 14
-local player_names_addr     = coop_context + 16
+local incoming_player_addr  = coop_context + 6
+local incoming_item_addr    = coop_context + 8
+local outgoing_key_addr     = coop_context + 12
+local outgoing_item_addr    = coop_context + 16
+local outgoing_player_addr  = coop_context + 18
+local player_names_addr     = coop_context + 20
 
 local save_context = 0x11A5D0
 local internal_count_addr = save_context + 0x90
 
 -- check protocol version
-local script_protocol_version = 1
+local script_protocol_version = 2
 local rom_protocol_version = mainmemory.read_u32_be(protocol_version_addr)
 if (rom_protocol_version ~= script_protocol_version) then
 	setmetatable(_G, old_global_metatable)
@@ -57,6 +58,7 @@ local get_item = function(item)
 		return
 	end
 
+	mainmemory.write_u16_be(incoming_player_addr, item.t)
 	mainmemory.write_u16_be(incoming_item_addr, item.i) -- this is the actual item to give
 end
 
@@ -355,7 +357,7 @@ function oot_rom.processMessage(their_user, message)
 
 		for _,item in pairs(message["m"]) do
 			-- check if this is for this player, otherwise, ignore it
-			if item.t == player_num then
+			if item.t == player_num or item.i == 0xCA then
 				-- Check if this item has been received already
 				if not table_has_key(received_items, item) then
 					-- queue up the item get
