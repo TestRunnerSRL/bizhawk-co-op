@@ -3,7 +3,7 @@
 local sync = {}
 
 local messenger = require("bizhawk-co-op\\messenger")
-local ram_controller 
+local ram_controller
 
 my_ID = nil
 
@@ -17,11 +17,11 @@ function sync.loadramcontroller()
     printOutput("The RAM controller file could not be loaded: " .. ram_controller)
     return false
   end
-  if (ram_controller.getMessage == nil) or 
-     (ram_controller.processMessage == nil) or 
-     (ram_controller.itemcount == nil) then
-        printOutput("The RAM controller file is not valid.")
-        return false
+  if (ram_controller.getMessage == nil) or
+          (ram_controller.processMessage == nil) or
+          (ram_controller.itemcount == nil) then
+    printOutput("The RAM controller file is not valid.")
+    return false
   end
 
   return ram_controller
@@ -31,7 +31,7 @@ end
 --makes sure that configurations are consistent between the two players
 function sync.syncconfig(client_socket, their_id)
   printOutput("Checking configuration consistency...")
-  
+
   local sha1 = require("bizhawk-co-op\\sha1")
 
   --construct a value representing the sync code that is in use
@@ -42,7 +42,7 @@ function sync.syncconfig(client_socket, their_id)
   for line in io.lines("bizhawk-co-op\\sync.lua") do sync_code = sync_code .. line .. "\n" end
   for line in io.lines("bizhawk-co-op\\ramcontroller\\" .. config.ramcode) do sync_code = sync_code .. line .. "\n" end
   local sync_hash = sha1.sha1(sync_code)
-  
+
   -- only host sends config
   if (their_id == nil) then
     config.ramconfig = nil
@@ -65,8 +65,22 @@ function sync.syncconfig(client_socket, their_id)
 
   if (host.users[their_user]) then
     printOutput("Configuration consistency check failed: Username in use")
-    return false   
+    return false
   end
+
+  -- send their player number
+  messenger.send(client_socket, config.user, messenger.PLAYERNUMBER, config.user, forms.gettext(formPlayerNumber))
+
+  -- receive their player number, if nil then it is taken already
+  local _, __, pnum_data = messenger.receive(client_socket)
+
+  if (pnum_data == nil) then
+    printOutput("Configuration consistency check failed: Player Number in use")
+    return false
+  else
+    forms.settext(formPlayerNumber, pnum_received)
+  end
+
 
   local their_sync_hash = received_data[1]
   local my_new_id = received_data[2]
@@ -94,6 +108,7 @@ function sync.syncconfig(client_socket, their_id)
   end
 
   printOutput("Configuration consistency check passed")
+
   return their_user
 end
 
@@ -101,11 +116,15 @@ end
 function sync.sendItems(itemlist)
   for _,client in pairs(host.clients) do
     messenger.send(client, config.user, messenger.RAMEVENT, {["i"]=itemlist})
-  end 
+  end
   ram_controller.processMessage(config.user, {["i"]=itemlist})
-
 end
 
+function sync.sendPlayerList(playerlist)
+  for _,client in pairs(host.clients) do
+    messenger.send(client, config.user, messenger.PLAYERLIST, {["l"]=playerlist})
+  end
+end
 
 local close_client = function(clientID, err)
   local their_user = "The other player"
@@ -121,7 +140,7 @@ local close_client = function(clientID, err)
   -- close sockets
   if clientID == 1 then
     -- host sent the message, room is closed
-    gui.addmessage("The room is closed.")        
+    gui.addmessage("The room is closed.")
     host.close()
     error("The room is closed.")
   else
@@ -132,6 +151,12 @@ local close_client = function(clientID, err)
     host.clients[clientID]:close()
     host.clients[clientID] = nil
     host.users[their_user] = nil
+    host.playerlist[their_user] = nil
+  end
+
+  if config.user == host.hostname then
+    sync.updatePlayerList(host.playerlist)
+    sync.sendPlayerList(host.playerlist)
   end
 end
 
@@ -153,18 +178,18 @@ end
 
 
 function timer_coroutine(time, callback)
-    local init = os.time()
-    local now
+  local init = os.time()
+  local now
 
-    while true do
-      now = os.time()
-      if os.difftime(now, init) < time then
-        coroutine.yield(false)
-      else
-        init = now
-        coroutine.yield(callback())
-      end
+  while true do
+    now = os.time()
+    if os.difftime(now, init) < time then
+      coroutine.yield(false)
+    else
+      init = now
+      coroutine.yield(callback())
     end
+  end
 end
 local ping_timer = coroutine.create(timer_coroutine)
 coroutine.resume(ping_timer, 10, ping_func)
@@ -187,7 +212,7 @@ function sync.syncRAM()
     end
 
     --Send Quit request
-    if sendMessage["Quit"] == true then 
+    if sendMessage["Quit"] == true then
       sendMessage["Quit"] = nil
 
       for _,client in pairs(host.clients) do
@@ -232,6 +257,9 @@ function sync.syncRAM()
       elseif (received_message_type == messenger.RAMEVENT) then
         --we received memory
         ram_controller.processMessage(their_user, received_data)
+      elseif (received_message_type == messenger.PLAYERLIST) then
+        --we received the playerlist
+        sync.updatePlayerList(received_data.l)
       elseif (received_message_type == messenger.QUIT) then
         --we received quit
         if their_user == host.hostname then
@@ -250,7 +278,13 @@ function sync.syncRAM()
             host.clients[their_id]:close()
             host.clients[their_id] = nil
             host.users[their_user] = nil
+            host.playerlist[their_user] = nil
           end
+        end
+        if config.user == host.hostname then
+          host.playerlist[their_user] = nil
+          sync.updatePlayerList(host.playerlist)
+          sync.sendPlayerList(host.playerlist)
         end
       elseif (received_message_type == messenger.PING) then
         host.client_ping[clientID] = 4
@@ -263,6 +297,20 @@ function sync.syncRAM()
 
     coroutine.yield()
   end
+end
+
+function sync.updatePlayerList(playerlist)
+  host.playerlist = playerlist
+  forms.settext(formPlayerList, "")
+  local text = ""
+  local sortedKeys = getKeysSortedByValue(playerlist, function(a, b) return a < b end)
+  for _, k in ipairs(sortedKeys) do
+    if(playerlist[k] ~= nil) then
+      text = text.."P"..playerlist[k]..": "..k.."\r\n"
+    end
+  end
+  forms.settext(formPlayerList, text)
+  forms.settext(formPlayerCount, getTableSize(host.playerlist))
 end
 
 return sync

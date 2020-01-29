@@ -6,37 +6,75 @@ local txtUser, txtPass, lblUser, lblPass, ddRamCode, lblRamCode
 local lblPort, txtPort
 config = {}
 
+formPlayerNumber = nil
+formPlayerCount = nil
+formPlayerList = nil
 
 function strsplit(inputstr, sep, max)
-  if not inputstr then
-    return {}
-  end
+	if not inputstr then
+		return {}
+	end
 
-  if not sep then
-    sep = ","
-  end
-  local t={} ; i=1
-  for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-    if max and i > max then
-      if t[i] then
-        t[i] = t[i] .. sep .. str
-      else
-      	t[i] = str
-      end
-    else
-      t[i] = str
-      i = i + 1
-    end
-  end
-  return t
+	if not sep then
+		sep = ","
+	end
+	local t={} ; i=1
+	for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+		if max and i > max then
+			if t[i] then
+				t[i] = t[i] .. sep .. str
+			else
+				t[i] = str
+			end
+		else
+			t[i] = str
+			i = i + 1
+		end
+	end
+	return t
 end
 
+-- A simple function to count a table, even though some functions
+-- do exist for counting, they do not work in all cases
+function getTableSize(t)
+	local count = 0
+	for _, __ in pairs(t) do
+		count = count + 1
+	end
+	return count
+end
+
+-- Checks if a single dimension table has a value
+-- Returns true if found, false if not found
+function tableHasValue(tbl, val)
+	for _, v in pairs(tbl) do
+		if (tostring(v) == tostring(val)) then
+			return true
+		end
+	end
+
+	return false
+end
+
+-- Returns a table of input tables keys sorted by the values
+-- of the input table. Accepts a sort function for sort ordering
+function getKeysSortedByValue(tbl, sortFunction)
+	local keys = {}
+	for key in pairs(tbl) do
+		table.insert(keys, key)
+	end
+
+	table.sort(keys, function(a, b)
+		return sortFunction(tbl[a], tbl[b])
+	end)
+
+	return keys
+end
 
 local sync = require("bizhawk-co-op\\sync")
 
-
 --Add a line to the output. Inserts a timestamp to the string
-function printOutput(str) 
+function printOutput(str)
 	local text = forms.gettext(text1)
 	local pos = #text
 	forms.setproperty(text1, "SelectionStart", pos)
@@ -55,16 +93,16 @@ host = require("bizhawk-co-op\\host")
 
 
 local roomlist = false
-function refreshRooms() 
+function refreshRooms()
 	roomlist = host.getRooms()
 	if roomlist then
 		roomlist['(Custom IP)']='(Custom IP)'
 		forms.setdropdownitems(ddRooms, roomlist)
-	else 
-		forms.setdropdownitems(ddRooms, 
-			{
-				['(Custom IP)']='(Custom IP)'			
-			})
+	else
+		forms.setdropdownitems(ddRooms,
+				{
+					['(Custom IP)']='(Custom IP)'
+				})
 	end
 
 	updateGUI()
@@ -76,13 +114,14 @@ function updateGUI()
 	if host.status == 'Idle' then
 		if forms.setdropdownitems and roomlist then
 			forms.setproperty(ddRooms, 'Enabled', true)
-		else 
+		else
 			forms.setproperty(ddRooms, 'Enabled', false)
 		end
 		forms.setproperty(btnGetRooms, "Enabled", true)
 		forms.setproperty(ddRamCode, "Enabled", true)
 		forms.setproperty(txtUser, "Enabled", true)
 		forms.setproperty(txtPass, "Enabled", true)
+		forms.setproperty(formPlayerNumber, "Enabled", true)
 		forms.setproperty(txtPort, "Enabled", true)
 		forms.setproperty(btnQuit, "Enabled", false)
 		forms.setproperty(btnJoin, "Enabled", true)
@@ -95,12 +134,13 @@ function updateGUI()
 		else
 			forms.setproperty(txtIP, "Enabled", false)
 		end
-	else 
+	else
 		forms.setproperty(btnGetRooms, "Enabled", false)
 		forms.setproperty(ddRamCode, "Enabled", false)
 		forms.setproperty(ddRooms, "Enabled", false)
 		forms.setproperty(txtUser, "Enabled", false)
 		forms.setproperty(txtPass, "Enabled", false)
+		forms.setproperty(formPlayerNumber, "Enabled", false)
 		forms.setproperty(txtPort, "Enabled", false)
 		forms.setproperty(btnQuit, "Enabled", true)
 		forms.setproperty(btnJoin, "Enabled", false)
@@ -123,7 +163,7 @@ event.onexit(function () host.close(); forms.destroy(mainform) end)
 function prepareConnection()
 	if roomlist then
 		config.room = forms.gettext(ddRooms)
-	else 
+	else
 		config.room = ''
 	end
 	config.ramcode = forms.gettext(ddRamCode)
@@ -138,7 +178,7 @@ end
 function leaveRoom()
 	if (host.connected()) then
 		sendMessage["Quit"] = true
-	else 
+	else
 		host.close()
 	end
 end
@@ -157,9 +197,9 @@ end
 
 
 --Create the form
-mainform = forms.newform(310, 356, "Bizhawk Co-op")
+mainform = forms.newform(470, 375, "Bizhawk Co-op")
 
-text1 = forms.textbox(mainform, "", 263, 105, nil, 16, 199, true, true, 'Vertical')
+text1 = forms.textbox(mainform, "", 263, 105, nil, 16, 225, true, true, 'Vertical')
 forms.setproperty(text1, "ReadOnly", true)
 --forms.setproperty(text1, "MaxLength", 32767)
 
@@ -177,7 +217,7 @@ else
 	if roomlist then
 		ddRooms = forms.dropdown(mainform, roomlist, 80, 11, 200, 20)
 		forms.setproperty(ddRooms, 'Enabled', true)
-	else 
+	else
 		ddRooms = forms.dropdown(mainform, {['(Custom IP)']='(Custom IP)'}, 80, 11, 200, 20)
 		forms.setproperty(ddRooms, 'Enabled', false)
 	end
@@ -187,26 +227,33 @@ lblRooms = forms.label(mainform, "Rooms:", 34, 13)
 txtIP = forms.textbox(mainform, "", 200, 20, nil, 80, 40, false, false)
 txtUser = forms.textbox(mainform, "", 200, 20, nil, 80, 64, false, false)
 txtPass = forms.textbox(mainform, "", 200, 20, nil, 80, 88, false, false)
-txtPort = forms.textbox(mainform, '50000', 200, 20, nil, 80, 112, false, false)
-ddRamCode = forms.dropdown(mainform, os.dir("bizhawk-co-op\\ramcontroller"), 80, 138, 200, 10)
+formPlayerNumber = forms.textbox(mainform, "", 200, 20, nil, 80, 114, false, false)
+txtPort = forms.textbox(mainform, '50000', 200, 20, nil, 80, 138, false, false)
+ddRamCode = forms.dropdown(mainform, os.dir("bizhawk-co-op\\ramcontroller"), 80, 162, 200, 10)
 lblIP = forms.label(mainform, "Host IP:", 32, 42)
 lblUser = forms.label(mainform, "Username:", 19, 66)
 lblPass = forms.label(mainform, "Password:", 21, 90)
-lblPort = forms.label(mainform, "Port:", 48, 115)
-lblRamCode = forms.label(mainform, "Game Script:", 10, 140)
-
+forms.label(mainform, "Player #:", 29, 115)
+lblPort = forms.label(mainform, "Port:", 48, 140)
+lblRamCode = forms.label(mainform, "Game Script:", 10, 165)
 forms.setproperty(txtPass, 'PasswordChar', '*')
 
-
-btnQuit = forms.button(mainform, "Leave Room", leaveRoom, 
-	15, 166, 85, 25)
+btnQuit = forms.button(mainform, "Leave Room", leaveRoom, 15, 190, 85, 25)
 forms.setproperty(btnQuit, 'Enabled', false)
-btnHost = forms.button(mainform, "Create Room", 
-	function() prepareConnection(); guiClick["Host Server"] = host.start end, 
-	105, 166, 85, 25)
-btnJoin = forms.button(mainform, "Join Room", 
-	function() prepareConnection(); guiClick["Join Server"] = host.join end, 
-	195, 166, 85, 25)
+
+btnHost = forms.button(mainform, "Create Room",
+		function() prepareConnection(); guiClick["Host Server"] = host.start end,
+		105, 190, 85, 25)
+
+btnJoin = forms.button(mainform, "Join Room",
+		function() prepareConnection(); guiClick["Join Server"] = host.join end,
+		195, 190, 85, 25)
+
+
+forms.label(mainform, "Players:", 288, 10, 45, 15)
+formPlayerCount = forms.label(mainform, "...", 330, 10, 40, 15)
+formPlayerList = forms.textbox(mainform, "", 155, 305, nil, 290, 25, true, true, 'Vertical')
+forms.setproperty(formPlayerList, "ReadOnly", true)
 
 sendMessage = {}
 local thread
@@ -252,7 +299,7 @@ while 1 do
 				else
 					printOutput("Error during " .. v .. ": No error message")
 				end
-			end						
+			end
 		end
 	end
 
