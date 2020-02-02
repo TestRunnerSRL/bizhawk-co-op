@@ -27,10 +27,9 @@ local inventoryItemVals = {
     [0x0D] = 'Boomrang',
 }
 
--- All inventory item transmissions are done over the B-item address, since items could appear/disappear from other
--- inventory slots as players equip.
--- Assumption: Only one inventory item may be acquired in a single transmission interval
 local B_SLOT_ADDR = 0xDB00
+
+local NEW_INV_ITEMS_KEY = 'New inventory Items List'
 
 local inventorySlotInfos = { --Order is important, since we want to add items to the first available slot
     {address = B_SLOT_ADDR, name = 'B Slot'},
@@ -154,7 +153,7 @@ end
 
 function giveInventoryItem(itemVal)
 
-    local firstEmptySLotAddr = nil
+    local firstEmptySlotAddr = nil
 
     for _, slotInfo in ipairs(inventorySlotInfos) do
         local slotAddr = slotInfo['address']
@@ -162,18 +161,22 @@ function giveInventoryItem(itemVal)
         if thisSlotsItem == itemVal then
             return -- We already have this item
         end
-        if thisSlotsItem == NO_ITEM_VALUE then
-            firstEmptySLotAddr = slotAddr
-            return
+        if thisSlotsItem == NO_ITEM_VALUE and not firstEmptySlotAddr then
+            firstEmptySlotAddr = slotAddr
         end
     end
 
-    if not firstEmptySLotAddr then
+    if not firstEmptySlotAddr then
         console.log(string.format('ERROR: Attempt to award item %s, but all inventory slots are full!', inventoryItemVals[itemVal]))
         return
     end
 
-    writeRAM(firstEmptySLotAddr, 1, itemVal)
+
+    if config.ramconfig.verbose then
+        printOutput(string.format('About to write item val %s (%s) to addr %s', asString(itemVal), asString(inventoryItemVals[itemVal]), asString(firstEmptySlotAddr)))
+    end
+
+    writeRAM(firstEmptySlotAddr, 1, itemVal)
 end
 
 local ramItemAddrs = {
@@ -301,7 +304,7 @@ function getGUImessage(address, prevVal, newVal, user)
         elseif ram == 'Inventory Slot' then
             gui.addmessage(user .. ': ' .. inventoryItemVals[newVal])
         else 
-            gui.addmessage('Unknown item ram type')
+            gui.addmessage(string.format('Unknown item ram type %s', itemType))
         end
     end
 end
@@ -322,6 +325,9 @@ function getPossessedItemsTable(itemsState)
     for _, slotInfo in pairs(inventorySlotInfos) do
         local slotAddr = slotInfo['address']
         local itemInSlot = itemsState[slotAddr]
+        if not itemInSlot then
+            error(string.format('Unable to find item in slot %s. Items state: %s', asString(slotAddr), asString(itemsState)))
+        end
         if itemInSlot ~= NO_ITEM_VALUE then
             itemsTable[itemInSlot] = true
         end
@@ -409,21 +415,22 @@ function getItemStateChanges(prevState, newState)
     local prevPossessedItems = getPossessedItemsTable(prevState)
     local newPossessedItems = getPossessedItemsTable(newState)
 
+    local listOfNewlyAcquiredItemVals = {}
+
     for itemVal, isPrevPossessed in pairs(prevPossessedItems) do
         local isNewPossessed = newPossessedItems[itemVal]
         if not isPrevPossessed and isNewPossessed then
+
             if config.ramconfig.verbose then
                 printOutput(string.format('Discovered that item [%s] is newly possessed.', itemVal))
             end
             changes = true
-            if ramevents[B_SLOT_ADDR] then -- Log an error if the assumption that only one item can be acquired at a time is violated
-                local existingItemName = inventoryItemVals[ramevents[B_SLOT_ADDR]]
-                local refusedItemName = inventoryItemVals[itemVal]
-                error(string.format("Error: Multiple items were acquired simultaneously. Already transmitting [%s]. Unable to transmit [%s]. ", existingItemName, refusedItemName))
-            else
-                ramevents[B_SLOT_ADDR] = itemVal
-            end
+            table.insert(listOfNewlyAcquiredItemVals, itemVal)
         end
+    end
+
+    if table.getn(listOfNewlyAcquiredItemVals) > 0 then
+        ramevents[NEW_INV_ITEMS_KEY] = listOfNewlyAcquiredItemVals
     end
 
     if (changes) then
@@ -439,6 +446,19 @@ end
 
 -- set a list of ram events
 function applyItemStateChanges(prevRAM, their_user, newEvents)
+
+    -- First, handle the newly acquired inventory items
+    local listOfNewlyAcquiredItemVals = newEvents[NEW_INV_ITEMS_KEY]
+    if listOfNewlyAcquiredItemVals then
+        for _,itemVal in ipairs(listOfNewlyAcquiredItemVals) do
+            if config.ramconfig.verbose then
+                printOutput(string.format('About to award item: %s', asString(inventoryItemVals[itemVal])))
+            end
+            giveInventoryItem(itemVal)
+        end
+    end
+    newEvents[NEW_INV_ITEMS_KEY] = nil
+
     for address, val in pairs(newEvents) do
         local newval
 
@@ -461,8 +481,6 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
                     newval = bit.clear(newval, b)
                 end
             end
-        elseif address == B_SLOT_ADDR then
-            giveInventoryItem(val)
         else 
             printOutput(string.format('Unknown item type [%s] for item %s (Address: %s)', itemType, ramItemAddrs[address].name, address))
             newval = prevRAM[address]
