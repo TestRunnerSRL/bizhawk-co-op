@@ -47,11 +47,13 @@ local inventorySlotInfos = { --Order is important, since we want to add items to
     {address = 0xDB0B, name = 'Inv 10'},
 }
 
-local gameStateAddr = 0xDB50
-local gameStateVals = {
-    [0x00] = 'Title screen',
-    [0xFF] = 'System bootup'
-} -- Otherwise, assume game is running
+local gameStateAddr = 0xDB95
+-- Source https://github.com/zladx/LADX-Disassembly/blob/4ae748bd354f94ed2887f04d4014350d5a103763/src/constants/gameplay.asm#L22-L48
+local gameStateVals = { -- Only states where we can do events are listed
+    [0x07] = 'Map Screen',
+    [0x0B] = 'Main Gameplay',
+    [0x0C] = 'Inventory Screen',
+}
 
 local menuStateAddr = 0xDB9A
 local menuStateVals = {
@@ -61,10 +63,10 @@ local menuStateVals = {
 }
 
 function isGameLoaded(gameStateVal)
-    return gameStateVals[gameMode] == nil
+    return gameStateVals[gameStateVal] ~= nil
 end
 
-function isGameLoaded()
+function isGameLoadedWithFetch() -- Grr. Why doesn't lua support function overloading??
     return isGameLoaded(readRAM(gameStateAddr))
 end
 
@@ -76,12 +78,32 @@ function tableCount(table)
     return count
 end
 
-local prevRAM = nil
-local gameMode
-local prevGameMode = nil
+function tableString(table)
 
-local gameLoaded
-local prevGameLoaded = true
+    local returnStr = '{'
+    for key,value in pairs(table) do
+        returnStr = returnStr..string.format('%s=%s,', asString(key), asString(value))
+    end
+    returnStr = returnStr..'}'
+    return returnStr
+end
+
+
+function asString(object)
+
+    if type(object) == 'table' then
+        return tableString(object)
+    elseif type(object) == 'number' then
+        return string.format('%x', object)
+    else
+        return tostring(object)
+    end
+end
+
+local prevRAM = nil
+
+local gameLoaded = false
+local prevGameLoaded = false
 local dying = false
 local prevmode = 0
 local ramController = {}
@@ -245,18 +267,23 @@ function getGUImessage(address, prevVal, newVal, user)
     -- Only display the message if there is a name for the address
     local name = ramItemAddrs[address].name
     if name and prevVal ~= newVal then
+
+        local itemType = ramItemAddrs[address].type
+
         -- If boolean, show 'Removed' for false
-        if ramItemAddrs[address].type == 'bool' then                
+        if itemType == 'bool' then
             gui.addmessage(user .. ': ' .. name .. (newVal == 0 and 'Removed' or ''))
+
         -- If numeric, show the indexed name or name with value
-        elseif ramItemAddrs[address].type == 'num' then
+        elseif itemType == 'num' then
             if (type(name) == 'string') then
                 gui.addmessage(user .. ': ' .. name .. ' = ' .. newVal)
             elseif (name[newVal]) then
                 gui.addmessage(user .. ': ' .. name[newVal])
             end
+
         -- If bitflag, show each bit: the indexed name or bit index as a boolean
-        elseif ramItemAddrs[address].type == 'bit' then
+        elseif itemType == 'bitmask' then
             for b=0,7 do
                 local newBit = bit.check(newVal, b)
                 local prevBit = bit.check(prevVal, b)
@@ -269,16 +296,10 @@ function getGUImessage(address, prevVal, newVal, user)
                     end
                 end
             end
-        -- if delta, show the indexed name, or the differential
-        elseif ramItemAddrs[address].type == 'delta' then
-            local delta = newVal - prevVal
-            if (delta > 0) then
-                if (type(name) == 'string') then
-                    gui.addmessage(user .. ': ' .. name .. (delta > 0 and ' +' or ' ') .. delta)
-                elseif (name[newVal]) then
-                    gui.addmessage(user .. ': ' .. name[newVal])
-                end
-            end
+
+        -- If an inventory item, just show the inventory item name
+        elseif ram == 'Inventory Slot' then
+            gui.addmessage(user .. ': ' .. inventoryItemVals[newVal])
         else 
             gui.addmessage('Unknown item ram type')
         end
@@ -332,11 +353,11 @@ function getTransmittableItemsState()
 
             local ramval = readRAM(address, item.size)
 
-            newRAM[address] = ramval
+            transmittableTable[address] = ramval
         end
     end
 
-    return newRAM
+    return transmittableTable
 end
 
 
@@ -348,6 +369,10 @@ function getItemStateChanges(prevState, newState)
     for address, val in pairs(newState) do
         -- If change found
         if (prevState[address] ~= val) then
+
+            if config.ramconfig.verbose then
+                printOutput(string.format('Updating address [%s] to value [%s].', asString(address), asString(val)))
+            end
             getGUImessage(address, prevState[address], val, config.user)
 
             local itemType = ramItemAddrs[address].type
@@ -373,7 +398,7 @@ function getItemStateChanges(prevState, newState)
                 end
                 ramevents[address] = changedBits
                 changes = true
-            elseif itemType == 'Inventory Item' then
+            elseif itemType == 'Inventory Slot' then
                 -- Do nothing. We do a separate check for new inventory items below
             else 
                 console.log(string.format('Unknown item type [%s] for item %s (Address: %s)', itemType, ramItemAddrs[address].name, address))
@@ -387,6 +412,9 @@ function getItemStateChanges(prevState, newState)
     for itemVal, isPrevPossessed in pairs(prevPossessedItems) do
         local isNewPossessed = newPossessedItems[itemVal]
         if not isPrevPossessed and isNewPossessed then
+            if config.ramconfig.verbose then
+                printOutput(string.format('Discovered that item [%s] is newly possessed.', itemVal))
+            end
             changes = true
             if ramevents[B_SLOT_ADDR] then -- Log an error if the assumption that only one item can be acquired at a time is violated
                 local existingItemName = inventoryItemVals[ramevents[B_SLOT_ADDR]]
@@ -399,6 +427,9 @@ function getItemStateChanges(prevState, newState)
     end
 
     if (changes) then
+        if config.ramconfig.verbose then
+            printOutput(string.format('Found events to send: %s', asString(ramevents)))
+        end
         return ramevents
     else
         return false
@@ -412,7 +443,7 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
         local newval
 
         if config.ramconfig.verbose then
-            gui.addmessage(string.format('Applying state change [%s=%s]', address, val))
+            printOutput(string.format('Applying state change [%s=%s]', asString(address), asString(val)))
         end
         -- If boolean type value
         if ramItemAddrs[address].type == 'bool' then
@@ -440,7 +471,7 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
         -- Write the new value
         getGUImessage(address, prevRAM[address], newval, their_user)
         prevRAM[address] = newval
-        local gameLoaded = isGameLoaded()
+        local gameLoaded = isGameLoadedWithFetch()
         if gameLoaded then
             writeRAM(address, ramItemAddrs[address].size, newval)
         end
@@ -489,11 +520,10 @@ end
 -- Returns false if no message is to be send
 function ramController.getMessage()
     -- Check if game is playing
-    local gameLoaded = isGameLoaded()
+    local gameLoaded = isGameLoadedWithFetch()
 
     -- Don't check for updated when game is not running
     if not gameLoaded then
-        prevGameMode = gameMode
         return false
     end
 
@@ -513,16 +543,16 @@ function ramController.getMessage()
     -- Initilize previous RAM frame if missing
     if prevItemState == nil then
         if config.ramconfig.verbose then
-            gui.addmessage('Doing first-time item state init')
+            printOutput('Doing first-time item state init')
         end
         prevItemState = getTransmittableItemsState()
     end
 
     -- Game was just loaded, restore to previous known RAM state
-    if (gameLoaded and not isGameLoaded(prevGameMode)) then
+    if (gameLoaded and not prevGameLoaded) then
          -- get changes to prevRAM and apply them to game RAM
         if config.ramconfig.verbose then
-            gui.addmessage('Performing save restore')
+            printOutput('Performing save restore')
         end
         local newItemState = getTransmittableItemsState()
         local message = getItemStateChanges(newItemState, prevItemState)
@@ -533,21 +563,21 @@ function ramController.getMessage()
     end
 
     -- Load all queued changes
-    if config.ramconfig.verbose then
-        gui.addmessage('Processing all queued messages...')
-    end
     while not messageQueue.isEmpty() do
+        if config.ramconfig.verbose then
+            printOutput('Processing incoming message')
+        end
         local nextmessage = messageQueue.popLeft()
         ramController.processMessage(nextmessage.their_user, nextmessage.message)
     end
 
     -- Get current RAM events
-    local newRAM = getTransmittableItemsState()
-    local message = getItemStateChanges(prevItemState, newRAM)
+    local newItemState = getTransmittableItemsState()
+    local message = getItemStateChanges(prevItemState, newItemState)
 
     -- Update the RAM frame pointer
-    prevRAM = newRAM
-    prevGameMode = gameMode
+    prevItemState = newItemState
+    prevGameLoaded = gameLoaded
 
     return message
 end
@@ -556,12 +586,18 @@ end
 -- Process a message from another player and update RAM
 function ramController.processMessage(their_user, message)
 
-    if config.ramconfig.verbose then
-        gui.addmessage(string.format('Processing message [%s] from [%s].', message, their_user))
+    if message['i'] then
+        message['i'] = nil -- Item splitting is not supported yet
     end
-    if isGameLoaded() then
-        prevRAM = applyItemStateChanges(prevRAM, their_user, message)
+
+    if config.ramconfig.verbose then
+        printOutput(string.format('Processing message [%s] from [%s].', asString(message), asString(their_user)))
+    end
+    if isGameLoadedWithFetch() then
+        printOutput("Game loaded. About to do the message")
+        prevItemState = applyItemStateChanges(prevItemState, their_user, message)
     else
+        printOutput("Game not loaded. Putting the message back on the queue")
         messageQueue.pushRight({['their_user']=their_user, ['message']=message}) -- Put the message back in the queue so we reprocess it once the game is loaded
     end
 end
@@ -582,10 +618,11 @@ function ramController.getConfig()
 
     forms.setproperty(mainform, 'Enabled', false)
 
-    local configform = forms.newform(145, 165, '')
+    local configform = forms.newform(200, 190, '')
     local chkAmmo = forms.checkbox(configform, 'Ammo', 10, 10)
     local chkHealth = forms.checkbox(configform, 'Health', 10, 40)
-    local logLevelDropdown forms.dropdown(configform, {'Default', LOG_LEVEL_VERBOSE}, 10, 70, 100, 35)
+    local logLevelLabel = forms.label(configform, 'Messages', 10, 73, 60, 40)
+    local logLevelDropdown = forms.dropdown(configform, {'Default', LOG_LEVEL_VERBOSE}, 75, 70, 100, 35)
     local btnOK = forms.button(configform, 'OK', configOK, 10, 110, 50, 23)
     local btnCancel = forms.button(configform, 'Cancel', configCancel, 70, 110, 50, 23)
 
@@ -596,7 +633,7 @@ function ramController.getConfig()
     local config = {
         ammo = forms.ischecked(chkAmmo),
         health = forms.ischecked(chkHealth),
-        verbose = forms.GetText(logLevelDropdown) == LOG_LEVEL_VERBOSE
+        verbose = forms.gettext(logLevelDropdown) == LOG_LEVEL_VERBOSE
     }
 
     forms.destroy(configform)
