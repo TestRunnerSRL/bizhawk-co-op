@@ -1,6 +1,7 @@
 local NO_ITEM_VALUE = 0x00
 
 local MAX_NUM_HEART_CONTAINERS = 0x0E -- 14
+local MAX_NUM_HEART_PIECES = 0x04
 local MAX_SWORD_LEVEL = 0x02
 local MAX_SHIELD_LEVEL = 0x02
 local MAX_BRACELET_LEVEL = 0x02
@@ -56,7 +57,7 @@ local gameStateVals = { -- Only states where we can do events are listed
 
 local menuStateAddr = 0xDB9A
 local menuStateVals = {
-    [0x00] = {desc = 'Pause Menu', transmitEvents = false}, -- TODO change this for inventory insanity
+    [0x00] = {desc = 'Pause Menu', transmitEvents = true},
     [0x80] = {desc = 'Game running/Title Screen Running', transmitEvents = true},
     [0xFF] = {desc = 'Death/Save+Quit Menu', transmitEvents = false}, 
 }
@@ -184,12 +185,51 @@ local ramItemAddrs = {
     [0xDB0D] = {name = 'Potion', type = 'bool'},
     [0xDB0E] = {name = 'Trading Item', type = 'num', maxVal = MAX_TRADING_ITEM},
     [0xDB0F] = {name = 'Number of secret shells', type = 'num'},
-    [0xDB10] = {name = 'Slime Key', type = 'bool'},
     [0xDB11] = {name = 'Tail Key', type = 'bool'},
     [0xDB12] = {name = 'Angler Key', type = 'bool'},
     [0xDB13] = {name = 'Face Key', type = 'bool'},
     [0xDB14] = {name = 'Birdie Key', type = 'bool'},
     [0xDB15] = {name = 'Number of golden leaves', type = 'num', maxVal = MAX_GOLDEN_LEAVES},
+    [0xDB16] = {name = 'Tail Cave Map', type = 'bool'},
+    [0xDB17] = {name = 'Tail Cave Compass', type = 'bool'},
+    [0xDB18] = {name = 'Tail Cave Owl\'s Beak', type = 'bool'},
+    [0xDB19] = {name = 'Tail Cave Nightmare Key', type = 'bool'},
+    [0xDB1A] = {name = 'Tail Cave Small Keys', type = 'num'},
+    [0xDB1B] = {name = 'Bottle Grotto Map', type = 'bool'},
+    [0xDB1C] = {name = 'Bottle Grotto Compass', type = 'bool'},
+    [0xDB1D] = {name = 'Bottle Grotto Owl\'s Beak', type = 'bool'},
+    [0xDB1E] = {name = 'Bottle Grotto Nightmare Key', type = 'bool'},
+    [0xDB1F] = {name = 'Bottle Grotto Small Keys', type = 'num'},
+    [0xDB20] = {name = 'Key Cavern Map', type = 'bool'},
+    [0xDB21] = {name = 'Key Cavern Compass', type = 'bool'},
+    [0xDB22] = {name = 'Key Cavern Owl\'s Beak', type = 'bool'},
+    [0xDB23] = {name = 'Key Cavern Nightmare Key', type = 'bool'},
+    [0xDB24] = {name = 'Key Cavern Small Keys', type = 'num'},
+    [0xDB25] = {name = 'Angler\'s Tunnel Map', type = 'bool'},
+    [0xDB26] = {name = 'Angler\'s Tunnel Compass', type = 'bool'},
+    [0xDB27] = {name = 'Angler\'s Tunnel Owl\'s Beak', type = 'bool'},
+    [0xDB28] = {name = 'Angler\'s Tunnel Nightmare Key', type = 'bool'},
+    [0xDB29] = {name = 'Angler\'s Tunnel Small Keys', type = 'num'},
+    [0xDB2A] = {name = 'Catfish\'s Maw Map', type = 'bool'},
+    [0xDB2B] = {name = 'Catfish\'s Maw Compass', type = 'bool'},
+    [0xDB2C] = {name = 'Catfish\'s Maw Owl\'s Beak', type = 'bool'},
+    [0xDB2D] = {name = 'Catfish\'s Maw Nightmare Key', type = 'bool'},
+    [0xDB2E] = {name = 'Catfish\'s Maw Small Keys', type = 'num'},
+    [0xDB2F] = {name = 'Face Shrine Map', type = 'bool'},
+    [0xDB30] = {name = 'Face Shrine Compass', type = 'bool'},
+    [0xDB31] = {name = 'Face Shrine Owl\'s Beak', type = 'bool'},
+    [0xDB32] = {name = 'Face Shrine Nightmare Key', type = 'bool'},
+    [0xDB33] = {name = 'Face Shrine Small Keys', type = 'num'},
+    [0xDB34] = {name = 'Eagle\'s Tower Map', type = 'bool'},
+    [0xDB35] = {name = 'Eagle\'s Tower Compass', type = 'bool'},
+    [0xDB36] = {name = 'Eagle\'s Tower Owl\'s Beak', type = 'bool'},
+    [0xDB37] = {name = 'Eagle\'s Tower Nightmare Key', type = 'bool'},
+    [0xDB38] = {name = 'Eagle\'s Tower Small Keys', type = 'num'},
+    [0xDB39] = {name = 'Turtle Rock Map', type = 'bool'},
+    [0xDB3A] = {name = 'Turtle Rock Compass', type = 'bool'},
+    [0xDB3B] = {name = 'Turtle Rock Owl\'s Beak', type = 'bool'},
+    [0xDB3C] = {name = 'Turtle Rock Nightmare Key', type = 'bool'},
+    [0xDB3D] = {name = 'Turtle Rock Small Keys', type = 'num'},
     [0xDB43] = {name = 'Power bracelet level', type = 'num', maxVal = MAX_BRACELET_LEVEL},
     [0xDB44] = {name = 'Shield level', type = 'num', maxVal = MAX_SHIELD_LEVEL},
     [0xDB45] = {name = 'Number of arrows', type = 'num', flag = 'ammo'},
@@ -204,27 +244,17 @@ local ramItemAddrs = {
         [7] = 'Frog\'s Song of Soul',
     }, type = 'bitmask'},
     [0xDB4A] = {name = 'Ocarina selected song', type = 'num'},
+    [0xDB4B] = {name = 'Toadstool', type = 'bool'},
     [0xDB4C] = {name = 'Magic powder quantity', type = 'num', flag = 'ammo'},
     [0xDB4D] = {name = 'Number of bombs', type = 'num', flag = 'ammo'},
     [0xDB4E] = {name = 'Sword level', type = 'num', maxVal = MAX_SWORD_LEVEL},
 --    DB56-DB58 Number of times the character died for each save slot (one byte per save slot)
-    [0xDB5A] = {name = 'Current health', type = 'num', flag = 'life'}, --Each increment of 08 is one full heart, each increment of 04 is one-half heart
+    --[0xDB5A] = {name = 'Current health', type = 'num', flag = 'life'}, --Each increment of 08 is one full heart, each increment of 04 is one-half heart (Don't set this directly. Use the health buffers)
     [0xDB5B] = {name = 'Maximum health', type = 'num', maxVal = MAX_NUM_HEART_CONTAINERS}, --Max recommended value is 0E (14 hearts)
-    [0xDB5D] = {name = 'Rupees', type = 'num', flag = 'money', size = 2}, --2 bytes, decimal value
-    [0xDB76] = {name = 'Max magic powder', type = 'num'},
-    [0xDB77] = {name = 'Max bombs', type = 'num'},
-    [0xDB78] = {name = 'Max arrows', type = 'num'},
+    [0xDB5C] = {name = 'Number of heart pieces', type = 'num', maxVal = MAX_NUM_HEART_PIECES},
+    --[0xDB5D] = {name = 'Rupees', type = 'num', flag = 'money', size = 2}, --2 bytes, decimal value (Don't set this directly. Use the buffers)
 --    [0xDBAE] = {name = 'Dungeon map grid position', type = 'num'},
-    [0xDBD0] = {name = 'Keys possessed', type = 'num'},
-    [0xDB16] = {name = 'Tail Cave', type = 'dungeonFlags'}, -- 5 byte sections (Map bool, compass bool, beak bool, nightmare key bool, key num)
-    [0xDB1B] = {name = 'Bottle Grotto', type = 'dungeonFlags'},
-    [0xDB20] = {name = 'Key Cavern', type = 'dungeonFlags'},
-    [0xDB25] = {name = 'Angler\'s Tunnel', type = 'dungeonFlags'},
-    [0xDB2A] = {name = 'Catfish\'s Maw', type = 'dungeonFlags'},
-    [0xDB2F] = {name = 'Face Shrine', type = 'dungeonFlags'},
-    [0xDB34] = {name = 'Eagle\'s Tower', type = 'dungeonFlags'},
-    [0xDB39] = {name = 'Turtle Rock', type = 'dungeonFlags'},
-    [0xDB65] = {name = 'Tail Cave', type = 'dungeonState', instrumentName = 'Full Moon Cello'}, -- 00=starting state, 01=defeated miniboss, 02=defeated boss, 03=have instrument
+    [0xDB65] = {name = 'Tail Cave', type = 'num', instrumentName = 'Full Moon Cello'}, -- 00=starting state, 01=defeated miniboss, 02=???, 03=have instrument
     [0xDB66] = {name = 'Bottle Grotto', type = 'num', instrumentName = 'Conch Horn'},
     [0xDB67] = {name = 'Key Cavern', type = 'num', instrumentName = 'Sea Lily\'s Bell'},
     [0xDB68] = {name = 'Angler\'s Tunnel', type = 'num', instrumentName = 'Surf Harp'},
@@ -232,6 +262,18 @@ local ramItemAddrs = {
     [0xDB6A] = {name = 'Face Shrine', type = 'num', instrumentName = 'Coral Triangle'},
     [0xDB6B] = {name = 'Eagle\'s Tower', type = 'num', instrumentName = 'Organ of Evening Calm'},
     [0xDB6C] = {name = 'Turtle Rock', type = 'num', instrumentName = 'Thunder Drum'},
+    [0xDB76] = {name = 'Max magic powder', type = 'num'},
+    [0xDB77] = {name = 'Max bombs', type = 'num'},
+    [0xDB78] = {name = 'Max arrows', type = 'num'},
+    -- Buffers are rupee/health amounts that are to be added to your total over time.
+    -- Picking up rupees/health adds to the "add" buffers. Paying money/taking damage adds to the "subtract" buffers.
+    -- The game subtracts from these buffers over time, applying their effect to your money/health totals
+    -- Only additions to buffer values should be transmitted
+    [0xDB8F] = {name = 'Rupees Added', type = 'buffer', flag = 'rupees', size = 2},
+    [0xDB91] = {name = 'Rupees Spent', type = 'buffer', flag = 'rupees', size = 2},
+    [0xDB93] = {name = 'Health Added', type = 'buffer', flag = 'health'},
+    [0xDB94] = {name = 'Health Lost', type = 'buffer', flag = 'health'},
+    [0xDC04] = {name = 'Tunic Color', type = 'num'},
 }
 
 for _, slotInfo in pairs(inventorySlotInfos) do
@@ -275,14 +317,22 @@ function getGUImessage(address, prevVal, newVal, user)
 
         -- If boolean, show 'Removed' for false
         if itemType == 'bool' then
-            gui.addmessage(user .. ': ' .. name .. (newVal == 0 and 'Removed' or ''))
+            gui.addmessage(string.format('%s: %s %s', user, (newVal == 0 and 'Removed' or 'Added'), name))
 
-        -- If numeric, show the indexed name or name with value
+        -- If numeric, show the name with value
         elseif itemType == 'num' then
-            if (type(name) == 'string') then
-                gui.addmessage(user .. ': ' .. name .. ' = ' .. newVal)
-            elseif (name[newVal]) then
-                gui.addmessage(user .. ': ' .. name[newVal])
+
+            local instrumentName = ramItemAddrs[address].instrumentName
+            if instrumentName then
+                if newVal == 0 then
+                    gui.addmessage(string.format('%s: Reset %s', user, name))
+                elseif newVal == 1 then
+                    gui.addmessage(string.format('%s: Defeated mini-boss in %s', user, name))
+                elseif newVal == 3 then
+                    gui.addmessage(string.format('%s: Got instrument %s', user, instrumentName))
+                end
+            else
+                gui.addmessage(string.format('%s: %s = %s', user, name, newVal))
             end
 
         -- If bitflag, show each bit: the indexed name or bit index as a boolean
@@ -292,17 +342,15 @@ function getGUImessage(address, prevVal, newVal, user)
                 local prevBit = bit.check(prevVal, b)
 
                 if (newBit ~= prevBit) then
-                    if (type(name) == 'string') then
-                        gui.addmessage(user .. ': ' .. name .. ' flag ' .. b .. (newBit and '' or ' Removed'))
-                    elseif (name[b]) then
-                        gui.addmessage(user .. ': ' .. name[b] .. (newBit and '' or ' Removed'))
-                    end
+                    gui.addmessage(string.format('%s: %s %s', user, (newBit and 'Added' or ' Removed'), name))
                 end
             end
 
         -- If an inventory item, just show the inventory item name
-        elseif ram == 'Inventory Slot' then
-            gui.addmessage(user .. ': ' .. inventoryItemVals[newVal])
+        elseif itemType == 'Inventory Slot' then
+            gui.addmessage(string.format('%s: Found %s', user, inventoryItemVals[newVal]))
+        elseif itemType == 'buffer' and newVal > prevVal then
+            gui.addmessage(string.format('%s: %s %s', user, newVal, name))
         else 
             gui.addmessage(string.format('Unknown item ram type %s', itemType))
         end
@@ -351,6 +399,10 @@ function getTransmittableItemsState()
             skip = true
         end
 
+        if not config.ramconfig.rupees and item.flag == 'rupees' then
+            skip = true
+        end
+
         if not skip then
             -- Default byte length to 1
             if (not item.size) then
@@ -373,30 +425,34 @@ function getItemStateChanges(prevState, newState)
     local changes = false
 
     for address, val in pairs(newState) do
+
+        local prevVal = prevState[address]
+        local itemType = ramItemAddrs[address].type
+
         -- If change found
-        if (prevState[address] ~= val) then
+        if (prevVal ~= val) then
 
             if config.ramconfig.verbose then
                 printOutput(string.format('Updating address [%s] to value [%s].', asString(address), asString(val)))
             end
-            getGUImessage(address, prevState[address], val, config.user)
-
-            local itemType = ramItemAddrs[address].type
+            getGUImessage(address, prevVal, val, config.user)
 
             -- If boolean, get T/F
             if itemType == 'bool' then
                 ramevents[address] = (val ~= 0)
                 changes = true
+
             -- If numeric, get value
             elseif itemType == 'num' then
                 ramevents[address] = val
                 changes = true
+
             -- If bitmask, get the changed bits
             elseif itemType == 'bitmask' then
                 local changedBits = {}
                 for b=0,7 do
                     local newBit = bit.check(val, b)
-                    local prevBit = bit.check(prevState[address], b)
+                    local prevBit = bit.check(prevVal, b)
 
                     if (newBit ~= prevBit) then
                         changedBits[b] = newBit
@@ -404,6 +460,14 @@ function getItemStateChanges(prevState, newState)
                 end
                 ramevents[address] = changedBits
                 changes = true
+
+            -- Only transmit buffer increases
+            elseif itemType == 'buffer' then
+                if val > prevVal then
+                    ramevents[address] = val - prevVal
+                    changes = true
+                end
+
             elseif itemType == 'Inventory Slot' then
                 -- Do nothing. We do a separate check for new inventory items below
             else 
@@ -460,19 +524,28 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
     newEvents[NEW_INV_ITEMS_KEY] = nil
 
     for address, val in pairs(newEvents) do
+
+        local itemType = ramItemAddrs[address].type
         local newval
 
         if config.ramconfig.verbose then
             printOutput(string.format('Applying state change [%s=%s]', asString(address), asString(val)))
         end
         -- If boolean type value
-        if ramItemAddrs[address].type == 'bool' then
+        if itemType == 'bool' then
             newval = (val and 1 or 0) -- Coercing booleans back to 1 or 0 numeric
+
         -- If numeric type value
-        elseif ramItemAddrs[address].type == 'num' then
-            newval = val
+        elseif itemType == 'num' then
+            local maxVal = ramItemAddrs[address].maxVal
+            if maxVal and val > maxVal then
+                newval = maxVal
+            else
+                newval = val
+            end
+
         -- If bitflag update each bit
-        elseif ramItemAddrs[address].type == 'bit' then
+        elseif itemType == 'bit' then
             newval = prevRAM[address]
             for b, bitval in pairs(val) do
                 if bitval then
@@ -481,6 +554,10 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
                     newval = bit.clear(newval, b)
                 end
             end
+
+        elseif itemType == 'buffer' then
+            newval = prevRAM[address] + val
+
         else 
             printOutput(string.format('Unknown item type [%s] for item %s (Address: %s)', itemType, ramItemAddrs[address].name, address))
             newval = prevRAM[address]
@@ -612,10 +689,15 @@ function ramController.processMessage(their_user, message)
         printOutput(string.format('Processing message [%s] from [%s].', asString(message), asString(their_user)))
     end
     if isGameLoadedWithFetch() then
-        printOutput("Game loaded. About to do the message")
+
+        if config.ramconfig.verbose then
+            printOutput("Game loaded. About to do the message")
+        end
         prevItemState = applyItemStateChanges(prevItemState, their_user, message)
     else
-        printOutput("Game not loaded. Putting the message back on the queue")
+        if config.ramconfig.verbose then
+            printOutput("Game not loaded. Putting the message back on the queue")
+        end
         messageQueue.pushRight({['their_user']=their_user, ['message']=message}) -- Put the message back in the queue so we reprocess it once the game is loaded
     end
 end
@@ -636,13 +718,14 @@ function ramController.getConfig()
 
     forms.setproperty(mainform, 'Enabled', false)
 
-    local configform = forms.newform(200, 190, '')
+    local configform = forms.newform(200, 220, '')
     local chkAmmo = forms.checkbox(configform, 'Ammo', 10, 10)
     local chkHealth = forms.checkbox(configform, 'Health', 10, 40)
-    local logLevelLabel = forms.label(configform, 'Messages', 10, 73, 60, 40)
-    local logLevelDropdown = forms.dropdown(configform, {'Default', LOG_LEVEL_VERBOSE}, 75, 70, 100, 35)
-    local btnOK = forms.button(configform, 'OK', configOK, 10, 110, 50, 23)
-    local btnCancel = forms.button(configform, 'Cancel', configCancel, 70, 110, 50, 23)
+    local chkRupees = forms.checkbox(configform, 'Rupees', 10, 70)
+    local logLevelLabel = forms.label(configform, 'Messages', 10, 103, 60, 40)
+    local logLevelDropdown = forms.dropdown(configform, {'Default', LOG_LEVEL_VERBOSE}, 75, 100, 100, 35)
+    local btnOK = forms.button(configform, 'OK', configOK, 10, 140, 50, 23)
+    local btnCancel = forms.button(configform, 'Cancel', configCancel, 70, 140, 50, 23)
 
     while configformState == 'Idle' do
         coroutine.yield()
@@ -651,6 +734,7 @@ function ramController.getConfig()
     local config = {
         ammo = forms.ischecked(chkAmmo),
         health = forms.ischecked(chkHealth),
+        rupees = forms.ischecked(chkRupees),
         verbose = forms.gettext(logLevelDropdown) == LOG_LEVEL_VERBOSE
     }
 
