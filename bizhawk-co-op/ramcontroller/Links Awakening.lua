@@ -342,15 +342,17 @@ function getGUImessage(address, prevVal, newVal, user)
                 local prevBit = bit.check(prevVal, b)
 
                 if (newBit ~= prevBit) then
-                    gui.addmessage(string.format('%s: %s %s', user, (newBit and 'Added' or ' Removed'), name))
+                    gui.addmessage(string.format('%s: %s %s', user, (newBit and 'Added' or ' Removed'), name[b]))
                 end
             end
 
         -- If an inventory item, just show the inventory item name
         elseif itemType == 'Inventory Slot' then
             gui.addmessage(string.format('%s: Found %s', user, inventoryItemVals[newVal]))
-        elseif itemType == 'buffer' and newVal > prevVal then
-            gui.addmessage(string.format('%s: %s %s', user, newVal, name))
+        elseif itemType == 'buffer' then
+            if newVal > prevVal then
+                gui.addmessage(string.format('%s: %s %s', user, newVal, name))
+            end
         else 
             gui.addmessage(string.format('Unknown item ram type %s', itemType))
         end
