@@ -69,6 +69,14 @@ function host.start()
 		return false
 	end
 
+	if forms.gettext(formPlayerNumber) ~= ''
+	and (tonumber(forms.gettext(formPlayerNumber)) == nil
+	or tonumber(forms.gettext(formPlayerNumber)) <= 0)
+	then
+		printOutput('Player Number must be above 0 or empty.')
+		return false
+	end
+
 	if not config.port or config.port == '' then
 		config.port = 50000
 	end
@@ -114,7 +122,7 @@ function host.start()
 
 	forms.settext(formPlayerCount, "1")
 	forms.setproperty(formPlayerList, 'SelectionStart', 0)
-	forms.setproperty(formPlayerList, "SelectedText", "P"..forms.gettext(formPlayerNumber)..": "..config.user.."\r\n")
+	forms.setproperty(formPlayerList, "SelectedText", "P"..tonumber(forms.gettext(formPlayerNumber))..": "..config.user.."\r\n")
 	updateGUI()
 	return true
 end
@@ -219,6 +227,14 @@ function host.join()
 
 	if not config.port or config.port == '' then
 		config.port = 50000
+	end
+
+	if forms.gettext(formPlayerNumber) ~= ''
+	and (tonumber(forms.gettext(formPlayerNumber)) == nil
+	or tonumber(forms.gettext(formPlayerNumber)) <= 0)
+	then
+		printOutput('Player Number must be above 0 or empty.')
+		return false
 	end
 
 	host.close()

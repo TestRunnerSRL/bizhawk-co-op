@@ -306,7 +306,7 @@ function sync.updatePlayerList(playerlist)
   local sortedKeys = getKeysSortedByValue(playerlist, function(a, b) return a < b end)
   for _, k in ipairs(sortedKeys) do
     if(playerlist[k] ~= nil) then
-      text = text.."P"..playerlist[k]..": "..k.."\r\n"
+      text = text.."P"..tonumber(playerlist[k])..": "..k.."\r\n"
     end
   end
   forms.settext(formPlayerList, text)
