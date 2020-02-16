@@ -51,6 +51,10 @@ function tableHasValue(tbl, val)
 		if (tostring(v) == tostring(val)) then
 			return true
 		end
+
+		if(tonumber(v) == tonumber(val)) then
+			return true
+		end
 	end
 
 	return false
