@@ -123,6 +123,14 @@ function host.start()
 	forms.settext(formPlayerCount, "1")
 	forms.setproperty(formPlayerList, 'SelectionStart', 0)
 	forms.setproperty(formPlayerList, "SelectedText", "P"..tonumber(forms.gettext(formPlayerNumber))..": "..config.user.."\r\n")
+
+
+	hostControls = forms.newform(300, 200, "Host Controls")
+	kickPlayerLabel = forms.label(hostControls, "Kick Player", 4, 5, 290, 13)
+	kickPlayerSelect = forms.dropdown(hostControls, {['(Kick Player...)']='(Kick Player...)'}, 5, 20, 200, 5)
+	kickPlayerBtn = forms.button(hostControls, "Kick", sync.kickPlayer, 208, 19, 72, 23)
+	forms.setdropdownitems(kickPlayerSelect, invert_table(host.users))
+
 	updateGUI()
 	return true
 end
@@ -199,7 +207,7 @@ function host.listen()
 	sync.sendItems(itemlist)
 	sync.sendPlayerList(host.playerlist)
 	sync.updatePlayerList(host.playerlist)
-
+	host.updateHostControls()
 	updateGUI()
 	return clientID
 end
@@ -362,6 +370,11 @@ function host.getRooms()
 		printOutput('Error fetching room list [Code ' .. (err or '') .. ']')
 		return false
 	end
+end
+
+function host.updateHostControls()
+	-- update the kick player list
+	forms.setdropdownitems(kickPlayerSelect, invert_table(host.users))
 end
 
 return host

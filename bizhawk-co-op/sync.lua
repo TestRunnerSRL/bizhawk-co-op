@@ -126,6 +126,16 @@ function sync.sendPlayerList(playerlist)
   end
 end
 
+function sync.kickPlayer()
+  if host.users[forms.gettext(kickPlayerSelect)] ~= 1 then
+    printOutput("You kicked " .. forms.gettext(kickPlayerSelect))
+    gui.addmessage("You kicked " .. forms.gettext(kickPlayerSelect))
+    messenger.send(host.clients[host.users[forms.gettext(kickPlayerSelect)]], config.user, messenger.KICKPLAYER)
+  else
+    printOutput("You can not kick yourself.")
+  end
+end
+
 local close_client = function(clientID, err)
   local their_user = "The other player"
   for name, id in pairs(host.users) do
@@ -285,9 +295,12 @@ function sync.syncRAM()
           host.playerlist[their_user] = nil
           sync.updatePlayerList(host.playerlist)
           sync.sendPlayerList(host.playerlist)
+          host.updateHostControls()
         end
       elseif (received_message_type == messenger.PING) then
         host.client_ping[clientID] = 4
+      elseif (received_message_type == messenger.KICKPLAYER) then
+        leaveRoom()
       elseif (received_message_type == nil) then
         --no message received
       else

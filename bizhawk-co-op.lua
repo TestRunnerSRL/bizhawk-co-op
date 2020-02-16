@@ -75,6 +75,15 @@ function getKeysSortedByValue(tbl, sortFunction)
 	return keys
 end
 
+-- Returns an inverted version of the table provided
+function invert_table(t)
+	local inverted = {}
+	for key,val in pairs(t) do
+		inverted[val] = key
+	end
+	return inverted
+end
+
 local sync = require("bizhawk-co-op\\sync")
 
 --Add a line to the output. Inserts a timestamp to the string

@@ -11,6 +11,7 @@ messenger.QUIT = 4
 messenger.RAMEVENT = 5
 messenger.PLAYERNUMBER = 6
 messenger.PLAYERLIST = 7
+messenger.KICKPLAYER = 8
 
 --the first character of the message tells what kind of message was sent
 local message_type_to_char = {
@@ -21,6 +22,7 @@ local message_type_to_char = {
   [messenger.QUIT] = "q",
   [messenger.PLAYERNUMBER] = "n",
   [messenger.PLAYERLIST] = "l",
+  [messenger.KICKPLAYER] = "k",
 }
 --inverse of the previous table
 local char_to_message_type = {}
@@ -132,6 +134,10 @@ local encode_message = {
 
   [messenger.PLAYERLIST] = function(data)
     return tabletostring(data[1])
+  end,
+
+  [messenger.KICKPLAYER] = function(data)
+    return ""
   end
 }
 
@@ -225,6 +231,10 @@ local decode_message = {
 
   [messenger.PLAYERLIST] = function(split_message)
     return stringtotable(split_message)
+  end,
+
+  [messenger.KICKPLAYER] = function(split_message)
+    return {}
   end
 }
 
