@@ -265,9 +265,11 @@ btnJoin = forms.button(mainform, "Join Room",
 		195, 190, 85, 25)
 
 
-forms.label(mainform, "Players:", 288, 10, 45, 15)
-formPlayerCount = forms.label(mainform, "...", 330, 10, 40, 15)
-formPlayerList = forms.textbox(mainform, "", 155, 305, nil, 290, 25, true, true, 'Vertical')
+forms.label(mainform, "Players:", 288, 10, 44, 15)
+formPlayerCount = forms.label(mainform, "...", 329, 10, 40, 15)
+forms.label(mainform, "Ready:", 288, 25, 42, 15)
+formReadyCount = forms.label(mainform, "...", 329, 25, 38, 15)
+formPlayerList = forms.textbox(mainform, "", 155, 288, nil, 290, 42, true, true, 'Vertical')
 forms.setproperty(formPlayerList, "ReadOnly", true)
 
 sendMessage = {}
