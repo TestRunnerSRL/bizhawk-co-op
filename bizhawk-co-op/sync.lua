@@ -233,9 +233,15 @@ function sync.syncRAM()
 
         messenger.send(client, config.user, messenger.QUIT, {["q"]=was_kicked})
       end
-      gui.addmessage("You closed the connection.")
+
+      if not kicked then
+        gui.addmessage("You closed the connection.")
+        error("You closed the connection.")
+      else
+        gui.addmessage("You were kicked from the room.")
+      end
+
       host.close()
-      error("You closed the connection.")
     end
 
     local ram_message = ram_controller.getMessage()
