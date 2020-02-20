@@ -335,7 +335,11 @@ function host.close()
 	server = nil
 
 	if changed then
-		printOutput("Server closed.")
+		if kicked then
+			printOutput("You were kicked from the room.")
+		else
+			printOutput("Server closed.")
+		end
 		forms.settext(formPlayerCount, "...")
 		forms.settext(formPlayerList, "")
 		forms.settext(formPlayerNumber, "")

@@ -224,9 +224,14 @@ function sync.syncRAM()
     --Send Quit request
     if sendMessage["Quit"] == true then
       sendMessage["Quit"] = nil
+      local was_kicked = ""
 
       for _,client in pairs(host.clients) do
-        messenger.send(client, config.user, messenger.QUIT)
+        if kicked then
+          was_kicked = "was_kicked"
+        end
+
+        messenger.send(client, config.user, messenger.QUIT, {["q"]=was_kicked})
       end
       gui.addmessage("You closed the connection.")
       host.close()
@@ -271,6 +276,8 @@ function sync.syncRAM()
         --we received the playerlist
         sync.updatePlayerList(received_data.l)
       elseif (received_message_type == messenger.QUIT) then
+        local was_kicked = received_data.q
+
         --we received quit
         if their_user == host.hostname then
           -- host sent the message, room is closed
@@ -279,8 +286,14 @@ function sync.syncRAM()
           error(their_user .. " closed the room.")
         else
           -- client sent the message, room is still open
-          gui.addmessage(their_user .. " left the room.")
-          printOutput(their_user .. " left the room.")
+          if was_kicked == "was_kicked" then
+            gui.addmessage(their_user .. " was kicked from the room.")
+            printOutput(their_user .. " was kicked from the room.")
+          else
+            gui.addmessage(their_user .. " left the room.")
+            printOutput(their_user .. " left the room.")
+          end
+
           -- disconnect if player is connected directly
           if host.users[their_user] then
             local their_id = host.users[their_user]
@@ -300,6 +313,7 @@ function sync.syncRAM()
       elseif (received_message_type == messenger.PING) then
         host.client_ping[clientID] = 4
       elseif (received_message_type == messenger.KICKPLAYER) then
+        kicked = true
         leaveRoom()
       elseif (received_message_type == nil) then
         --no message received

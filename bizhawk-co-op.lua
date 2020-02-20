@@ -10,6 +10,8 @@ formPlayerNumber = nil
 formPlayerCount = nil
 formPlayerList = nil
 
+kicked = false
+
 function strsplit(inputstr, sep, max)
 	if not inputstr then
 		return {}
@@ -325,7 +327,11 @@ while 1 do
 		local status, err = coroutine.resume(thread)
 
 		if (status == false and err ~= nil) then
-			printOutput("Error during sync: " .. tostring(err))
+			if not kicked then
+				printOutput("Error during sync: " .. tostring(err))
+			else
+				kicked = false
+			end
 		end
 	end
 

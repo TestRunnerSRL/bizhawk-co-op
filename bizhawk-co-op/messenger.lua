@@ -123,7 +123,7 @@ local encode_message = {
 
   --a quit message expects no arguments
   [messenger.QUIT] = function(data)
-    return ""
+    return tabletostring(data[1])
   end,
 
   [messenger.PLAYERNUMBER] = function(data)
@@ -201,7 +201,7 @@ local decode_message = {
   end,
 
   [messenger.QUIT] = function(split_message)
-    return {}
+    return stringtotable(split_message)
   end,
 
   [messenger.PLAYERNUMBER] = function(split_message)
