@@ -245,6 +245,7 @@ function host.join()
 		return false
 	end
 
+	kicked = false
 	host.close()
 	host.status = 'Join'
 	host.locked = true
@@ -337,6 +338,7 @@ function host.close()
 	if changed then
 		if kicked then
 			printOutput("You were kicked from the room.")
+			kicked = false
 		else
 			printOutput("Server closed.")
 		end
