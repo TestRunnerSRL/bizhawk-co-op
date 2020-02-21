@@ -126,6 +126,39 @@ function sync.sendPlayerList(playerlist)
   end
 end
 
+function sync.kickPlayer()
+  if host.users[forms.gettext(kickPlayerSelect)] ~= 1 then
+    printOutput("You kicked " .. forms.gettext(kickPlayerSelect))
+    gui.addmessage("You kicked " .. forms.gettext(kickPlayerSelect))
+    messenger.send(host.clients[host.users[forms.gettext(kickPlayerSelect)]], config.user, messenger.KICKPLAYER)
+  else
+    printOutput("You can not kick yourself.")
+  end
+end
+
+function sync.readyToggle()
+  local status = forms.gettext(readyToggle)
+
+  if host.status == "Host" then
+    host.playerlist[config.user]['status'] = status
+    sync.updatePlayerList(host.playerlist)
+
+    if getTableSize(host.playerlist) > 1 then
+      sync.sendPlayerList(host.playerlist)
+    end
+  else
+    messenger.send(host.clients[1], config.user, messenger.PLAYERSTATUS, config.user, status)
+  end
+
+  if status == "Ready" then
+    forms.settext(readyToggle, "Unready")
+  end
+
+  if status == "Unready" then
+    forms.settext(readyToggle, "Ready")
+  end
+end
+
 local close_client = function(clientID, err)
   local their_user = "The other player"
   for name, id in pairs(host.users) do
@@ -214,13 +247,25 @@ function sync.syncRAM()
     --Send Quit request
     if sendMessage["Quit"] == true then
       sendMessage["Quit"] = nil
+      local was_kicked = ""
 
       for _,client in pairs(host.clients) do
-        messenger.send(client, config.user, messenger.QUIT)
+        if kicked then
+          was_kicked = "was_kicked"
+        end
+
+        messenger.send(client, config.user, messenger.QUIT, {["q"]=was_kicked})
       end
-      gui.addmessage("You closed the connection.")
-      host.close()
-      error("You closed the connection.")
+
+      if not kicked then
+        gui.addmessage("You closed the connection.")
+        host.close()
+        error("You closed the connection.")
+      else
+        gui.addmessage("You were kicked from the room.")
+        host.close()
+        error("You were kicked from the room.")
+      end
     end
 
     local ram_message = ram_controller.getMessage()
@@ -244,7 +289,9 @@ function sync.syncRAM()
       if (received_message_type ~= nil) then
         for otherClientID, otherClient in pairs(host.clients) do
           if (otherClientID ~= clientID) then
-            messenger.send(otherClient, their_user, received_message_type, received_data)
+            if received_message_type ~= messenger.PLAYERSTATUS then
+              messenger.send(otherClient, their_user, received_message_type, received_data)
+            end
           end
         end
       end
@@ -261,6 +308,8 @@ function sync.syncRAM()
         --we received the playerlist
         sync.updatePlayerList(received_data.l)
       elseif (received_message_type == messenger.QUIT) then
+        local was_kicked = received_data.q
+
         --we received quit
         if their_user == host.hostname then
           -- host sent the message, room is closed
@@ -269,8 +318,14 @@ function sync.syncRAM()
           error(their_user .. " closed the room.")
         else
           -- client sent the message, room is still open
-          gui.addmessage(their_user .. " left the room.")
-          printOutput(their_user .. " left the room.")
+          if was_kicked == "was_kicked" then
+            gui.addmessage(their_user .. " was kicked from the room.")
+            printOutput(their_user .. " was kicked from the room.")
+          else
+            gui.addmessage(their_user .. " left the room.")
+            printOutput(their_user .. " left the room.")
+          end
+
           -- disconnect if player is connected directly
           if host.users[their_user] then
             local their_id = host.users[their_user]
@@ -285,9 +340,16 @@ function sync.syncRAM()
           host.playerlist[their_user] = nil
           sync.updatePlayerList(host.playerlist)
           sync.sendPlayerList(host.playerlist)
+          host.updateHostControls()
         end
       elseif (received_message_type == messenger.PING) then
         host.client_ping[clientID] = 4
+      elseif (received_message_type == messenger.KICKPLAYER) then
+        kicked = true
+        leaveRoom()
+      elseif (received_message_type == messenger.PLAYERSTATUS) then
+        sync.updatePlayerList(host.playerlist)
+        sync.sendPlayerList(host.playerlist)
       elseif (received_message_type == nil) then
         --no message received
       else
@@ -303,14 +365,27 @@ function sync.updatePlayerList(playerlist)
   host.playerlist = playerlist
   forms.settext(formPlayerList, "")
   local text = ""
-  local sortedKeys = getKeysSortedByValue(playerlist, function(a, b) return a < b end)
+  local sortedKeys = getKeysSortedByValue(playerlist, function(a, b) return a.num < b.num end)
+  local readyCount = 0
   for _, k in ipairs(sortedKeys) do
-    if(playerlist[k] ~= nil) then
-      text = text.."P"..playerlist[k]..": "..k.."\r\n"
+    if (playerlist[k]['num'] ~= nil) then
+      if playerlist[k]['status'] == "Unready" then
+        text = text .. "[ ] P" .. tonumber(playerlist[k]['num']) .. ": " .. k
+      end
+
+      if (playerlist[k]['status'] == "Ready") then
+        text = text .. "[X] P" .. tonumber(playerlist[k]['num']) .. ": " .. k
+        readyCount = readyCount + 1
+      end
+
+      text = text .. "\r\n"
     end
+
+    forms.settext(formPlayerList, text)
   end
-  forms.settext(formPlayerList, text)
+
   forms.settext(formPlayerCount, getTableSize(host.playerlist))
+  forms.settext(formReadyCount, tostring(readyCount))
 end
 
 return sync

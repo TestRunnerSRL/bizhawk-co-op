@@ -10,6 +10,8 @@ formPlayerNumber = nil
 formPlayerCount = nil
 formPlayerList = nil
 
+kicked = false
+
 function strsplit(inputstr, sep, max)
 	if not inputstr then
 		return {}
@@ -51,6 +53,10 @@ function tableHasValue(tbl, val)
 		if (tostring(v) == tostring(val)) then
 			return true
 		end
+
+		if(tonumber(v) == tonumber(val)) then
+			return true
+		end
 	end
 
 	return false
@@ -69,6 +75,15 @@ function getKeysSortedByValue(tbl, sortFunction)
 	end)
 
 	return keys
+end
+
+-- Returns an inverted version of the table provided
+function invert_table(t)
+	local inverted = {}
+	for key,val in pairs(t) do
+		inverted[val] = key
+	end
+	return inverted
 end
 
 local sync = require("bizhawk-co-op\\sync")
@@ -250,9 +265,13 @@ btnJoin = forms.button(mainform, "Join Room",
 		195, 190, 85, 25)
 
 
-forms.label(mainform, "Players:", 288, 10, 45, 15)
-formPlayerCount = forms.label(mainform, "...", 330, 10, 40, 15)
-formPlayerList = forms.textbox(mainform, "", 155, 305, nil, 290, 25, true, true, 'Vertical')
+forms.label(mainform, "Players:", 288, 10, 44, 15)
+formPlayerCount = forms.label(mainform, "...", 329, 10, 40, 15)
+forms.label(mainform, "Ready:", 288, 25, 42, 15)
+formReadyCount = forms.label(mainform, "...", 329, 25, 38, 15)
+readyToggle = forms.button(mainform, "Ready", sync.readyToggle, 370, 11, 80, 23)
+forms.setproperty(readyToggle, "Enabled", false)
+formPlayerList = forms.textbox(mainform, "", 155, 288, nil, 293, 42, true, true, 'Vertical')
 forms.setproperty(formPlayerList, "ReadOnly", true)
 
 sendMessage = {}
@@ -312,7 +331,11 @@ while 1 do
 		local status, err = coroutine.resume(thread)
 
 		if (status == false and err ~= nil) then
-			printOutput("Error during sync: " .. tostring(err))
+			if not kicked then
+				printOutput("Error during sync: " .. tostring(err))
+			else
+				kicked = false
+			end
 		end
 	end
 

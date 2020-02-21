@@ -11,6 +11,8 @@ messenger.QUIT = 4
 messenger.RAMEVENT = 5
 messenger.PLAYERNUMBER = 6
 messenger.PLAYERLIST = 7
+messenger.KICKPLAYER = 8
+messenger.PLAYERSTATUS = 9
 
 --the first character of the message tells what kind of message was sent
 local message_type_to_char = {
@@ -21,6 +23,8 @@ local message_type_to_char = {
   [messenger.QUIT] = "q",
   [messenger.PLAYERNUMBER] = "n",
   [messenger.PLAYERLIST] = "l",
+  [messenger.KICKPLAYER] = "k",
+  [messenger.PLAYERSTATUS] = "s"
 }
 --inverse of the previous table
 local char_to_message_type = {}
@@ -121,7 +125,7 @@ local encode_message = {
 
   --a quit message expects no arguments
   [messenger.QUIT] = function(data)
-    return ""
+    return tabletostring(data[1])
   end,
 
   [messenger.PLAYERNUMBER] = function(data)
@@ -132,6 +136,16 @@ local encode_message = {
 
   [messenger.PLAYERLIST] = function(data)
     return tabletostring(data[1])
+  end,
+
+  [messenger.KICKPLAYER] = function(data)
+    return ""
+  end,
+
+  [messenger.PLAYERSTATUS] = function(data)
+    local their_user = data[1]
+    local status = data[2]
+    return their_user .. "," .. status
   end
 }
 
@@ -195,7 +209,7 @@ local decode_message = {
   end,
 
   [messenger.QUIT] = function(split_message)
-    return {}
+    return stringtotable(split_message)
   end,
 
   [messenger.PLAYERNUMBER] = function(split_message)
@@ -206,25 +220,45 @@ local decode_message = {
       local count = getTableSize(host.playerlist)
       count = count+1
 
-      for i=1,count,1 do
+      for i=0,count,1 do
         local curNum = i
-        if (tableHasValue(host.playerlist, curNum) == false) then
-          pnum = i
-          break
+        for _, player in pairs(host.playerlist) do
+          if (tableHasValue(player, curNum) == false) then
+            pnum = i
+            break
+          end
         end
       end
     end
 
-    if (tableHasValue(host.playerlist, pnum) == true) then
+    local pnumFound = false
+    for _, player in pairs(host.playerlist) do
+      if (tableHasValue(player, pnum) == true) then
+        pnumFound = true
+      end
+    end
+
+    if pnumFound == true then
       return nil
     else
-      host.playerlist[their_user] = tonumber(pnum)
+      host.playerlist[their_user] = {['num'] = tonumber(pnum), ['status'] = "Unready"}
       return {pnum}
     end
   end,
 
   [messenger.PLAYERLIST] = function(split_message)
     return stringtotable(split_message)
+  end,
+
+  [messenger.KICKPLAYER] = function(split_message)
+    return {}
+  end,
+
+  [messenger.PLAYERSTATUS] = function(split_message)
+    local their_user = split_message[1]
+    local status = split_message[2]
+    host.playerlist[their_user]['status'] = status
+    return nil
   end
 }
 

@@ -10,6 +10,7 @@ local server = nil
 host.clients = {}
 host.users = {}
 host.playerlist = {}
+host.playerstatus = {}
 host.status = 'Idle'
 host.locked = false
 host.hostname = nil
@@ -69,6 +70,14 @@ function host.start()
 		return false
 	end
 
+	if forms.gettext(formPlayerNumber) ~= ''
+	and (tonumber(forms.gettext(formPlayerNumber)) == nil
+	or tonumber(forms.gettext(formPlayerNumber)) <= 0)
+	then
+		printOutput('Player Number must be above 0 or empty.')
+		return false
+	end
+
 	if not config.port or config.port == '' then
 		config.port = 50000
 	end
@@ -110,11 +119,20 @@ function host.start()
 
 	host.locked = false
 	host.users[config.user] = 1
-	host.playerlist[config.user] = tonumber(forms.gettext(formPlayerNumber))
+	host.playerlist[config.user] = {['num'] = tonumber(forms.gettext(formPlayerNumber)), ['status'] = "Unready"}
 
 	forms.settext(formPlayerCount, "1")
 	forms.setproperty(formPlayerList, 'SelectionStart', 0)
-	forms.setproperty(formPlayerList, "SelectedText", "P"..forms.gettext(formPlayerNumber)..": "..config.user.."\r\n")
+	forms.setproperty(formPlayerList, "SelectedText", "[ ] P"..tonumber(forms.gettext(formPlayerNumber))..": "..config.user.."\r\n")
+	forms.settext(formReadyCount, "0")
+	forms.setproperty(readyToggle, "Enabled", true)
+
+	hostControls = forms.newform(300, 88, "Host Controls")
+	kickPlayerLabel = forms.label(hostControls, "Kick Player", 4, 5, 290, 13)
+	kickPlayerSelect = forms.dropdown(hostControls, {['(Kick Player...)']='(Kick Player...)'}, 5, 20, 200, 5)
+	kickPlayerBtn = forms.button(hostControls, "Kick", sync.kickPlayer, 208, 19, 72, 23)
+	forms.setdropdownitems(kickPlayerSelect, invert_table(host.users))
+
 	updateGUI()
 	return true
 end
@@ -191,7 +209,7 @@ function host.listen()
 	sync.sendItems(itemlist)
 	sync.sendPlayerList(host.playerlist)
 	sync.updatePlayerList(host.playerlist)
-
+	host.updateHostControls()
 	updateGUI()
 	return clientID
 end
@@ -221,6 +239,15 @@ function host.join()
 		config.port = 50000
 	end
 
+	if forms.gettext(formPlayerNumber) ~= ''
+	and (tonumber(forms.gettext(formPlayerNumber)) == nil
+	or tonumber(forms.gettext(formPlayerNumber)) <= 0)
+	then
+		printOutput('Player Number must be above 0 or empty.')
+		return false
+	end
+
+	kicked = false
 	host.close()
 	host.status = 'Join'
 	host.locked = true
@@ -275,6 +302,8 @@ function host.join()
 		updateGUI()
 	end
 
+	forms.setproperty(readyToggle, "Enabled", true)
+
 	return
 end
 
@@ -311,11 +340,27 @@ function host.close()
 	server = nil
 
 	if changed then
-		printOutput("Server closed.")
+		if kicked then
+			printOutput("You were kicked from the room.")
+			kicked = false
+		else
+			printOutput("Server closed.")
+		end
 		forms.settext(formPlayerCount, "...")
 		forms.settext(formPlayerList, "")
 		forms.settext(formPlayerNumber, "")
+		forms.settext(formReadyCount, "...")
+		forms.setproperty(readyToggle, "Enabled", false)
+
+		if forms.gettext(readyToggle) == "Unready" then
+			forms.settext(readyToggle, "Ready")
+		end
+
 		updateGUI()
+	end
+
+	if hostControls then
+		forms.destroy(hostControls)
 	end
 end
 
@@ -346,6 +391,11 @@ function host.getRooms()
 		printOutput('Error fetching room list [Code ' .. (err or '') .. ']')
 		return false
 	end
+end
+
+function host.updateHostControls()
+	-- update the kick player list
+	forms.setdropdownitems(kickPlayerSelect, invert_table(host.users))
 end
 
 return host
