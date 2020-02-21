@@ -269,7 +269,9 @@ forms.label(mainform, "Players:", 288, 10, 44, 15)
 formPlayerCount = forms.label(mainform, "...", 329, 10, 40, 15)
 forms.label(mainform, "Ready:", 288, 25, 42, 15)
 formReadyCount = forms.label(mainform, "...", 329, 25, 38, 15)
-formPlayerList = forms.textbox(mainform, "", 155, 288, nil, 290, 42, true, true, 'Vertical')
+readyToggle = forms.button(mainform, "Ready", sync.readyToggle, 370, 11, 80, 23)
+forms.setproperty(readyToggle, "Enabled", false)
+formPlayerList = forms.textbox(mainform, "", 155, 288, nil, 293, 42, true, true, 'Vertical')
 forms.setproperty(formPlayerList, "ReadOnly", true)
 
 sendMessage = {}

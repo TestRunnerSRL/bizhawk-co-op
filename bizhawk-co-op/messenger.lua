@@ -12,8 +12,7 @@ messenger.RAMEVENT = 5
 messenger.PLAYERNUMBER = 6
 messenger.PLAYERLIST = 7
 messenger.KICKPLAYER = 8
-messenger.READYCHECK = 9
-messenger.PLAYERSTATUS = 10
+messenger.PLAYERSTATUS = 9
 
 --the first character of the message tells what kind of message was sent
 local message_type_to_char = {
@@ -25,7 +24,6 @@ local message_type_to_char = {
   [messenger.PLAYERNUMBER] = "n",
   [messenger.PLAYERLIST] = "l",
   [messenger.KICKPLAYER] = "k",
-  [messenger.READYCHECK] = "z",
   [messenger.PLAYERSTATUS] = "s"
 }
 --inverse of the previous table
@@ -144,10 +142,6 @@ local encode_message = {
     return ""
   end,
 
-  [messenger.READYCHECK] = function(data)
-    return ""
-  end,
-
   [messenger.PLAYERSTATUS] = function(data)
     local their_user = data[1]
     local status = data[2]
@@ -247,7 +241,7 @@ local decode_message = {
     if pnumFound == true then
       return nil
     else
-      host.playerlist[their_user] = {['num'] = tonumber(pnum), ['status'] = "unchecked"}
+      host.playerlist[their_user] = {['num'] = tonumber(pnum), ['status'] = "Unready"}
       return {pnum}
     end
   end,
@@ -257,10 +251,6 @@ local decode_message = {
   end,
 
   [messenger.KICKPLAYER] = function(split_message)
-    return {}
-  end,
-
-  [messenger.READYCHECK] = function(split_message)
     return {}
   end,
 

@@ -136,57 +136,27 @@ function sync.kickPlayer()
   end
 end
 
-function sync.readyCheck()
-  if getTableSize(host.users) <= 1 then
-    printOutput("There needs to be more than 1 player for a ready check.")
-    return false
-  end
+function sync.readyToggle()
+  local status = forms.gettext(readyToggle)
 
-  for _, player in pairs(host.playerlist) do
-      player['status'] = "unchecked"
-  end
-
-  for _, client in pairs(host.clients) do
-    messenger.send(client, config.user, messenger.READYCHECK)
-  end
-
-  sync.readyCheckForm()
-end
-
-function sync.readyCheckForm()
-  if config.user ~= host.hostname then
-    forms.setproperty(mainform, "Enabled", false)
-  else
-    forms.setproperty(startReadyCheckBtn, "Enabled", false)
-  end
-  readyCheckForm = forms.newform(275, 85, "Ready Check")
-  readyCheckLabel = forms.label(readyCheckForm, "Are You Ready?", 90, 5, 150, 13)
-  readyCheckYesBtn = forms.button(readyCheckForm, "Yes", sync.readyCheckYes, 40, 20, 80, 23)
-  readyCheckNoBtn = forms.button(readyCheckForm, "No", sync.readyCheckNo, 145, 20, 80, 23)
-end
-
-function sync.readyCheckYes()
-  if config.user == host.hostname then
-    host.playerlist[config.user]['status'] = "Ready"
+  if host.status == "Host" then
+    host.playerlist[config.user]['status'] = status
     sync.updatePlayerList(host.playerlist)
-    sync.sendPlayerList(host.playerlist)
-  else
-    messenger.send(host.clients[1], config.user, messenger.PLAYERSTATUS, config.user, "Ready")
-    forms.setproperty(mainform, "Enabled", true)
-  end
-  forms.destroy(readyCheckForm)
-end
 
-function sync.readyCheckNo()
-  if config.user == host.hostname then
-    host.playerlist[config.user]['status'] = "Not Ready"
-    sync.updatePlayerList(host.playerlist)
-    sync.sendPlayerList(host.playerlist)
+    if getTableSize(host.playerlist) > 1 then
+      sync.sendPlayerList(host.playerlist)
+    end
   else
-    messenger.send(host.clients[1], config.user, messenger.PLAYERSTATUS, config.user, "Not Ready")
-    forms.setproperty(mainform, "Enabled", true)
+    messenger.send(host.clients[1], config.user, messenger.PLAYERSTATUS, config.user, status)
   end
-  forms.destroy(readyCheckForm)
+
+  if status == "Ready" then
+    forms.settext(readyToggle, "Unready")
+  end
+
+  if status == "Unready" then
+    forms.settext(readyToggle, "Ready")
+  end
 end
 
 local close_client = function(clientID, err)
@@ -376,8 +346,6 @@ function sync.syncRAM()
       elseif (received_message_type == messenger.KICKPLAYER) then
         kicked = true
         leaveRoom()
-      elseif (received_message_type == messenger.READYCHECK) then
-        sync.readyCheckForm()
       elseif (received_message_type == messenger.PLAYERSTATUS) then
         sync.updatePlayerList(host.playerlist)
         sync.sendPlayerList(host.playerlist)
@@ -396,23 +364,20 @@ function sync.updatePlayerList(playerlist)
   host.playerlist = playerlist
   forms.settext(formPlayerList, "")
   local text = ""
-  local newText = ""
   local sortedKeys = getKeysSortedByValue(playerlist, function(a, b) return a.num < b.num end)
   local readyCount = 0
-  local notReadyCount = 0
   for _, k in ipairs(sortedKeys) do
     if (playerlist[k]['num'] ~= nil) then
-      newText = "P"..tonumber(playerlist[k]['num'])..": "..k
-
-      if (playerlist[k]['status'] == "Ready") then
-        newText = newText .. " -R"
-        readyCount = readyCount + 1
-      elseif playerlist[k]['status'] == "Not Ready" then
-        notReadyCount = notReadyCount + 1
+      if playerlist[k]['status'] == "Unready" then
+        text = text .. "[ ] P" .. tonumber(playerlist[k]['num']) .. ": " .. k
       end
 
-      newText = newText .. "\r\n"
-      text = text..newText
+      if (playerlist[k]['status'] == "Ready") then
+        text = text .. "[X] P" .. tonumber(playerlist[k]['num']) .. ": " .. k
+        readyCount = readyCount + 1
+      end
+
+      text = text .. "\r\n"
     end
 
     forms.settext(formPlayerList, text)
@@ -420,12 +385,6 @@ function sync.updatePlayerList(playerlist)
 
   forms.settext(formPlayerCount, getTableSize(host.playerlist))
   forms.settext(formReadyCount, tostring(readyCount))
-
-  if config.user == host.hostname then
-    if (readyCount + notReadyCount) == getTableSize(host.playerlist) then
-      forms.setproperty(startReadyCheckBtn, "Enabled", true)
-    end
-  end
 end
 
 return sync

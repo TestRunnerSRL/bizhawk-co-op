@@ -119,19 +119,19 @@ function host.start()
 
 	host.locked = false
 	host.users[config.user] = 1
-	host.playerlist[config.user] = {['num'] = tonumber(forms.gettext(formPlayerNumber)), ['status'] = "unchecked"}
+	host.playerlist[config.user] = {['num'] = tonumber(forms.gettext(formPlayerNumber)), ['status'] = "Unready"}
 
 	forms.settext(formPlayerCount, "1")
 	forms.setproperty(formPlayerList, 'SelectionStart', 0)
-	forms.setproperty(formPlayerList, "SelectedText", "P"..tonumber(forms.gettext(formPlayerNumber))..": "..config.user.."\r\n")
+	forms.setproperty(formPlayerList, "SelectedText", "[ ] P"..tonumber(forms.gettext(formPlayerNumber))..": "..config.user.."\r\n")
 	forms.settext(formReadyCount, "0")
+	forms.setproperty(readyToggle, "Enabled", true)
 
-	hostControls = forms.newform(300, 110, "Host Controls")
+	hostControls = forms.newform(300, 88, "Host Controls")
 	kickPlayerLabel = forms.label(hostControls, "Kick Player", 4, 5, 290, 13)
 	kickPlayerSelect = forms.dropdown(hostControls, {['(Kick Player...)']='(Kick Player...)'}, 5, 20, 200, 5)
 	kickPlayerBtn = forms.button(hostControls, "Kick", sync.kickPlayer, 208, 19, 72, 23)
 	forms.setdropdownitems(kickPlayerSelect, invert_table(host.users))
-	startReadyCheckBtn = forms.button(hostControls, "Ready Check", sync.readyCheck, 5, 45, 80, 23)
 
 	updateGUI()
 	return true
@@ -302,6 +302,8 @@ function host.join()
 		updateGUI()
 	end
 
+	forms.setproperty(readyToggle, "Enabled", true)
+
 	return
 end
 
@@ -348,16 +350,17 @@ function host.close()
 		forms.settext(formPlayerList, "")
 		forms.settext(formPlayerNumber, "")
 		forms.settext(formReadyCount, "...")
+		forms.setproperty(readyToggle, "Enabled", false)
+
+		if forms.gettext(readyToggle) == "Unready" then
+			forms.settext(readyToggle, "Ready")
+		end
+
 		updateGUI()
 	end
 
 	if hostControls then
 		forms.destroy(hostControls)
-	end
-
-	if readyCheckForm then
-		forms.destroy(readyCheckForm)
-		forms.setproperty(mainform, "Enabled", true)
 	end
 end
 
