@@ -259,12 +259,13 @@ function sync.syncRAM()
 
       if not kicked then
         gui.addmessage("You closed the connection.")
+        host.close()
         error("You closed the connection.")
       else
         gui.addmessage("You were kicked from the room.")
+        host.close()
+        error("You were kicked from the room.")
       end
-
-      host.close()
     end
 
     local ram_message = ram_controller.getMessage()
