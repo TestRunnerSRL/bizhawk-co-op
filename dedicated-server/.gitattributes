@@ -1,0 +1,2 @@
+# gofmt changes line endings to '\n', even on Windows.
+*.go eol=lf
