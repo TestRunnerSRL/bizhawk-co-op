@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -21,19 +22,28 @@ different server (e.g., AWS EC2 or GCP).
 
 `
 
+func addPortForwarding(externalPort int, internalPort int) (string, io.Closer, error) {
+	pf, err := NewPortForwarder()
+	if err != nil {
+		return "", nil, err
+	}
+	if err := pf.Add(uint16(externalPort), uint16(internalPort), "BizHawk co-op"); err != nil {
+		return "", nil, err
+	}
+	return pf.ExternalIP, pf, nil
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, USAGE)
 		flag.PrintDefaults()
 	}
-	var port = flag.Int("port", 50000, "TCP/IP port on which the server runs")
-	//var upnpPort = flag.Int("upnpport", 0, "External port to enable via UPnP, or 0 to disable UPnP")
+	var port = flag.Int("port", 50000, "TCP/IP port on which the server runs.")
+	var upnpPort = flag.Int("upnpport", 0, "If non-zero, enables port forwarding from this external port using UPnP.")
 	var syncHash = flag.String("synchash", "", "Configuration hash to ensure consistent versions.")
 	var ramConfig = flag.String("ramconfig", "", "Game-specific configuration string.")
 	flag.Parse()
 
-	// TODO(bmclarnon): Use UPnP to automatically set up port forwarding with
-	// compatible routers.
 	// TODO(bmclarnon): Add a flag-controlled admin interface to kick players
 	// from a room and see what items each player has collected.
 	// TODO(bmclarnon): Generate the supported built-in hashes (and ramconfigs)
@@ -49,6 +59,25 @@ func main() {
 			log.Printf("Server shutdown failed: %v", err)
 		}
 	}()
+	// If *port is 0, the system will pick an available port.
+	actualPort := listener.Addr().(*net.TCPAddr).Port
+
+	// Set up port forwarding, and tear it down on exit.
+	hostPort := fmt.Sprintf("localhost:%d", actualPort)
+	if *upnpPort > 0 {
+		log.Print("Setting up port forwarding...")
+		externalIP, closer, err := addPortForwarding(*upnpPort, actualPort)
+		if err != nil {
+			log.Printf("Port forwarding failed: %v", err)
+		} else {
+			hostPort = fmt.Sprintf("%s:%d", externalIP, *upnpPort)
+			defer func() {
+				if err := closer.Close(); err != nil {
+					log.Printf("Failed to remove port forwarding: %v", err)
+				}
+			}()
+		}
+	}
 
 	// Create the room, which should be closed on shutdown.
 	room := NewRoom(*syncHash, *ramConfig)
@@ -59,7 +88,7 @@ func main() {
 	}()
 
 	// Run until the listener is closed due to the listener being closed.
-	log.Printf("Running on localhost:%d", *port)
+	log.Printf("Running on %s", hostPort)
 	go func() {
 		for {
 			conn, err := listener.Accept()
