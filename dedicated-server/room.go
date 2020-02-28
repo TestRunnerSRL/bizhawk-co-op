@@ -162,7 +162,7 @@ func (r *Room) syncConfig(scanner *bufio.Scanner, conn io.ReadWriteCloser) (stri
 		Payload:      fmt.Sprintf("%s,1,%s", r.syncHash, r.ramConfig),
 	}
 	if err := configMsg.Send(conn); err != nil {
-		return "", fmt.Errorf("error sending config: %v", err)
+		return "", fmt.Errorf("error sending config: %w", err)
 	}
 
 	if !scanner.Scan() {
@@ -189,7 +189,7 @@ func (r *Room) syncConfig(scanner *bufio.Scanner, conn io.ReadWriteCloser) (stri
 	r.mux.Lock()
 	defer r.mux.Unlock()
 	if _, ok := r.clients[msg.FromUserName]; ok {
-		return "", fmt.Errorf("%v, name=%s", ErrSyncUserNameInUse, msg.FromUserName)
+		return "", fmt.Errorf("%w, name=%s", ErrSyncUserNameInUse, msg.FromUserName)
 	}
 	r.clients[msg.FromUserName] = conn
 
