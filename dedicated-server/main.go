@@ -80,7 +80,7 @@ func main() {
 	}
 
 	// Create the room, which should be closed on shutdown.
-	room := NewRoom(*syncHash, *ramConfig)
+	room := NewRoom(NewSyncConfig(*syncHash, *ramConfig))
 	defer func() {
 		if err := room.Close(); err != nil {
 			log.Printf("Failed to disconnect users: %v", err)

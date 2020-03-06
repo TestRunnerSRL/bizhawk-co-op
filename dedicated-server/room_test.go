@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -36,8 +37,21 @@ func (f *FakeConn) Close() error {
 	return nil
 }
 
+type FakeSyncConfig struct {
+	validateErr   error
+	clientConfigs []*Message
+}
+
+func (sc *FakeSyncConfig) ConfigMessagePayload() string { return "configPayload" }
+func (sc *FakeSyncConfig) Itemlist() string             { return "itemPayload" }
+func (sc *FakeSyncConfig) ValidateClientConfig(msg *Message) error {
+	sc.clientConfigs = append(sc.clientConfigs, msg)
+	return sc.validateErr
+}
+
 func TestMessagePropagation(t *testing.T) {
-	room := NewRoom("syncHash", "ramConfig")
+	sc := &FakeSyncConfig{}
+	room := NewRoom(sc)
 	done := make(chan bool, 1)
 	r1, writer1 := io.Pipe()
 	reader1, w1 := io.Pipe()
@@ -48,7 +62,7 @@ func TestMessagePropagation(t *testing.T) {
 	}()
 
 	// First the server sends the config.
-	configMessage := "cServer,syncHash,1,ramConfig"
+	configMessage := "cServer,configPayload"
 	scanner1 := bufio.NewScanner(reader1)
 	if scanner1.Scan(); scanner1.Text() != configMessage {
 		t.Errorf("conn1: got config %s, want %s", scanner1.Text(), configMessage)
@@ -60,7 +74,7 @@ func TestMessagePropagation(t *testing.T) {
 	}
 
 	// Then the server sends the itemlist.
-	itemList := "rServer,i:0:1"
+	itemList := "rServer,itemPayload"
 	if scanner1.Scan(); scanner1.Text() != itemList {
 		t.Errorf("conn1: got itemlist %s, want %s", scanner1.Text(), itemList)
 	}
@@ -113,10 +127,19 @@ func TestMessagePropagation(t *testing.T) {
 	if !conn1.closed || !conn2.closed {
 		t.Errorf("connections were not closed")
 	}
+
+	// Verify the configs sent to the SyncConfig.
+	var wantConfigs = []*Message{
+		&Message{CONFIG_MESSAGE, "P1", "syncHash"},
+		&Message{CONFIG_MESSAGE, "P2", "syncHash"},
+	}
+	if !reflect.DeepEqual(sc.clientConfigs, wantConfigs) {
+		t.Errorf("unexpected config messages: got %v, want %v", sc.clientConfigs, wantConfigs)
+	}
 }
 
 func TestClose(t *testing.T) {
-	room := NewRoom("syncHash", "ramConfig")
+	room := NewRoom(&FakeSyncConfig{})
 	reader, writer := io.Pipe()
 	var buf bytes.Buffer
 	conn := FakeConn{input: reader, output: &buf}
@@ -134,8 +157,8 @@ func TestClose(t *testing.T) {
 	if !conn.closed {
 		t.Errorf("connection was not closed")
 	}
-	want := "cServer,syncHash,1,ramConfig\n" +
-		"rServer,i:0:1\n" +
+	want := "cServer,configPayload\n" +
+		"rServer,itemPayload\n" +
 		"qServer,\n"
 	if buf.String() != want {
 		t.Errorf("got %s, want %s", buf.String(), want)
@@ -144,20 +167,20 @@ func TestClose(t *testing.T) {
 
 func TestSyncFailures(t *testing.T) {
 	var tests = []struct {
-		input string
-		want  error
+		input     string
+		syncError error
+		want      error
 	}{
-		{"", ErrConnectionClosed},
-		{"x,\n", ErrUnknownMessageType},
-		{"m,\n", ErrSyncWrongMessageType},
-		{"c,badHash\n", ErrSyncBadHash},
+		{"", nil, ErrConnectionClosed},
+		{"x,\n", nil, ErrUnknownMessageType},
+		{"c,syncHash\n", ErrSyncBadHash, ErrSyncBadHash},
 	}
 
 	defer log.SetOutput(os.Stderr)
 	for _, tt := range tests {
 		var buf bytes.Buffer
 		log.SetOutput(&buf)
-		room := NewRoom("syncHash", "ramConfig")
+		room := NewRoom(&FakeSyncConfig{validateErr: tt.syncError})
 		conn := FakeConn{input: bytes.NewBufferString(tt.input), output: new(bytes.Buffer)}
 		room.HandleConnection(&conn)
 		if !conn.closed {
@@ -170,7 +193,7 @@ func TestSyncFailures(t *testing.T) {
 }
 
 func TestDuplicateUserName(t *testing.T) {
-	room := NewRoom("syncHash", "ramConfig")
+	room := NewRoom(&FakeSyncConfig{})
 	done := make(chan bool, 1)
 
 	r1, writer1 := io.Pipe()

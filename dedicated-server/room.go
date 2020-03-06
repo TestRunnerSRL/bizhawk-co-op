@@ -14,19 +14,21 @@ import (
 const SERVER_USER_NAME = "Server"
 
 var (
-	ErrConnectionClosed     = errors.New("connection closed unexpectedly")
-	ErrSyncWrongMessageType = errors.New("wrong message type")
-	ErrSyncBadHash          = errors.New("bad sync hash")
-	ErrSyncUserNameInUse    = errors.New("user name already in use")
+	ErrConnectionClosed  = errors.New("connection closed unexpectedly")
+	ErrSyncUserNameInUse = errors.New("user name already in use")
 )
+
+// Satisfied by SyncConfig. Allows dependency injection for testing.
+type syncConfigInterface interface {
+	ConfigMessagePayload() string
+	Itemlist() string
+	ValidateClientConfig(*Message) error
+}
 
 // A Room manages all of the connections and state for clients in a single
 // co-op game.
 type Room struct {
-	// A hash of the Lua scripts used to ensure clients use the same version.
-	syncHash string
-	// Configuration for the ramcontroller.
-	ramConfig string
+	syncConfig syncConfigInterface
 
 	// All received messages for the room are written to this channel.
 	msgChannel chan *Message
@@ -38,13 +40,10 @@ type Room struct {
 	clients map[string]io.ReadWriteCloser // guarded by mux
 }
 
-// If the syncHash is non-empty, it and the ramConfig
-// will be provided to all clients. Otherwise, the syncHash from the first
-// client to connect will be used.
-func NewRoom(syncHash string, ramConfig string) *Room {
+// Creates a new room using the provided SyncConfig.
+func NewRoom(syncConfig syncConfigInterface) *Room {
 	r := &Room{
-		syncHash:   syncHash,
-		ramConfig:  ramConfig,
+		syncConfig: syncConfig,
 		msgChannel: make(chan *Message, 10),
 		done:       make(chan bool, 1),
 		mux:        sync.Mutex{},
@@ -63,7 +62,7 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 
 	// Verify the client's config.
 	scanner := bufio.NewScanner(conn)
-	userName, err := r.syncConfig(scanner, conn)
+	userName, err := r.initializeConnection(scanner, conn)
 	if err != nil {
 		log.Printf("Configuration consistency check failed: %v", err)
 		return
@@ -153,13 +152,12 @@ func (r *Room) Close() error {
 }
 
 // Performs initial configuration, including syncing configs with the client.
-func (r *Room) syncConfig(scanner *bufio.Scanner, conn io.ReadWriteCloser) (string, error) {
-	// Clients should immediately receive their configuration. We send each
-	// client clientId 1 since it's unused.
+func (r *Room) initializeConnection(scanner *bufio.Scanner, conn io.ReadWriteCloser) (string, error) {
+	// Clients should immediately receive their configuration.
 	configMsg := Message{
 		MessageType:  CONFIG_MESSAGE,
 		FromUserName: SERVER_USER_NAME,
-		Payload:      fmt.Sprintf("%s,1,%s", r.syncHash, r.ramConfig),
+		Payload:      r.syncConfig.ConfigMessagePayload(),
 	}
 	if err := configMsg.Send(conn); err != nil {
 		return "", fmt.Errorf("error sending config: %w", err)
@@ -177,13 +175,8 @@ func (r *Room) syncConfig(scanner *bufio.Scanner, conn io.ReadWriteCloser) (stri
 	if err != nil {
 		return "", err
 	}
-
-	if msg.MessageType != CONFIG_MESSAGE {
-		return "", ErrSyncWrongMessageType
-	}
-
-	if msg.Payload != r.syncHash {
-		return "", ErrSyncBadHash
+	if err := r.syncConfig.ValidateClientConfig(msg); err != nil {
+		return "", err
 	}
 
 	r.mux.Lock()
@@ -198,12 +191,10 @@ func (r *Room) syncConfig(scanner *bufio.Scanner, conn io.ReadWriteCloser) (stri
 
 // Sends the item list to all clients. This currently only supports OOT.
 func (r *Room) sendItemList() {
-	// TODO(bmclarnon): Get the itemcount from the ramcontroller to send proper
-	// itemlists for non-OOT games.
 	itemlist := Message{
 		MessageType:  RAM_EVENT_MESSAGE,
 		FromUserName: SERVER_USER_NAME,
-		Payload:      "i:0:1",
+		Payload:      r.syncConfig.Itemlist(),
 	}
 	r.mux.Lock()
 	for userName, conn := range r.clients {
