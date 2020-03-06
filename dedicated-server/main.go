@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 const USAGE = `USAGE: dedicated_server [FLAGS]
@@ -42,7 +44,10 @@ func main() {
 	var upnpPort = flag.Int("upnpport", 0, "If non-zero, enables port forwarding from this external port using UPnP.")
 	var syncHash = flag.String("synchash", "", "Configuration hash to ensure consistent versions.")
 	var ramConfig = flag.String("ramconfig", "", "Game-specific configuration string.")
+	var itemCount = flag.Int("itemcount", 1, "Number of items supported by the game.")
 	flag.Parse()
+
+	rand.Seed(time.Now().UnixNano())
 
 	// TODO(bmclarnon): Add a flag-controlled admin interface to kick players
 	// from a room and see what items each player has collected.
@@ -80,7 +85,7 @@ func main() {
 	}
 
 	// Create the room, which should be closed on shutdown.
-	room := NewRoom(NewSyncConfig(*syncHash, *ramConfig))
+	room := NewRoom(NewSyncConfig(*syncHash, *ramConfig, *itemCount))
 	defer func() {
 		if err := room.Close(); err != nil {
 			log.Printf("Failed to disconnect users: %v", err)

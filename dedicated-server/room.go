@@ -20,9 +20,10 @@ var (
 
 // Satisfied by SyncConfig. Allows dependency injection for testing.
 type syncConfigInterface interface {
-	ConfigMessagePayload() string
+	ConfigMessagePayload(id PlayerID) string
 	Itemlist() string
-	ValidateClientConfig(*Message) error
+	ValidateClientConfig(*Message) (PlayerID, error)
+	ReleasePlayerID(PlayerID)
 }
 
 // A Room manages all of the connections and state for clients in a single
@@ -62,7 +63,7 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 
 	// Verify the client's config.
 	scanner := bufio.NewScanner(conn)
-	userName, err := r.initializeConnection(scanner, conn)
+	userName, playerID, err := r.initializeConnection(scanner, conn)
 	if err != nil {
 		log.Printf("Configuration consistency check failed: %v", err)
 		return
@@ -72,6 +73,7 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 		r.mux.Lock()
 		delete(r.clients, userName)
 		r.mux.Unlock()
+		r.syncConfig.ReleasePlayerID(playerID)
 	}()
 
 	// The client should get a ping every 10 seconds to keep the connection alive.
@@ -152,44 +154,47 @@ func (r *Room) Close() error {
 }
 
 // Performs initial configuration, including syncing configs with the client.
-func (r *Room) initializeConnection(scanner *bufio.Scanner, conn io.ReadWriteCloser) (string, error) {
-	// Clients should immediately receive their configuration.
-	configMsg := Message{
-		MessageType:  CONFIG_MESSAGE,
-		FromUserName: SERVER_USER_NAME,
-		Payload:      r.syncConfig.ConfigMessagePayload(),
-	}
-	if err := configMsg.Send(conn); err != nil {
-		return "", fmt.Errorf("error sending config: %w", err)
-	}
-
+func (r *Room) initializeConnection(scanner *bufio.Scanner, conn io.ReadWriteCloser) (string, PlayerID, error) {
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {
-			return "", err
+			return "", 0, err
 		}
-		return "", ErrConnectionClosed
+		return "", 0, ErrConnectionClosed
 	}
 
 	// The first thing the client sends should be its config.
 	msg, err := DecodeMessage(scanner.Text())
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	if err := r.syncConfig.ValidateClientConfig(msg); err != nil {
-		return "", err
+	playerID, err := r.syncConfig.ValidateClientConfig(msg)
+	if err != nil {
+		return "", 0, err
+	}
+
+	// Clients should immediately receive their configuration.
+	configMsg := Message{
+		MessageType:  CONFIG_MESSAGE,
+		FromUserName: SERVER_USER_NAME,
+		Payload:      r.syncConfig.ConfigMessagePayload(playerID),
+	}
+	if err := configMsg.Send(conn); err != nil {
+		r.syncConfig.ReleasePlayerID(playerID)
+		return "", 0, fmt.Errorf("error sending config: %w", err)
 	}
 
 	r.mux.Lock()
 	defer r.mux.Unlock()
 	if _, ok := r.clients[msg.FromUserName]; ok {
-		return "", fmt.Errorf("%w, name=%s", ErrSyncUserNameInUse, msg.FromUserName)
+		r.syncConfig.ReleasePlayerID(playerID)
+		return "", 0, fmt.Errorf("%w, name=%s", ErrSyncUserNameInUse, msg.FromUserName)
 	}
 	r.clients[msg.FromUserName] = conn
 
-	return msg.FromUserName, nil
+	return msg.FromUserName, playerID, nil
 }
 
-// Sends the item list to all clients. This currently only supports OOT.
+// Sends the item list to all clients.
 func (r *Room) sendItemList() {
 	itemlist := Message{
 		MessageType:  RAM_EVENT_MESSAGE,

@@ -40,13 +40,17 @@ func (f *FakeConn) Close() error {
 type FakeSyncConfig struct {
 	validateErr   error
 	clientConfigs []*Message
+	releaseCalls  int
 }
 
-func (sc *FakeSyncConfig) ConfigMessagePayload() string { return "configPayload" }
-func (sc *FakeSyncConfig) Itemlist() string             { return "itemPayload" }
-func (sc *FakeSyncConfig) ValidateClientConfig(msg *Message) error {
+func (sc *FakeSyncConfig) ConfigMessagePayload(id PlayerID) string {
+	return fmt.Sprintf("configPayload%d", id)
+}
+func (sc *FakeSyncConfig) Itemlist() string         { return "itemPayload" }
+func (sc *FakeSyncConfig) ReleasePlayerID(PlayerID) { sc.releaseCalls++ }
+func (sc *FakeSyncConfig) ValidateClientConfig(msg *Message) (PlayerID, error) {
 	sc.clientConfigs = append(sc.clientConfigs, msg)
-	return sc.validateErr
+	return PlayerID(len(sc.clientConfigs)), sc.validateErr
 }
 
 func TestMessagePropagation(t *testing.T) {
@@ -61,16 +65,16 @@ func TestMessagePropagation(t *testing.T) {
 		done <- true
 	}()
 
-	// First the server sends the config.
-	configMessage := "cServer,configPayload"
+	// First the server expects our config.
+	if _, err := fmt.Fprintf(writer1, "cP1,syncHash\n"); err != nil {
+		t.Errorf("conn1: failed to write config: %v", err)
+	}
+
+	// Then the server sends its config.
+	configMessage := "cServer,configPayload1"
 	scanner1 := bufio.NewScanner(reader1)
 	if scanner1.Scan(); scanner1.Text() != configMessage {
 		t.Errorf("conn1: got config %s, want %s", scanner1.Text(), configMessage)
-	}
-
-	// Then the server expects our config.
-	if _, err := fmt.Fprintf(writer1, "cP1,syncHash\n"); err != nil {
-		t.Errorf("conn1: failed to write config: %v", err)
 	}
 
 	// Then the server sends the itemlist.
@@ -88,11 +92,12 @@ func TestMessagePropagation(t *testing.T) {
 	}()
 
 	scanner2 := bufio.NewScanner(reader2)
-	if scanner2.Scan(); scanner2.Text() != configMessage {
-		t.Errorf("conn2: got config %s, want %s", scanner2.Text(), configMessage)
-	}
 	if _, err := fmt.Fprintf(writer2, "cP2,syncHash\n"); err != nil {
 		t.Errorf("conn2: failed to write config: %v", err)
+	}
+	configMessage = "cServer,configPayload2"
+	if scanner2.Scan(); scanner2.Text() != configMessage {
+		t.Errorf("conn2: got config %s, want %s", scanner2.Text(), configMessage)
 	}
 	// The itemlist is send to both players, in any order.
 	go func() {
@@ -157,7 +162,7 @@ func TestClose(t *testing.T) {
 	if !conn.closed {
 		t.Errorf("connection was not closed")
 	}
-	want := "cServer,configPayload\n" +
+	want := "cServer,configPayload1\n" +
 		"rServer,itemPayload\n" +
 		"qServer,\n"
 	if buf.String() != want {
