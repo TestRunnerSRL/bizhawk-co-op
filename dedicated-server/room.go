@@ -31,26 +31,19 @@ type syncConfigInterface interface {
 type Room struct {
 	syncConfig syncConfigInterface
 
-	// All received messages for the room are written to this channel.
-	msgChannel chan *Message
-	// Triggered when the room should shut down.
-	done chan bool
+	wg sync.WaitGroup
 
-	mux sync.Mutex
+	mux sync.RWMutex
 	// All active connections, keyed by user name.
-	clients map[string]io.ReadWriteCloser // guarded by mux
+	clients map[string]chan *Message // guarded by mux
 }
 
 // Creates a new room using the provided SyncConfig.
 func NewRoom(syncConfig syncConfigInterface) *Room {
 	r := &Room{
 		syncConfig: syncConfig,
-		msgChannel: make(chan *Message, 10),
-		done:       make(chan bool, 1),
-		mux:        sync.Mutex{},
-		clients:    make(map[string]io.ReadWriteCloser),
+		clients:    make(map[string]chan *Message),
 	}
-	go r.handleMessages()
 	return r
 }
 
@@ -58,12 +51,15 @@ func NewRoom(syncConfig syncConfigInterface) *Room {
 // keep-alive pings, and handling/propagation of all received messages.
 // This function takes responsibility for closing the connection.
 func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
+	r.wg.Add(1)
+	defer r.wg.Done()
 	log.Printf("Player connecting...")
 	defer conn.Close()
 
 	// Verify the client's config.
 	scanner := bufio.NewScanner(conn)
-	userName, playerID, err := r.initializeConnection(scanner, conn)
+	channel := make(chan *Message, 10)
+	userName, playerID, err := r.initializeConnection(scanner, conn, channel)
 	if err != nil {
 		log.Printf("Configuration consistency check failed: %v", err)
 		return
@@ -76,11 +72,29 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 		r.syncConfig.ReleasePlayerID(playerID)
 	}()
 
+	// Start a goroutine that forwards messages to the client.
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		for {
+			select {
+			case msg := <-channel:
+				if err := msg.Send(conn); err != nil {
+					log.Printf("Failed to forward %s to %s: %v", msg, userName, err)
+				}
+				// If the server is quiting, close the connection.
+				if msg.MessageType == QUIT_MESSAGE && msg.FromUserName == SERVER_USER_NAME {
+					conn.Close()
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+
 	// The client should get a ping every 10 seconds to keep the connection alive.
 	// If the client misses 4 pings in a row, close the connection.
-	ping := make(chan bool, 1)
-	done := make(chan bool, 1)
-	defer func() { done <- true }()
+	ping := make(chan struct{}, 1)
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
@@ -117,44 +131,44 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 			log.Printf("Failed to decode message from %s (%s): %v", userName, scanner.Text(), err)
 			continue
 		}
-		r.msgChannel <- msg
-		// There is additional handling for some control messages.
+		// Some control messages are handled here.
 		switch msg.MessageType {
 		case PING_MESSAGE:
-			ping <- true
+			ping <- struct{}{}
+		// TODO(bmclarnon): Add extra processing for RAM_EVENT_MESSAGEs so we
+		// can display what items have been collected.
+		default:
+			r.mux.RLock()
+			for userName, channel := range r.clients {
+				if msg.FromUserName != userName {
+					channel <- msg
+				}
+			}
+			r.mux.RUnlock()
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		log.Printf("%s disconnected with error: %v", userName, err)
-	} else {
-		log.Printf("%s disconnected", userName)
-	}
+	log.Printf("%s disconnected", userName)
 }
 
 // Disconnects all clients.
 func (r *Room) Close() error {
 	// Send a QUIT_MESSAGE to all connected clients.
-	msg := Message{
+	msg := &Message{
 		MessageType:  QUIT_MESSAGE,
 		FromUserName: SERVER_USER_NAME,
 	}
-	r.mux.Lock()
-	for userName, conn := range r.clients {
-		log.Printf("Closing %s", userName)
-		if err := msg.Send(conn); err != nil {
-			log.Printf("Failed to send quit to %s: %v", userName, err)
-		}
-		if err := conn.Close(); err != nil {
-			log.Printf("Failed to close connection to %s: %v", userName, err)
-		}
+	r.mux.RLock()
+	for _, channel := range r.clients {
+		channel <- msg
 	}
-	r.mux.Unlock()
-	r.done <- true
+	r.mux.RUnlock()
+	// Wait for all connections to be closed.
+	r.wg.Wait()
 	return nil
 }
 
 // Performs initial configuration, including syncing configs with the client.
-func (r *Room) initializeConnection(scanner *bufio.Scanner, conn io.ReadWriteCloser) (string, PlayerID, error) {
+func (r *Room) initializeConnection(scanner *bufio.Scanner, conn io.ReadWriteCloser, channel chan *Message) (string, PlayerID, error) {
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {
 			return "", 0, err
@@ -189,56 +203,21 @@ func (r *Room) initializeConnection(scanner *bufio.Scanner, conn io.ReadWriteClo
 		r.syncConfig.ReleasePlayerID(playerID)
 		return "", 0, fmt.Errorf("%w, name=%s", ErrSyncUserNameInUse, msg.FromUserName)
 	}
-	r.clients[msg.FromUserName] = conn
+	r.clients[msg.FromUserName] = channel
 
 	return msg.FromUserName, playerID, nil
 }
 
 // Sends the item list to all clients.
 func (r *Room) sendItemList() {
-	itemlist := Message{
+	itemlist := &Message{
 		MessageType:  RAM_EVENT_MESSAGE,
 		FromUserName: SERVER_USER_NAME,
 		Payload:      r.syncConfig.Itemlist(),
 	}
-	r.mux.Lock()
-	for userName, conn := range r.clients {
-		if err := itemlist.Send(conn); err != nil {
-			log.Printf("Failed to send itemlist to %s: %v", userName, err)
-		}
+	r.mux.RLock()
+	for _, channel := range r.clients {
+		channel <- itemlist
 	}
-	r.mux.Unlock()
-}
-
-// Reads messages from the message channel until the room is closed.
-func (r *Room) handleMessages() {
-	for {
-		select {
-		case msg := <-r.msgChannel:
-			if err := r.handleMessage(msg); err != nil {
-				log.Printf("Failed to handle %s: %v", msg, err)
-			}
-		case <-r.done:
-			break
-		}
-	}
-}
-
-// Handles a client message by forwarding it to all other clients.
-func (r *Room) handleMessage(msg *Message) error {
-	// Forward the message to all other clients.
-	r.mux.Lock()
-	for userName, conn := range r.clients {
-		if userName == msg.FromUserName {
-			continue
-		}
-		if err := msg.Send(conn); err != nil {
-			log.Printf("Failed to forward %s to %s: %v", msg, userName, err)
-		}
-	}
-	r.mux.Unlock()
-
-	// TODO(bmclarnon): Add extra processing for RAM_EVENT_MESSAGEs so we can
-	// display what items have been collected.
-	return nil
+	r.mux.RUnlock()
 }

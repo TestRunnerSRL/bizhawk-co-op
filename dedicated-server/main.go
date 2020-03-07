@@ -57,11 +57,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
-	defer func() {
-		if err := listener.Close(); err != nil {
-			log.Printf("Server shutdown failed: %v", err)
-		}
-	}()
 	// If *port is 0, the system will pick an available port.
 	actualPort := listener.Addr().(*net.TCPAddr).Port
 
@@ -84,11 +79,6 @@ func main() {
 
 	// Create the room, which should be closed on shutdown.
 	room := NewRoom(NewSyncConfig(*syncHash, *ramConfig, *itemCount))
-	defer func() {
-		if err := room.Close(); err != nil {
-			log.Printf("Failed to disconnect users: %v", err)
-		}
-	}()
 
 	// Run until the listener is closed due to the listener being closed.
 	log.Printf("Running on %s", hostPort)
@@ -108,4 +98,11 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
 	log.Printf("Shutting down...")
+	// First close the listener so that new connections are not accepted.
+	if err := listener.Close(); err != nil {
+		log.Printf("Server shutdown failed: %v", err)
+	}
+	if err := room.Close(); err != nil {
+		log.Printf("Failed to disconnect users: %v", err)
+	}
 }
