@@ -45,7 +45,6 @@ func NewSyncConfig(syncHash string, ramConfig string, itemCount int) *SyncConfig
 // Returns the payload string that should be sent by the server in
 // CONFIG_MESSAGEs.
 func (sc *SyncConfig) ConfigMessagePayload(id PlayerID) string {
-	// We send each client clientId 1 since it's unused.
 	return fmt.Sprintf("%s,%d,%s", sc.syncHash, id, sc.ramConfig)
 }
 
@@ -88,9 +87,26 @@ func (sc *SyncConfig) Itemlist() string {
 // Validates the first message sent by clients, which should be their
 // CONFIG_MESSAGE. Returns the player id for the new connection. The
 // player id should be released when the connection closes.
+//go:generate go run gen_synchashes.go
 func (sc *SyncConfig) ValidateClientConfig(msg *Message) (PlayerID, error) {
 	if msg.MessageType != CONFIG_MESSAGE {
 		return 0, ErrSyncWrongMessageType
+	}
+
+	// If syncHash is unset, try to use the value from the client message.
+	// TODO(bmclarnon): Ideally, we'd also be able to infer the ramConfig and
+	// itemCount, e.g. by evaluating the ramcontrollers at the time the server
+	// was compiled and storing a list of (syncHash, ramConfig, itemCount)
+	// tuples. Unfortunately, running the ramcontroller requires access to the
+	// ROM as well as some way for the user to choose options on a form. It'd
+	// be better to change the client/server protocol to allow the first client
+	// to specify its preferences (e.g., as part of room creation).
+	if sc.syncHash == "" {
+		if _, ok := SyncHashes[msg.Payload]; ok {
+			sc.syncHash = msg.Payload
+		} else {
+			log.Printf("Client connected with unrecognized version (%s). Verify that the client and server are at the same version, then set --synchash as necessary.", msg.Payload)
+		}
 	}
 	if msg.Payload != sc.syncHash {
 		return 0, ErrSyncBadHash

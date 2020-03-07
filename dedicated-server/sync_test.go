@@ -16,6 +16,38 @@ func TestConfigMessagePayload(t *testing.T) {
 	}
 }
 
+func TestLazyConfigMessagePayload(t *testing.T) {
+	sc := NewSyncConfig("", "ramConfig", 1)
+	want := ",3,ramConfig"
+	if payload := sc.ConfigMessagePayload(PlayerID(3)); payload != want {
+		t.Errorf("got %s, want %s", payload, want)
+	}
+
+	// A player with an unknown synchash should be rejected. The synchash
+	// should not change.
+	msg := &Message{CONFIG_MESSAGE, "", "syncHash"}
+	if _, err := sc.ValidateClientConfig(msg); !errors.Is(err, ErrSyncBadHash) {
+		t.Errorf("config should have been rejected: got %v, want %v", err, ErrSyncBadHash)
+	}
+	if payload := sc.ConfigMessagePayload(PlayerID(3)); payload != want {
+		t.Errorf("got %s, want %s", payload, want)
+	}
+
+	// A player with a known synchash should be accepted and the server'same
+	// synchash should be updated.
+	for syncHash, _ := range SyncHashes {
+		msg.Payload = syncHash
+		break
+	}
+	if _, err := sc.ValidateClientConfig(msg); err != nil {
+		t.Errorf("failed to validate config message: %v", err)
+	}
+	want = msg.Payload + ",3,ramConfig"
+	if payload := sc.ConfigMessagePayload(PlayerID(3)); payload != want {
+		t.Errorf("got %s, want %s", payload, want)
+	}
+}
+
 func TestItemlistWithoutPlayers(t *testing.T) {
 	sc := NewSyncConfig("syncHash", "ramConfig", 2)
 	want := "i:0:1,i:1:1"

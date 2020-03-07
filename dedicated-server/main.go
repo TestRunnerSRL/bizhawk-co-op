@@ -42,7 +42,7 @@ func main() {
 	}
 	var port = flag.Int("port", 50000, "TCP/IP port on which the server runs.")
 	var upnpPort = flag.Int("upnpport", 0, "If non-zero, enables port forwarding from this external port using UPnP.")
-	var syncHash = flag.String("synchash", "", "Configuration hash to ensure consistent versions.")
+	var syncHash = flag.String("synchash", "", "Configuration hash to ensure consistent versions. If empty, the config will be inferred from the first client to connect.")
 	var ramConfig = flag.String("ramconfig", "", "Game-specific configuration string.")
 	var itemCount = flag.Int("itemcount", 1, "Number of items supported by the game.")
 	flag.Parse()
@@ -51,8 +51,6 @@ func main() {
 
 	// TODO(bmclarnon): Add a flag-controlled admin interface to kick players
 	// from a room and see what items each player has collected.
-	// TODO(bmclarnon): Generate the supported built-in hashes (and ramconfigs)
-	// as part of the build process using go generate and go run.
 
 	// Create the server, which should be closed on shutdown.
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
