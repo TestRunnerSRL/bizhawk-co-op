@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -53,16 +54,30 @@ func (sc *FakeSyncConfig) ValidateClientConfig(msg *Message) (PlayerID, error) {
 	return PlayerID(len(sc.clientConfigs)), sc.validateErr
 }
 
+type FakePlayerList struct {
+	validateErr  error
+	playerNums   []*Message
+	releaseCalls int
+}
+
+func (pl *FakePlayerList) Playerlist() string         { return "playerListPayload" }
+func (pl *FakePlayerList) ReleasePlayerNum(PlayerNum) { pl.releaseCalls++ }
+func (pl *FakePlayerList) ValidatePlayerNumber(msg *Message) (PlayerNum, error) {
+	pl.playerNums = append(pl.playerNums, msg)
+	return PlayerNum(len(pl.playerNums)), pl.validateErr
+}
+
 func TestMessagePropagation(t *testing.T) {
 	sc := &FakeSyncConfig{}
-	room := NewRoom(sc)
-	done := make(chan bool, 1)
+	pl := &FakePlayerList{}
+	room := NewRoom(sc, pl)
+	wg := sync.WaitGroup{}
 	r1, writer1 := io.Pipe()
 	reader1, w1 := io.Pipe()
 	conn1 := FakeConn{input: r1, output: w1}
 	go func() {
 		room.HandleConnection(&conn1)
-		done <- true
+		wg.Done()
 	}()
 
 	// First the server expects our config.
@@ -77,10 +92,27 @@ func TestMessagePropagation(t *testing.T) {
 		t.Errorf("conn1: got config %s, want %s", scanner1.Text(), configMessage)
 	}
 
+	// Then the server sends its player number.
+	playerNumberMessage := "nServer,Server,0"
+	if scanner1.Scan(); scanner1.Text() != playerNumberMessage {
+		t.Errorf("conn1: got player number %s, want %s", scanner1.Text(), playerNumberMessage)
+	}
+
+	// Then the server expects our player number.
+	if _, err := fmt.Fprintf(writer1, "nP1,P1,1\n"); err != nil {
+		t.Errorf("conn1: failed to write player number: %v", err)
+	}
+
 	// Then the server sends the itemlist.
 	itemList := "rServer,itemPayload"
 	if scanner1.Scan(); scanner1.Text() != itemList {
 		t.Errorf("conn1: got itemlist %s, want %s", scanner1.Text(), itemList)
+	}
+
+	// Then the server sends the playerlist.
+	playerList := "lServer,playerListPayload"
+	if scanner1.Scan(); scanner1.Text() != playerList {
+		t.Errorf("conn1: got playerlist %s, want %s", scanner1.Text(), playerList)
 	}
 
 	r2, writer2 := io.Pipe()
@@ -88,7 +120,7 @@ func TestMessagePropagation(t *testing.T) {
 	conn2 := FakeConn{input: r2, output: w2}
 	go func() {
 		room.HandleConnection(&conn2)
-		done <- true
+		wg.Done()
 	}()
 
 	scanner2 := bufio.NewScanner(reader2)
@@ -99,21 +131,33 @@ func TestMessagePropagation(t *testing.T) {
 	if scanner2.Scan(); scanner2.Text() != configMessage {
 		t.Errorf("conn2: got config %s, want %s", scanner2.Text(), configMessage)
 	}
-	// The itemlist is send to both players, in any order.
+	if scanner2.Scan(); scanner2.Text() != playerNumberMessage {
+		t.Errorf("conn2: got player number %s, want %s", scanner2.Text(), playerNumberMessage)
+	}
+	if _, err := fmt.Fprintf(writer2, "nP2,P2,2\n"); err != nil {
+		t.Errorf("conn2: failed to write player number: %v", err)
+	}
+	// The itemlist and playerlist are sent to both players, in any order.
+	wg.Add(2)
 	go func() {
 		if scanner1.Scan(); scanner1.Text() != itemList {
 			t.Errorf("conn1: got itemlist %s, want %s", scanner1.Text(), itemList)
 		}
-		done <- true
+		if scanner1.Scan(); scanner1.Text() != playerList {
+			t.Errorf("conn1: got playerlist %s, want %s", scanner1.Text(), playerList)
+		}
+		wg.Done()
 	}()
 	go func() {
 		if scanner2.Scan(); scanner2.Text() != itemList {
 			t.Errorf("conn2: got itemlist %s, want %s", scanner2.Text(), itemList)
 		}
-		done <- true
+		if scanner2.Scan(); scanner2.Text() != playerList {
+			t.Errorf("conn2: got playerlist %s, want %s", scanner2.Text(), playerList)
+		}
+		wg.Done()
 	}()
-	<-done
-	<-done
+	wg.Wait()
 
 	// Write a message to P1. It should be forwarded to P2.
 	want := "mP1,payload"
@@ -125,10 +169,10 @@ func TestMessagePropagation(t *testing.T) {
 	}
 
 	// Close the inputs. HandleConnection should close the outputs before returning.
+	wg.Add(2)
 	writer1.Close()
 	writer2.Close()
-	<-done
-	<-done
+	wg.Wait()
 	if !conn1.closed || !conn2.closed {
 		t.Errorf("connections were not closed")
 	}
@@ -141,10 +185,19 @@ func TestMessagePropagation(t *testing.T) {
 	if !reflect.DeepEqual(sc.clientConfigs, wantConfigs) {
 		t.Errorf("unexpected config messages: got %v, want %v", sc.clientConfigs, wantConfigs)
 	}
+
+	// Verify the messages sent to the PlayerList.
+	var wantPlayerNums = []*Message{
+		&Message{PLAYER_NUMBER_MESSAGE, "P1", "P1,1"},
+		&Message{PLAYER_NUMBER_MESSAGE, "P2", "P2,2"},
+	}
+	if !reflect.DeepEqual(pl.playerNums, wantPlayerNums) {
+		t.Errorf("unexpected player number messages: got %v, want %v", pl.playerNums, wantPlayerNums)
+	}
 }
 
 func TestClose(t *testing.T) {
-	room := NewRoom(&FakeSyncConfig{})
+	room := NewRoom(&FakeSyncConfig{}, &FakePlayerList{})
 	reader, writer := io.Pipe()
 	var buf bytes.Buffer
 	conn := FakeConn{input: reader, output: &buf}
@@ -152,6 +205,9 @@ func TestClose(t *testing.T) {
 
 	if _, err := fmt.Fprintf(writer, "cP1,syncHash\n"); err != nil {
 		t.Errorf("failed to write config: %v", err)
+	}
+	if _, err := fmt.Fprintf(writer, "nP1,P1,\n"); err != nil {
+		t.Errorf("failed to write player number: %v", err)
 	}
 	// Write another message to ensure we're beyond the initial handshake.
 	if _, err := fmt.Fprintf(writer, "pP1,\n"); err != nil {
@@ -163,7 +219,9 @@ func TestClose(t *testing.T) {
 		t.Errorf("connection was not closed")
 	}
 	want := "cServer,configPayload1\n" +
+		"nServer,Server,0\n" +
 		"rServer,itemPayload\n" +
+		"lServer,playerListPayload\n" +
 		"qServer,\n"
 	if buf.String() != want {
 		t.Errorf("got %s, want %s", buf.String(), want)
@@ -172,20 +230,24 @@ func TestClose(t *testing.T) {
 
 func TestSyncFailures(t *testing.T) {
 	var tests = []struct {
-		input     string
-		syncError error
-		want      error
+		input          string
+		syncError      error
+		playerNumError error
+		want           error
 	}{
-		{"", nil, ErrConnectionClosed},
-		{"x,\n", nil, ErrUnknownMessageType},
-		{"c,syncHash\n", ErrSyncBadHash, ErrSyncBadHash},
+		{"", nil, nil, ErrConnectionClosed},
+		{"x,\n", nil, nil, ErrUnknownMessageType},
+		{"c,syncHash\n", ErrSyncBadHash, nil, ErrSyncBadHash},
+		{"c,syncHash\n", nil, nil, ErrConnectionClosed},
+		{"c,syncHash\nx,\n", nil, nil, ErrUnknownMessageType},
+		{"c,syncHash\nn,P,\n", nil, ErrPlayerNumPayload, ErrPlayerNumPayload},
 	}
 
 	defer log.SetOutput(os.Stderr)
 	for _, tt := range tests {
 		var buf bytes.Buffer
 		log.SetOutput(&buf)
-		room := NewRoom(&FakeSyncConfig{validateErr: tt.syncError})
+		room := NewRoom(&FakeSyncConfig{validateErr: tt.syncError}, &FakePlayerList{validateErr: tt.playerNumError})
 		conn := FakeConn{input: bytes.NewBufferString(tt.input), output: new(bytes.Buffer)}
 		room.HandleConnection(&conn)
 		if !conn.closed {
@@ -198,7 +260,7 @@ func TestSyncFailures(t *testing.T) {
 }
 
 func TestDuplicateUserName(t *testing.T) {
-	room := NewRoom(&FakeSyncConfig{})
+	room := NewRoom(&FakeSyncConfig{}, &FakePlayerList{})
 	done := make(chan bool, 1)
 
 	r1, writer1 := io.Pipe()
@@ -206,6 +268,9 @@ func TestDuplicateUserName(t *testing.T) {
 	go room.HandleConnection(&conn1)
 	if _, err := fmt.Fprintf(writer1, "cP,syncHash\n"); err != nil {
 		t.Errorf("conn1: failed to write config: %v", err)
+	}
+	if _, err := fmt.Fprintf(writer1, "nP,P\n"); err != nil {
+		t.Errorf("conn1: failed to write player number: %v", err)
 	}
 	// Write another message to ensure we're beyond the initial handshake.
 	if _, err := fmt.Fprintf(writer1, "pP1,\n"); err != nil {
@@ -222,6 +287,9 @@ func TestDuplicateUserName(t *testing.T) {
 	log.SetOutput(&buf)
 	if _, err := fmt.Fprintf(writer2, "cP,syncHash\n"); err != nil {
 		t.Errorf("conn2: failed to write config: %v", err)
+	}
+	if _, err := fmt.Fprintf(writer2, "nP,P\n"); err != nil {
+		t.Errorf("conn2: failed to write player number: %v", err)
 	}
 	<-done
 	log.SetOutput(os.Stderr)

@@ -64,8 +64,11 @@ func (c *FakeClient) Run() error {
 	go c.ping(conn)
 	go c.handleInput(conn)
 
-	// Clients send their config as soon as they connect.
+	// Clients send their config and player number as soon as they connect.
 	if _, err := fmt.Fprintf(conn, "c%s,%s\n", c.name, c.syncHash); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(conn, "n%s,%s,\n", c.name, c.name); err != nil {
 		return err
 	}
 

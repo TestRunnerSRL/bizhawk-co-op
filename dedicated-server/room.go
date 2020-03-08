@@ -26,10 +26,18 @@ type syncConfigInterface interface {
 	ReleasePlayerID(PlayerID)
 }
 
+// Satisfied by PlayerList. Allows dependency injection for testing.
+type playerListInterface interface {
+	Playerlist() string
+	ValidatePlayerNumber(*Message) (PlayerNum, error)
+	ReleasePlayerNum(PlayerNum)
+}
+
 // A Room manages all of the connections and state for clients in a single
 // co-op game.
 type Room struct {
 	syncConfig syncConfigInterface
+	playerList playerListInterface
 
 	wg sync.WaitGroup
 
@@ -39,9 +47,10 @@ type Room struct {
 }
 
 // Creates a new room using the provided SyncConfig.
-func NewRoom(syncConfig syncConfigInterface) *Room {
+func NewRoom(syncConfig syncConfigInterface, playerList playerListInterface) *Room {
 	r := &Room{
 		syncConfig: syncConfig,
+		playerList: playerList,
 		clients:    make(map[string]chan *Message),
 	}
 	return r
@@ -59,7 +68,7 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 	// Verify the client's config.
 	scanner := bufio.NewScanner(conn)
 	channel := make(chan *Message, 10)
-	userName, playerID, err := r.initializeConnection(scanner, conn, channel)
+	userName, playerID, playerNum, err := r.initializeConnection(scanner, conn, channel)
 	if err != nil {
 		log.Printf("Configuration consistency check failed: %v", err)
 		return
@@ -70,6 +79,8 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 		delete(r.clients, userName)
 		r.mux.Unlock()
 		r.syncConfig.ReleasePlayerID(playerID)
+		r.playerList.ReleasePlayerNum(playerNum)
+		r.sendPlayerList()
 	}()
 
 	// Start a goroutine that forwards messages to the client.
@@ -122,8 +133,10 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 		conn.Close()
 	}()
 
-	// Send the item list to all clients whenever a new client connects.
+	// Send the item and player lists to all clients whenever a new client
+	// connects.
 	r.sendItemList()
+	r.sendPlayerList()
 
 	for scanner.Scan() {
 		msg, err := DecodeMessage(scanner.Text())
@@ -168,22 +181,21 @@ func (r *Room) Close() error {
 }
 
 // Performs initial configuration, including syncing configs with the client.
-func (r *Room) initializeConnection(scanner *bufio.Scanner, conn io.ReadWriteCloser, channel chan *Message) (string, PlayerID, error) {
+func (r *Room) initializeConnection(scanner *bufio.Scanner, conn io.ReadWriteCloser, channel chan *Message) (string, PlayerID, PlayerNum, error) {
+	// The first thing the client sends should be its config.
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {
-			return "", 0, err
+			return "", 0, 0, err
 		}
-		return "", 0, ErrConnectionClosed
+		return "", 0, 0, ErrConnectionClosed
 	}
-
-	// The first thing the client sends should be its config.
 	msg, err := DecodeMessage(scanner.Text())
 	if err != nil {
-		return "", 0, err
+		return "", 0, 0, err
 	}
 	playerID, err := r.syncConfig.ValidateClientConfig(msg)
 	if err != nil {
-		return "", 0, err
+		return "", 0, 0, err
 	}
 
 	// Clients should immediately receive their configuration.
@@ -194,18 +206,51 @@ func (r *Room) initializeConnection(scanner *bufio.Scanner, conn io.ReadWriteClo
 	}
 	if err := configMsg.Send(conn); err != nil {
 		r.syncConfig.ReleasePlayerID(playerID)
-		return "", 0, fmt.Errorf("error sending config: %w", err)
+		return "", 0, 0, fmt.Errorf("error sending config: %w", err)
+	}
+
+	// Clients expect the server's player number. This value must be unique, so
+	// we send 0 which can never be used by a client.
+	playerNumberMsg := Message{
+		MessageType:  PLAYER_NUMBER_MESSAGE,
+		FromUserName: SERVER_USER_NAME,
+		Payload:      fmt.Sprintf("%s,0", SERVER_USER_NAME),
+	}
+	if err := playerNumberMsg.Send(conn); err != nil {
+		r.syncConfig.ReleasePlayerID(playerID)
+		return "", 0, 0, fmt.Errorf("error sending player number: %w", err)
+	}
+
+	// Then clients send their player number.
+	if !scanner.Scan() {
+		r.syncConfig.ReleasePlayerID(playerID)
+		if err := scanner.Err(); err != nil {
+			return "", 0, 0, err
+		}
+		return "", 0, 0, ErrConnectionClosed
+	}
+	msg, err = DecodeMessage(scanner.Text())
+	if err != nil {
+		r.syncConfig.ReleasePlayerID(playerID)
+		return "", 0, 0, err
+	}
+	playerNum, err := r.playerList.ValidatePlayerNumber(msg)
+	if err != nil {
+		r.syncConfig.ReleasePlayerID(playerID)
+		return "", 0, 0, err
 	}
 
 	r.mux.Lock()
-	defer r.mux.Unlock()
 	if _, ok := r.clients[msg.FromUserName]; ok {
+		r.mux.Unlock()
 		r.syncConfig.ReleasePlayerID(playerID)
-		return "", 0, fmt.Errorf("%w, name=%s", ErrSyncUserNameInUse, msg.FromUserName)
+		r.playerList.ReleasePlayerNum(playerNum)
+		return "", 0, 0, fmt.Errorf("%w, name=%s", ErrSyncUserNameInUse, msg.FromUserName)
 	}
 	r.clients[msg.FromUserName] = channel
+	r.mux.Unlock()
 
-	return msg.FromUserName, playerID, nil
+	return msg.FromUserName, playerID, playerNum, nil
 }
 
 // Sends the item list to all clients.
@@ -218,6 +263,20 @@ func (r *Room) sendItemList() {
 	r.mux.RLock()
 	for _, channel := range r.clients {
 		channel <- itemlist
+	}
+	r.mux.RUnlock()
+}
+
+// Sends the player list to all clients.
+func (r *Room) sendPlayerList() {
+	playerlist := &Message{
+		MessageType:  PLAYER_LIST_MESSAGE,
+		FromUserName: SERVER_USER_NAME,
+		Payload:      r.playerList.Playerlist(),
+	}
+	r.mux.RLock()
+	for _, channel := range r.clients {
+		channel <- playerlist
 	}
 	r.mux.RUnlock()
 }

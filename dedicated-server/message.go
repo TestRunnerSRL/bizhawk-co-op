@@ -15,9 +15,18 @@ const (
 	// CONFIG_MESSAGE from the server is "<synchash>,<clientIu>,<ramconfig>".
 	CONFIG_MESSAGE MessageType = 'c'
 
+	// A message containing the names of all currently connected players.
+	// The payload is a comma-separated list of "l:<user>:<playerNum>" pairs.
+	PLAYER_LIST_MESSAGE MessageType = 'l'
+
 	// A message indicating modifications that should be made to game memory.
 	// The payload is a comma-separated list of "<addr>:<value>" pairs.
 	MEMORY_MESSAGE MessageType = 'm'
+
+	// A message containing the user's player number. The payload is
+	// "<user>,<number>", where clients may omit "<number>" (and possibly the
+	// leading comma) if they want the server to select their player number.
+	PLAYER_NUMBER_MESSAGE MessageType = 'n'
 
 	// A message used to keep the connection alive. There is no payload.
 	PING_MESSAGE MessageType = 'p'
@@ -42,8 +51,12 @@ func (t MessageType) String() string {
 	switch t {
 	case CONFIG_MESSAGE:
 		return "CONFIG_MESSAGE"
+	case PLAYER_LIST_MESSAGE:
+		return "PLAYER_LIST_MESSAGE"
 	case MEMORY_MESSAGE:
 		return "MEMORY_MESSAGE"
+	case PLAYER_NUMBER_MESSAGE:
+		return "PLAYER_NUMBER_MESSAGE"
 	case PING_MESSAGE:
 		return "PING_MESSAGE"
 	case QUIT_MESSAGE:
@@ -75,7 +88,9 @@ func DecodeMessage(serialized string) (*Message, error) {
 	// The first character of the message specifies its type.
 	switch t := MessageType(serialized[0]); t {
 	case CONFIG_MESSAGE:
+	case PLAYER_LIST_MESSAGE:
 	case MEMORY_MESSAGE:
+	case PLAYER_NUMBER_MESSAGE:
 	case PING_MESSAGE:
 	case QUIT_MESSAGE:
 	case RAM_EVENT_MESSAGE:

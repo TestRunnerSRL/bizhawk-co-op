@@ -91,7 +91,7 @@ func main() {
 	}
 
 	// Create the room, which should be closed on shutdown.
-	room := NewRoom(NewSyncConfig(*syncHash, *ramConfig, *itemCount))
+	room := NewRoom(NewSyncConfig(*syncHash, *ramConfig, *itemCount), NewPlayerList())
 
 	// Run until the listener is closed due to the listener being closed.
 	log.Printf("Running on %s", hostPort)
