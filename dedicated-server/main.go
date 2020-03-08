@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -42,6 +43,8 @@ func main() {
 	}
 	var port = flag.Int("port", 50000, "TCP/IP port on which the server runs.")
 	var upnpPort = flag.Int("upnpport", 0, "If non-zero, enables port forwarding from this external port using UPnP.")
+	var roomName = flag.String("room", "", "If non-empty, registers a room with this name.")
+	var pass = flag.String("password", "", "Password for the registered room.")
 	var syncHash = flag.String("synchash", "", "Configuration hash to ensure consistent versions. If empty, the config will be inferred from the first client to connect.")
 	var ramConfig = flag.String("ramconfig", "", "Game-specific configuration string.")
 	var itemCount = flag.Int("itemcount", 1, "Number of items supported by the game.")
@@ -75,6 +78,16 @@ func main() {
 				}
 			}()
 		}
+	}
+
+	// If --room is set, register the room so that other users can find it.
+	if *roomName != "" {
+		rr, err := RegisterRoom(*roomName, *pass, http.DefaultClient)
+		if err != nil {
+			log.Print(err)
+		}
+		log.Printf("Server registered as %s", *roomName)
+		defer rr.Close()
 	}
 
 	// Create the room, which should be closed on shutdown.
