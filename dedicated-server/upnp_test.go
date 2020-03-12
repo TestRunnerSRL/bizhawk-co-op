@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-var TestErr = errors.New("message")
+var ErrTest = errors.New("message")
 
 type FakeWanConnection struct {
 	addPortMapping       func(string, uint16, string, uint16, string, bool, string, uint32) error
@@ -41,19 +41,19 @@ func (wc *FakeWanConnection) GetServiceClient() *goupnp.ServiceClient {
 }
 
 func TestFindRouterError(t *testing.T) {
-	f := func() (wanConnection, error) { return nil, TestErr }
-	if _, err := newPortForwarder(f); !errors.Is(err, TestErr) {
-		t.Errorf("got %v, want %v", err, TestErr)
+	f := func() (wanConnection, error) { return nil, ErrTest }
+	if _, err := newPortForwarder(f); !errors.Is(err, ErrTest) {
+		t.Errorf("got %v, want %v", err, ErrTest)
 	}
 }
 
 func TestGetExternalIPAddressFailure(t *testing.T) {
 	wc := &FakeWanConnection{
-		getExternalIPAddress: func() (string, error) { return "", TestErr },
+		getExternalIPAddress: func() (string, error) { return "", ErrTest },
 	}
 	f := func() (wanConnection, error) { return wc, nil }
-	if _, err := newPortForwarder(f); !errors.Is(err, TestErr) {
-		t.Errorf("got %v, want %v", err, TestErr)
+	if _, err := newPortForwarder(f); !errors.Is(err, ErrTest) {
+		t.Errorf("got %v, want %v", err, ErrTest)
 	}
 }
 
@@ -110,7 +110,7 @@ func TestAddFailure(t *testing.T) {
 		getExternalIPAddress: func() (string, error) { return "", nil },
 		getServiceClient:     func() *goupnp.ServiceClient { return sc },
 		addPortMapping: func(string, uint16, string, uint16, string, bool, string, uint32) error {
-			return TestErr
+			return ErrTest
 		},
 	}
 	f := func() (wanConnection, error) { return wc, nil }
@@ -119,8 +119,8 @@ func TestAddFailure(t *testing.T) {
 		t.Errorf("newPortForwarder failed: %v", err)
 	}
 
-	if err := pf.Add(0, 0, ""); !errors.Is(err, TestErr) {
-		t.Errorf("got %v, want %v", err, TestErr)
+	if err := pf.Add(0, 0, ""); !errors.Is(err, ErrTest) {
+		t.Errorf("got %v, want %v", err, ErrTest)
 	}
 	// Close should be a no-op because Add failed.
 	if err := pf.Close(); err != nil {
@@ -146,8 +146,8 @@ func TestCloseFailure(t *testing.T) {
 			return nil
 		},
 		deletePortMapping: func(_ string, externalPort uint16, _ string) error {
-			deleteCalls += 1
-			return TestErr
+			deleteCalls++
+			return ErrTest
 		},
 	}
 	f := func() (wanConnection, error) { return wc, nil }
@@ -163,8 +163,8 @@ func TestCloseFailure(t *testing.T) {
 		t.Errorf("Add failed: %v", err)
 	}
 	// Close should be a no-op because Add failed.
-	if err := pf.Close(); !errors.Is(err, TestErr) {
-		t.Errorf("got %v, want %v", err, TestErr)
+	if err := pf.Close(); !errors.Is(err, ErrTest) {
+		t.Errorf("got %v, want %v", err, ErrTest)
 	}
 	if deleteCalls != 2 {
 		t.Errorf("all ports not closed; got %v, want 2", deleteCalls)

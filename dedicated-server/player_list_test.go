@@ -12,9 +12,16 @@ import (
 	"testing"
 )
 
+func getPlayerList(pl *PlayerList) string {
+	c := make(chan string, 1)
+	pl.Subscribe(c)
+	pl.Unsubscribe(c)
+	return <-c
+}
+
 func TestPlayerlistWithoutPlayers(t *testing.T) {
 	pl := NewPlayerList()
-	if playerlist := pl.Playerlist(); playerlist != "" {
+	if playerlist := getPlayerList(pl); playerlist != "" {
 		t.Errorf("got %s, want ''", playerlist)
 	}
 }
@@ -24,7 +31,7 @@ func TestPlayerlist(t *testing.T) {
 	pl := NewPlayerList()
 	for i := 1; i < 5; i++ {
 		name := fmt.Sprintf("Player%d", i)
-		msg := &Message{PLAYER_NUMBER_MESSAGE, name, fmt.Sprintf("%s,%d", name, i)}
+		msg := &Message{PlayerNumberMessageType, name, fmt.Sprintf("%s,%d", name, i)}
 		if _, err := pl.ValidatePlayerNumber(msg); err != nil {
 			t.Fatalf("failed to validate player number message: %v", err)
 		}
@@ -33,7 +40,7 @@ func TestPlayerlist(t *testing.T) {
 	pl.ReleasePlayerNum(2)
 
 	// The order of entries in the playerlist depends on map iteration order.
-	playerlist := strings.Split(pl.Playerlist(), ",")
+	playerlist := strings.Split(getPlayerList(pl), ",")
 	sort.Strings(playerlist)
 	want := []string{
 		"l:Player1:num:1",
@@ -50,28 +57,28 @@ func TestPlayerlist(t *testing.T) {
 
 func TestUpdateStatus(t *testing.T) {
 	pl := NewPlayerList()
-	msg := &Message{PLAYER_NUMBER_MESSAGE, "Name", "Name,10"}
+	msg := &Message{PlayerNumberMessageType, "Name", "Name,10"}
 	if _, err := pl.ValidatePlayerNumber(msg); err != nil {
 		t.Fatalf("failed to validate player number message: %v", err)
 	}
-	pl.UpdateStatus(&Message{PLAYER_STATUS_MESSAGE, "Name", "Name,Status"})
+	pl.UpdateStatus(&Message{PlayerStatusMessageType, "Name", "Name,Status"})
 
 	want := "l:Name:num:10,l:Name:status:Status"
-	if playerlist := pl.Playerlist(); playerlist != want {
+	if playerlist := getPlayerList(pl); playerlist != want {
 		t.Errorf("got %s, want %s", playerlist, want)
 	}
 }
 
 func TestUpdateStatusFailures(t *testing.T) {
-	playerNumberMsg := &Message{PLAYER_NUMBER_MESSAGE, "Name", "Name,1"}
+	playerNumberMsg := &Message{PlayerNumberMessageType, "Name", "Name,1"}
 	var tests = []struct {
 		msg  *Message
 		want string
 	}{
-		{&Message{PLAYER_NUMBER_MESSAGE, "", ""}, "invalid message type"},
-		{&Message{PLAYER_STATUS_MESSAGE, "Name", "Name2,"}, "invalid player status message"},
-		{&Message{PLAYER_STATUS_MESSAGE, "Name", "Name"}, "invalid player status message"},
-		{&Message{PLAYER_STATUS_MESSAGE, "Other", "Other,Status"}, ""},
+		{&Message{PlayerNumberMessageType, "", ""}, "invalid message type"},
+		{&Message{PlayerStatusMessageType, "Name", "Name2,"}, "invalid player status message"},
+		{&Message{PlayerStatusMessageType, "Name", "Name"}, "invalid player status message"},
+		{&Message{PlayerStatusMessageType, "Other", "Other,Status"}, ""},
 	}
 
 	for _, tt := range tests {
@@ -79,12 +86,12 @@ func TestUpdateStatusFailures(t *testing.T) {
 		if _, err := pl.ValidatePlayerNumber(playerNumberMsg); err != nil {
 			t.Fatalf("Failed to validate player number message: %v", err)
 		}
-		want := pl.Playerlist() // The playerlist should not change.
+		want := getPlayerList(pl) // The playerlist should not change.
 		var buf bytes.Buffer
 		log.SetOutput(&buf)
 		pl.UpdateStatus(tt.msg)
 		log.SetOutput(os.Stderr)
-		if playerlist := pl.Playerlist(); playerlist != want {
+		if playerlist := getPlayerList(pl); playerlist != want {
 			t.Fatalf("got %s, want %s", playerlist, want)
 		}
 		if !strings.Contains(buf.String(), tt.want) {
@@ -98,11 +105,11 @@ func TestValidatePlayerNumber(t *testing.T) {
 		msg  *Message
 		want error
 	}{
-		{&Message{PLAYER_NUMBER_MESSAGE, "Name", "Name"}, nil},
-		{&Message{PLAYER_NUMBER_MESSAGE, "Name", "Name,"}, nil},
-		{&Message{PLAYER_NUMBER_MESSAGE, "Name", "Name,1"}, nil},
-		{&Message{MEMORY_MESSAGE, "Name", "Name"}, ErrPlayerNumWrongMessageType},
-		{&Message{PLAYER_NUMBER_MESSAGE, "Name", "name"}, ErrPlayerNumPayload},
+		{&Message{PlayerNumberMessageType, "Name", "Name"}, nil},
+		{&Message{PlayerNumberMessageType, "Name", "Name,"}, nil},
+		{&Message{PlayerNumberMessageType, "Name", "Name,1"}, nil},
+		{&Message{MemoryMessageType, "Name", "Name"}, ErrPlayerNumWrongMessageType},
+		{&Message{PlayerNumberMessageType, "Name", "name"}, ErrPlayerNumPayload},
 	}
 
 	for _, tt := range tests {
@@ -115,7 +122,7 @@ func TestValidatePlayerNumber(t *testing.T) {
 
 func TestValidatePlayerNumberWithFoo(t *testing.T) {
 	pl := NewPlayerList()
-	msg := Message{PLAYER_NUMBER_MESSAGE, "Name", "Name,1"}
+	msg := Message{PlayerNumberMessageType, "Name", "Name,1"}
 	if _, err := pl.ValidatePlayerNumber(&msg); err != nil {
 		t.Fatalf("validation failed: %v", err)
 	}
@@ -126,9 +133,9 @@ func TestValidatePlayerNumberWithFoo(t *testing.T) {
 
 func TestPlayerNums(t *testing.T) {
 	pl := NewPlayerList()
-	msg := &Message{PLAYER_NUMBER_MESSAGE, "Name", "Name"}
+	msg := &Message{PlayerNumberMessageType, "Name", "Name"}
 	nums := make([]PlayerNum, 5)
-	for i, _ := range nums {
+	for i := range nums {
 		var err error
 		if nums[i], err = pl.ValidatePlayerNumber(msg); err != nil {
 			t.Errorf("failed to validate player number message: %v", err)
@@ -144,7 +151,7 @@ func TestPlayerNums(t *testing.T) {
 	pl.ReleasePlayerNum(2)
 	pl.ReleasePlayerNum(4)
 	nums = make([]PlayerNum, 3)
-	for i, _ := range nums {
+	for i := range nums {
 		var err error
 		if nums[i], err = pl.ValidatePlayerNumber(msg); err != nil {
 			t.Errorf("failed to validate player number message: %v", err)
@@ -159,7 +166,7 @@ func TestPlayerNums(t *testing.T) {
 func TestSubscribe(t *testing.T) {
 	pl := NewPlayerList()
 	// Add a player so that the playerlist isn't empty.
-	msg := &Message{PLAYER_NUMBER_MESSAGE, "Name", "Name,10"}
+	msg := &Message{PlayerNumberMessageType, "Name", "Name,10"}
 	if _, err := pl.ValidatePlayerNumber(msg); err != nil {
 		t.Fatalf("failed to validate player number message: %v", err)
 	}

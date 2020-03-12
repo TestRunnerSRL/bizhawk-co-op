@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const USAGE = `USAGE: dedicated_server [FLAGS]
+const usage = `USAGE: dedicated_server [FLAGS]
 
 Runs a BizHawk co-op server compatible with the in-emulator
 Lua scrips. Running a dedicated server has better performance
@@ -38,7 +38,7 @@ func addPortForwarding(externalPort int, internalPort int) (string, io.Closer, e
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, USAGE)
+		fmt.Fprintf(os.Stderr, usage)
 		flag.PrintDefaults()
 	}
 	var port = flag.Int("port", 50000, "TCP/IP port on which the server runs.")

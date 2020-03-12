@@ -25,7 +25,7 @@ func TestLazyConfigMessagePayload(t *testing.T) {
 
 	// A player with an unknown synchash should be rejected. The synchash
 	// should not change.
-	msg := &Message{CONFIG_MESSAGE, "", "syncHash"}
+	msg := &Message{ConfigMessageType, "", "syncHash"}
 	if _, err := sc.ValidateClientConfig(msg); !errors.Is(err, ErrSyncBadHash) {
 		t.Errorf("config should have been rejected: got %v, want %v", err, ErrSyncBadHash)
 	}
@@ -35,7 +35,7 @@ func TestLazyConfigMessagePayload(t *testing.T) {
 
 	// A player with a known synchash should be accepted and the server'same
 	// synchash should be updated.
-	for syncHash, _ := range SyncHashes {
+	for syncHash := range SyncHashes {
 		msg.Payload = syncHash
 		break
 	}
@@ -59,9 +59,9 @@ func TestItemlistWithoutPlayers(t *testing.T) {
 func TestItemlist(t *testing.T) {
 	const itemcount = 9
 	sc := NewSyncConfig("syncHash", "ramConfig", itemcount)
-	msg := &Message{CONFIG_MESSAGE, "", "syncHash"}
+	msg := &Message{ConfigMessageType, "", "syncHash"}
 	ids := make([]PlayerID, 4)
-	for i, _ := range ids {
+	for i := range ids {
 		var err error
 		if ids[i], err = sc.ValidateClientConfig(msg); err != nil {
 			t.Errorf("failed to validate config message: %v", err)
@@ -112,9 +112,9 @@ func TestValidateClientConfig(t *testing.T) {
 		msg  *Message
 		want error
 	}{
-		{&Message{CONFIG_MESSAGE, "", "syncHash"}, nil},
-		{&Message{MEMORY_MESSAGE, "", "syncHash"}, ErrSyncWrongMessageType},
-		{&Message{CONFIG_MESSAGE, "", "badHash"}, ErrSyncBadHash},
+		{&Message{ConfigMessageType, "", "syncHash"}, nil},
+		{&Message{MemoryMessageType, "", "syncHash"}, ErrSyncWrongMessageType},
+		{&Message{ConfigMessageType, "", "badHash"}, ErrSyncBadHash},
 	}
 
 	for _, tt := range tests {
@@ -127,9 +127,9 @@ func TestValidateClientConfig(t *testing.T) {
 
 func TestPlayerIDs(t *testing.T) {
 	sc := NewSyncConfig("syncHash", "ramConfig", 1)
-	msg := &Message{CONFIG_MESSAGE, "", "syncHash"}
+	msg := &Message{ConfigMessageType, "", "syncHash"}
 	ids := make([]PlayerID, 5)
-	for i, _ := range ids {
+	for i := range ids {
 		var err error
 		if ids[i], err = sc.ValidateClientConfig(msg); err != nil {
 			t.Errorf("failed to validate config message: %v", err)
@@ -145,7 +145,7 @@ func TestPlayerIDs(t *testing.T) {
 	sc.ReleasePlayerID(3)
 	sc.ReleasePlayerID(5)
 	ids = make([]PlayerID, 3)
-	for i, _ := range ids {
+	for i := range ids {
 		var err error
 		if ids[i], err = sc.ValidateClientConfig(msg); err != nil {
 			t.Errorf("failed to validate config message: %v", err)

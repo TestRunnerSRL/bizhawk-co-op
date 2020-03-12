@@ -13,13 +13,15 @@ import (
 // in unit tests.
 var roomlistServerName = "us-central1-mzm-coop.cloudfunctions.net"
 
+// RegisteredRoom enables registering and unregistering rooms on the BizHawk
+// co-op server.
 type RegisteredRoom struct {
 	name, pass string
 	client     *http.Client
 }
 
-// Registers a new room with the provided name and password. The room should
-// be closed when no longer needed.
+// RegisterRoom registers a new room with the provided name and password. The
+// room should be closed when no longer needed.
 func RegisterRoom(name string, pass string, client *http.Client) (*RegisteredRoom, error) {
 	r := &RegisteredRoom{name, pass, client}
 	if err := r.sendCommand("/create"); err != nil {
@@ -28,6 +30,7 @@ func RegisterRoom(name string, pass string, client *http.Client) (*RegisteredRoo
 	return r, nil
 }
 
+// Close unregisters the room.
 func (r *RegisteredRoom) Close() error {
 	if err := r.sendCommand("/destroy"); err != nil {
 		return fmt.Errorf("failed to unregister room: %w", err)
@@ -35,6 +38,7 @@ func (r *RegisteredRoom) Close() error {
 	return nil
 }
 
+// sendCommand sends the given command to the roomlist server.
 func (r *RegisteredRoom) sendCommand(command string) error {
 	v := url.Values{}
 	v.Set("user", r.name)

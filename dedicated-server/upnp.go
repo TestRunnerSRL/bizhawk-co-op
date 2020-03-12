@@ -54,7 +54,7 @@ func getInternalIPAddress(wc wanConnection) (string, error) {
 	return conn.LocalAddr().(*net.UDPAddr).IP.String(), nil
 }
 
-// Constructs a new PortForwarder and enables port forwarding.
+// NewPortForwarder constructs a new PortForwarder and enables port forwarding.
 func NewPortForwarder() (*TCPPortForwarder, error) {
 	return newPortForwarder(findRouter)
 }
@@ -79,7 +79,7 @@ func newPortForwarder(f func() (wanConnection, error)) (*TCPPortForwarder, error
 	return &TCPPortForwarder{externalIP, internalIP, client, nil}, nil
 }
 
-// Enables port forwarding from the external port to the internal port.
+// Add enables port forwarding from the external port to the internal port.
 func (pf *TCPPortForwarder) Add(externalPort uint16, internalPort uint16, desc string) error {
 	if err := pf.client.AddPortMapping("", externalPort, "TCP", internalPort, pf.internalIP, true, desc, 0); err != nil {
 		return err
@@ -88,7 +88,7 @@ func (pf *TCPPortForwarder) Add(externalPort uint16, internalPort uint16, desc s
 	return nil
 }
 
-// Tears down the port forwarding.
+// Close tears down the port forwarding.
 func (pf *TCPPortForwarder) Close() error {
 	// Return the first error encountered, but still try to delete all port
 	// mappings.

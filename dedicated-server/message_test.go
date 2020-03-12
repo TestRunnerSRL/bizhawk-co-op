@@ -8,18 +8,18 @@ import (
 
 func TestMessageTypeString(t *testing.T) {
 	var tests = []struct {
-		mt   MessageType
+		mt   messageType
 		want string
 	}{
-		{CONFIG_MESSAGE, "CONFIG_MESSAGE"},
-		{KICK_PLAYER_MESSAGE, "KICK_PLAYER_MESSAGE"},
-		{PLAYER_LIST_MESSAGE, "PLAYER_LIST_MESSAGE"},
-		{MEMORY_MESSAGE, "MEMORY_MESSAGE"},
-		{PLAYER_NUMBER_MESSAGE, "PLAYER_NUMBER_MESSAGE"},
-		{PING_MESSAGE, "PING_MESSAGE"},
-		{QUIT_MESSAGE, "QUIT_MESSAGE"},
-		{RAM_EVENT_MESSAGE, "RAM_EVENT_MESSAGE"},
-		{PLAYER_STATUS_MESSAGE, "PLAYER_STATUS_MESSAGE"},
+		{ConfigMessageType, "ConfigMessageType"},
+		{KickPlayerMessageType, "KickPlayerMessageType"},
+		{PlayerListMessageType, "PlayerListMessageType"},
+		{MemoryMessageType, "MemoryMessageType"},
+		{PlayerNumberMessageType, "PlayerNumberMessageType"},
+		{PingMessageType, "PingMessageType"},
+		{QuitMessageType, "QuitMessageType"},
+		{RAMEventMessageType, "RAMEventMessageType"},
+		{PlayerStatusMessageType, "PlayerStatusMessageType"},
 		{'x', "UNKNOWN(x)"},
 	}
 
@@ -35,15 +35,15 @@ func TestDecodeMessage(t *testing.T) {
 		encoded string
 		want    Message
 	}{
-		{"cUser,Payload", Message{CONFIG_MESSAGE, "User", "Payload"}},
-		{"kUser,Payload", Message{KICK_PLAYER_MESSAGE, "User", "Payload"}},
-		{"lUser,Payload", Message{PLAYER_LIST_MESSAGE, "User", "Payload"}},
-		{"mUser,Payload", Message{MEMORY_MESSAGE, "User", "Payload"}},
-		{"nUser,Payload", Message{PLAYER_NUMBER_MESSAGE, "User", "Payload"}},
-		{"pUser,", Message{PING_MESSAGE, "User", ""}},
-		{"qUser,", Message{QUIT_MESSAGE, "User", ""}},
-		{"rUser,Payload", Message{RAM_EVENT_MESSAGE, "User", "Payload"}},
-		{"sUser,Payload", Message{PLAYER_STATUS_MESSAGE, "User", "Payload"}},
+		{"cUser,Payload", Message{ConfigMessageType, "User", "Payload"}},
+		{"kUser,Payload", Message{KickPlayerMessageType, "User", "Payload"}},
+		{"lUser,Payload", Message{PlayerListMessageType, "User", "Payload"}},
+		{"mUser,Payload", Message{MemoryMessageType, "User", "Payload"}},
+		{"nUser,Payload", Message{PlayerNumberMessageType, "User", "Payload"}},
+		{"pUser,", Message{PingMessageType, "User", ""}},
+		{"qUser,", Message{QuitMessageType, "User", ""}},
+		{"rUser,Payload", Message{RAMEventMessageType, "User", "Payload"}},
+		{"sUser,Payload", Message{PlayerStatusMessageType, "User", "Payload"}},
 	}
 
 	for _, tt := range tests {
@@ -76,7 +76,7 @@ func TestDecodeMessageFailure(t *testing.T) {
 
 func TestSend(t *testing.T) {
 	buf := new(bytes.Buffer)
-	msg := Message{MEMORY_MESSAGE, "User", "Payload"}
+	msg := Message{MemoryMessageType, "User", "Payload"}
 	expected := "mUser,Payload\n"
 	if err := msg.Send(buf); err != nil {
 		t.Fatalf("unexpected Send failure: %s", err)

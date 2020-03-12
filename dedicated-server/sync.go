@@ -10,8 +10,12 @@ import (
 )
 
 var (
+	// ErrSyncWrongMessageType is returned when ValidateClientConfig() is
+	// called with something other than a config message.
 	ErrSyncWrongMessageType = errors.New("wrong message type")
-	ErrSyncBadHash          = errors.New("bad sync hash")
+	// ErrSyncBadHash is returned when a client connects with a sync hash that
+	// doesn't match the server's.
+	ErrSyncBadHash = errors.New("bad sync hash")
 )
 
 // SyncConfig handles making sure that clients and servers are using the same
@@ -29,10 +33,10 @@ type SyncConfig struct {
 	playerIDs map[PlayerID]struct{} // guarded by mux
 }
 
-// Each connection is assigned a unique player id.
+// PlayerID is the unique identifier for each connection.
 type PlayerID int
 
-// Creates a new SyncConfig with the provided properties.
+// NewSyncConfig creates a new SyncConfig with the provided properties.
 func NewSyncConfig(syncHash string, ramConfig string, itemCount int) *SyncConfig {
 	return &SyncConfig{
 		syncHash:  syncHash,
@@ -42,19 +46,19 @@ func NewSyncConfig(syncHash string, ramConfig string, itemCount int) *SyncConfig
 	}
 }
 
-// Returns the payload string that should be sent by the server in
-// CONFIG_MESSAGEs.
+// ConfigMessagePayload returns the payload string that should be sent by the
+// server in config messages.
 func (sc *SyncConfig) ConfigMessagePayload(id PlayerID) string {
 	return fmt.Sprintf("%s,%d,%s", sc.syncHash, id, sc.ramConfig)
 }
 
-// Returns the payload string that should be sent by the server for the
-// initial itemlist.
+// Itemlist returns the payload string that should be sent by the server for
+// the initial itemlist.
 func (sc *SyncConfig) Itemlist() string {
 	// Build an array containing all player ids (in an unspecified order).
 	sc.mux.Lock()
 	playerIDs := make([]PlayerID, 0, len(sc.playerIDs))
-	for id, _ := range sc.playerIDs {
+	for id := range sc.playerIDs {
 		playerIDs = append(playerIDs, id)
 	}
 	sc.mux.Unlock()
@@ -68,7 +72,7 @@ func (sc *SyncConfig) Itemlist() string {
 
 	// Uniformly (but randomly) distribute the items across all players.
 	itemlist := make([]PlayerID, sc.itemCount)
-	for i, _ := range itemlist {
+	for i := range itemlist {
 		itemlist[i] = playerIDs[i%len(playerIDs)]
 	}
 	rand.Shuffle(len(itemlist), func(i, j int) {
@@ -84,12 +88,12 @@ func (sc *SyncConfig) Itemlist() string {
 	return sb.String()[0 : sb.Len()-1]
 }
 
-// Validates the first message sent by clients, which should be their
-// CONFIG_MESSAGE. Returns the player id for the new connection. The
-// player id should be released when the connection closes.
+// ValidateClientConfig validates the first message sent by clients, which
+// should be their config message. Returns the player id for the new
+// connection. The player id should be released when the connection closes.
 //go:generate go run gen_synchashes.go
 func (sc *SyncConfig) ValidateClientConfig(msg *Message) (PlayerID, error) {
-	if msg.MessageType != CONFIG_MESSAGE {
+	if msg.MessageType != ConfigMessageType {
 		return 0, ErrSyncWrongMessageType
 	}
 
@@ -129,6 +133,7 @@ func (sc *SyncConfig) ValidateClientConfig(msg *Message) (PlayerID, error) {
 	return id, nil
 }
 
+// ReleasePlayerID returns the PlayerID to the list of available player ids.
 func (sc *SyncConfig) ReleasePlayerID(id PlayerID) {
 	// While it may be possible to decrease maxPlayerID here, we don't because
 	// we don't know how ramcontrollers will handle seeing the player count

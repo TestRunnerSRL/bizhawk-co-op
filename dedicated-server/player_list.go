@@ -10,12 +10,18 @@ import (
 )
 
 var (
+	// ErrPlayerNumWrongMessageType is returned when ValidatePlayerNumber()
+	// is called with something other than a player number message.
 	ErrPlayerNumWrongMessageType = errors.New("wrong message type")
-	ErrPlayerNumPayload          = errors.New("invalid message payload")
-	ErrPlayerNumInUse            = errors.New("player number in use")
+	// ErrPlayerNumPayload is returned when ValidatePlayerNumber() is called
+	// with an invalid player number message payload.
+	ErrPlayerNumPayload = errors.New("invalid message payload")
+	// ErrPlayerNumInUse is returned when a player attempts to use a PlayerNum
+	// that's already in use by a different player.
+	ErrPlayerNumInUse = errors.New("player number in use")
 )
 
-const DEFAULT_STATUS = "Unready"
+const defaultStatus = "Unready"
 
 // PlayerList keeps track of which players are connected.
 type PlayerList struct {
@@ -25,20 +31,15 @@ type PlayerList struct {
 	subscribers []chan string        // guarded by mux
 }
 
-// Each player reports their unique player number.
+// PlayerNum is a unique number for each player.
 type PlayerNum int
 
+// NewPlayerList creates a new Playerlist object.
 func NewPlayerList() *PlayerList {
 	return &PlayerList{
 		players:  make(map[PlayerNum]string),
 		statuses: make(map[string]string),
 	}
-}
-
-func (pl *PlayerList) Playerlist() string {
-	pl.mux.Lock()
-	defer pl.mux.Unlock()
-	return pl.playerlist()
 }
 
 // Returns a payload string encoding the currently connected players. The
@@ -50,15 +51,14 @@ func (pl *PlayerList) playerlist() string {
 	}
 	if sb.Len() == 0 {
 		return ""
-	} else {
-		return sb.String()[0 : sb.Len()-1]
 	}
+	return sb.String()[0 : sb.Len()-1]
 }
 
-// Accepts a PLAYER_STATUS_MESSAGE and updates the corresponding player's
-// status. All subscribers will be notified.
+// UpdateStatus uses a player status messages and updates the corresponding
+// player's status. All subscribers will be notified.
 func (pl *PlayerList) UpdateStatus(msg *Message) {
-	if msg.MessageType != PLAYER_STATUS_MESSAGE {
+	if msg.MessageType != PlayerStatusMessageType {
 		log.Printf("UpdateStatus called with invalid message type: %v", msg)
 		return
 	}
@@ -78,11 +78,11 @@ func (pl *PlayerList) UpdateStatus(msg *Message) {
 	pl.mux.Unlock()
 }
 
-// Validates the PLAYER_NUMBER_MESSAGE sent by clients, ensuring that the
-// self-reported number is unique.  Since this changes the list of connected
-// players, all subscribers will be notified.
+// ValidatePlayerNumber validates the player number message sent by clients,
+// ensuring that the self-reported number is unique.  Since this changes the
+// list of connected players, all subscribers will be notified.
 func (pl *PlayerList) ValidatePlayerNumber(msg *Message) (PlayerNum, error) {
-	if msg.MessageType != PLAYER_NUMBER_MESSAGE {
+	if msg.MessageType != PlayerNumberMessageType {
 		return 0, ErrPlayerNumWrongMessageType
 	}
 
@@ -97,7 +97,7 @@ func (pl *PlayerList) ValidatePlayerNumber(msg *Message) (PlayerNum, error) {
 		for num := PlayerNum(1); ; num++ {
 			if _, ok := pl.players[num]; !ok {
 				pl.players[num] = msg.FromUserName
-				pl.statuses[msg.FromUserName] = DEFAULT_STATUS
+				pl.statuses[msg.FromUserName] = defaultStatus
 				pl.notifySubscribers()
 				pl.mux.Unlock()
 				return num, nil
@@ -114,14 +114,15 @@ func (pl *PlayerList) ValidatePlayerNumber(msg *Message) (PlayerNum, error) {
 			return 0, fmt.Errorf("%w by %s", ErrPlayerNumInUse, name)
 		}
 		pl.players[PlayerNum(num)] = msg.FromUserName
-		pl.statuses[msg.FromUserName] = DEFAULT_STATUS
+		pl.statuses[msg.FromUserName] = defaultStatus
 		pl.notifySubscribers()
 		return PlayerNum(num), nil
 	}
 }
 
-// Returns the PlayerNum to the list of available player numbers. Since this
-// changes the list of connected players, all subscribers will be notified.
+// ReleasePlayerNum returns the PlayerNum to the list of available player
+// numbers. Since this changes the list of connected players, all subscribers
+// will be notified.
 func (pl *PlayerList) ReleasePlayerNum(num PlayerNum) {
 	pl.mux.Lock()
 	if name, ok := pl.players[num]; ok {
@@ -132,9 +133,8 @@ func (pl *PlayerList) ReleasePlayerNum(num PlayerNum) {
 	pl.mux.Unlock()
 }
 
-// Subscribes to receive updates to the playerlist. The channel will
-// immediately contain the current playerlist, and will also receive
-// updates until Unsubscribe() is called.
+// Subscribe causes the channel to receive updates to the playerlist until
+// Unsubscribe() is called. The current playerlist is sent immediately.
 func (pl *PlayerList) Subscribe(c chan string) {
 	pl.mux.Lock()
 	pl.subscribers = append(pl.subscribers, c)
@@ -142,7 +142,7 @@ func (pl *PlayerList) Subscribe(c chan string) {
 	pl.mux.Unlock()
 }
 
-// Stops sending updates to the channel.
+// Unsubscribe stops sending updates to the channel.
 func (pl *PlayerList) Unsubscribe(c chan string) {
 	pl.mux.Lock()
 	for i := 0; i < len(pl.subscribers); i++ {

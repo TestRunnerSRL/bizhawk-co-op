@@ -173,8 +173,8 @@ func TestMessagePropagation(t *testing.T) {
 
 	// Verify the configs sent to the SyncConfig.
 	var wantConfigs = []*Message{
-		&Message{CONFIG_MESSAGE, "P1", "syncHash"},
-		&Message{CONFIG_MESSAGE, "P2", "syncHash"},
+		&Message{ConfigMessageType, "P1", "syncHash"},
+		&Message{ConfigMessageType, "P2", "syncHash"},
 	}
 	if !reflect.DeepEqual(sc.clientConfigs, wantConfigs) {
 		t.Errorf("unexpected config messages: got %v, want %v", sc.clientConfigs, wantConfigs)
@@ -182,8 +182,8 @@ func TestMessagePropagation(t *testing.T) {
 
 	// Verify the messages sent to the PlayerList.
 	var wantPlayerNums = []*Message{
-		&Message{PLAYER_NUMBER_MESSAGE, "P1", "P1,1"},
-		&Message{PLAYER_NUMBER_MESSAGE, "P2", "P2,2"},
+		&Message{PlayerNumberMessageType, "P1", "P1,1"},
+		&Message{PlayerNumberMessageType, "P2", "P2,2"},
 	}
 	if !reflect.DeepEqual(pl.playerNums, wantPlayerNums) {
 		t.Errorf("unexpected player number messages: got %v, want %v", pl.playerNums, wantPlayerNums)
@@ -200,7 +200,7 @@ func TestStatusMessage(t *testing.T) {
 		t.Fatalf("Unexpected number of status messages: got %d, want 1", len(pl.statuses))
 	}
 	want := &Message{
-		MessageType:  PLAYER_STATUS_MESSAGE,
+		MessageType:  PlayerStatusMessageType,
 		FromUserName: "P",
 		Payload:      "P,Ready",
 	}
@@ -211,31 +211,60 @@ func TestStatusMessage(t *testing.T) {
 
 func TestKick(t *testing.T) {
 	room := NewRoom(&FakeSyncConfig{}, &FakePlayerList{})
-	reader1, writer1 := io.Pipe()
-	var output1 bytes.Buffer
-	conn1 := FakeConn{input: reader1, output: &output1}
+	r1, writer1 := io.Pipe()
+	reader1, w1 := io.Pipe()
+	conn1 := FakeConn{input: r1, output: w1}
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		room.HandleConnection(&conn1)
 		wg.Done()
 	}()
+	scanner1 := bufio.NewScanner(reader1)
 	if _, err := fmt.Fprintf(writer1, "cP1,syncHash\n"); err != nil {
 		t.Errorf("conn1: failed to write config: %v", err)
+	}
+	if scanner1.Scan(); !strings.HasPrefix(scanner1.Text(), "c") {
+		t.Fatalf("conn1: got %s, wanted config message", scanner1.Text())
+	}
+	if scanner1.Scan(); !strings.HasPrefix(scanner1.Text(), "n") {
+		t.Fatalf("conn1: got %s, wanted player number", scanner1.Text())
 	}
 	if _, err := fmt.Fprintf(writer1, "nP1,P1,\n"); err != nil {
 		t.Errorf("conn1: failed to write player number: %v", err)
 	}
+	if scanner1.Scan(); !strings.HasPrefix(scanner1.Text(), "r") {
+		t.Fatalf("conn1: got %s, wanted itemlist", scanner1.Text())
+	}
+	if scanner1.Scan(); !strings.HasPrefix(scanner1.Text(), "l") {
+		t.Fatalf("conn1: got %s, wanted playerlist", scanner1.Text())
+	}
 
-	reader2, writer2 := io.Pipe()
-	var output2 bytes.Buffer
-	conn2 := FakeConn{input: reader2, output: &output2}
+	r2, writer2 := io.Pipe()
+	reader2, w2 := io.Pipe()
+	conn2 := FakeConn{input: r2, output: w2}
 	go room.HandleConnection(&conn2)
+	scanner2 := bufio.NewScanner(reader2)
 	if _, err := fmt.Fprintf(writer2, "cP2,syncHash\n"); err != nil {
-		t.Errorf("conn2: failed to write config: %v", err)
+		t.Fatalf("conn2: failed to write config: %v", err)
+	}
+	if scanner2.Scan(); !strings.HasPrefix(scanner2.Text(), "c") {
+		t.Fatalf("conn2: got %s, wanted config message", scanner2.Text())
+	}
+	if scanner2.Scan(); !strings.HasPrefix(scanner2.Text(), "n") {
+		t.Fatalf("conn2: got %s, wanted player number", scanner2.Text())
 	}
 	if _, err := fmt.Fprintf(writer2, "nP2,P2,\n"); err != nil {
-		t.Errorf("conn2: failed to write player number: %v", err)
+		t.Fatalf("conn2: failed to write player number: %v", err)
+	}
+	if scanner2.Scan(); !strings.HasPrefix(scanner2.Text(), "r") {
+		t.Fatalf("conn2: got %s, wanted itemlist", scanner2.Text())
+	}
+	if scanner2.Scan(); !strings.HasPrefix(scanner2.Text(), "l") {
+		t.Fatalf("conn2: got %s, wanted playerlist", scanner2.Text())
+	}
+	if scanner1.Scan(); !strings.HasPrefix(scanner1.Text(), "r") {
+		t.Fatalf("conn1: got %s, wanted itemlist", scanner1.Text())
 	}
 
 	// Kicking an invalid player should fail.
@@ -243,20 +272,22 @@ func TestKick(t *testing.T) {
 		t.Errorf("got %v, want %v", err, ErrUnknownUser)
 	}
 
-	// Kicking a valid player should cause the connection to close.
+	// Kicking a valid player should cause that player to receive a kick
+	// message and other players to receive a quit message with 'q:was_kicked'.
 	if err := room.Kick("P1"); err != nil {
 		t.Fatalf("kick failed: %v", err)
 	}
-	wg.Wait()
+	want := "kServer,"
+	if scanner1.Scan(); scanner1.Text() != want {
+		t.Fatalf("conn1: got %s, want %s", scanner1.Text(), want)
+	}
+	want = "qP1,q:was_kicked"
+	if scanner2.Scan(); scanner2.Text() != want {
+		t.Fatalf("conn2: got %s, want %s", scanner2.Text(), want)
+	}
 
-	// P1 should have received a KICK_PLAYER_MESSAGE.
-	if want := "kServer,\n"; !strings.Contains(output1.String(), want) {
-		t.Errorf("%s didn't contain %s", output1.String(), want)
-	}
-	// P2 should have received a QUIT_MESSAGE with 'q:was_kicked'.
-	if want := "qP1,q:was_kicked\n"; !strings.Contains(output2.String(), want) {
-		t.Errorf("%s didn't contain %s", output2.String(), want)
-	}
+	// P1's connection should also be closed.
+	wg.Wait()
 }
 
 func TestPlayerListSubscribe(t *testing.T) {

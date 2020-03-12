@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Enables a web interface for viewing and kicking players.
+// AdminServer enables a web interface for viewing and kicking players.
 type AdminServer struct {
 	server     *http.Server
 	room       kicker
@@ -25,7 +25,8 @@ type playerlistSubscriber interface {
 	Unsubscribe(chan string)
 }
 
-// Creates a new AdminServer that will run a http server on the specified port.
+// NewAdminServer creates a new AdminServer that will run a http server on the
+// specified port.
 func NewAdminServer(port int, room kicker, playerList playerlistSubscriber) *AdminServer {
 	s := &AdminServer{nil, room, playerList}
 	mux := http.NewServeMux()
@@ -47,7 +48,7 @@ func NewAdminServer(port int, room kicker, playerList playerlistSubscriber) *Adm
 	return s
 }
 
-// Shuts down the AdminServer.
+// Close shuts down the AdminServer.
 func (s *AdminServer) Close() error {
 	return s.server.Close()
 }
