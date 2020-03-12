@@ -38,9 +38,10 @@ func addPortForwarding(externalPort int, internalPort int) (string, io.Closer, e
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, usage)
+		fmt.Fprint(os.Stderr, usage)
 		flag.PrintDefaults()
 	}
+	var license = flag.Bool("license", false, "Prints license information for this binary and its dependencies.")
 	var port = flag.Int("port", 50000, "TCP/IP port on which the server runs.")
 	var upnpPort = flag.Int("upnpport", 0, "If non-zero, enables port forwarding from this external port using UPnP.")
 	var adminPort = flag.Int("adminport", 8080, "If non-zero, a web-based admin interface will run on this port.")
@@ -50,6 +51,10 @@ func main() {
 	var ramConfig = flag.String("ramconfig", "", "Game-specific configuration string.")
 	var itemCount = flag.Int("itemcount", 1, "Number of items supported by the game.")
 	flag.Parse()
+	if *license {
+		fmt.Fprint(os.Stderr, Licenses)
+		return
+	}
 
 	rand.Seed(time.Now().UnixNano())
 
