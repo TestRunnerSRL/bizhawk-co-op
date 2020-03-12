@@ -15,8 +15,13 @@ const (
 	// CONFIG_MESSAGE from the server is "<synchash>,<clientIu>,<ramconfig>".
 	CONFIG_MESSAGE MessageType = 'c'
 
+	// A message indicating that the recipient should be kicked. Only sent by
+	// the server. No payload.
+	KICK_PLAYER_MESSAGE MessageType = 'k'
+
 	// A message containing the names of all currently connected players.
-	// The payload is a comma-separated list of "l:<user>:<playerNum>" pairs.
+	// The payload is a comma-separated list of
+	// "l:<user>:num:<playerNum>,l:<user>:status:<status>" tuples.
 	PLAYER_LIST_MESSAGE MessageType = 'l'
 
 	// A message indicating modifications that should be made to game memory.
@@ -31,13 +36,18 @@ const (
 	// A message used to keep the connection alive. There is no payload.
 	PING_MESSAGE MessageType = 'p'
 
-	// A message indicating the sender is disconnecting. No payload.
+	// A message indicating the sender is disconnecting. The payload is
+	// "q:" or "q:was_kicked" based on whether or not the player was kicked.
 	QUIT_MESSAGE MessageType = 'q'
 
 	// A message containing ramcontroller-specific information. The server
 	// sends the itemlist ("i:...") when new clients connect; after that,
 	// all ram event messages are unintepreted by the server.
 	RAM_EVENT_MESSAGE MessageType = 'r'
+
+	// A message updating the status of a player. The payload is
+	// "<user>,<status>", where the status is a freeform string.
+	PLAYER_STATUS_MESSAGE MessageType = 's'
 )
 
 var (
@@ -51,6 +61,8 @@ func (t MessageType) String() string {
 	switch t {
 	case CONFIG_MESSAGE:
 		return "CONFIG_MESSAGE"
+	case KICK_PLAYER_MESSAGE:
+		return "KICK_PLAYER_MESSAGE"
 	case PLAYER_LIST_MESSAGE:
 		return "PLAYER_LIST_MESSAGE"
 	case MEMORY_MESSAGE:
@@ -63,6 +75,8 @@ func (t MessageType) String() string {
 		return "QUIT_MESSAGE"
 	case RAM_EVENT_MESSAGE:
 		return "RAM_EVENT_MESSAGE"
+	case PLAYER_STATUS_MESSAGE:
+		return "PLAYER_STATUS_MESSAGE"
 	default:
 		return fmt.Sprintf("UNKNOWN(%c)", t)
 	}
@@ -88,12 +102,14 @@ func DecodeMessage(serialized string) (*Message, error) {
 	// The first character of the message specifies its type.
 	switch t := MessageType(serialized[0]); t {
 	case CONFIG_MESSAGE:
+	case KICK_PLAYER_MESSAGE:
 	case PLAYER_LIST_MESSAGE:
 	case MEMORY_MESSAGE:
 	case PLAYER_NUMBER_MESSAGE:
 	case PING_MESSAGE:
 	case QUIT_MESSAGE:
 	case RAM_EVENT_MESSAGE:
+	case PLAYER_STATUS_MESSAGE:
 	default:
 		return nil, ErrUnknownMessageType
 	}

@@ -12,12 +12,14 @@ func TestMessageTypeString(t *testing.T) {
 		want string
 	}{
 		{CONFIG_MESSAGE, "CONFIG_MESSAGE"},
+		{KICK_PLAYER_MESSAGE, "KICK_PLAYER_MESSAGE"},
 		{PLAYER_LIST_MESSAGE, "PLAYER_LIST_MESSAGE"},
 		{MEMORY_MESSAGE, "MEMORY_MESSAGE"},
 		{PLAYER_NUMBER_MESSAGE, "PLAYER_NUMBER_MESSAGE"},
 		{PING_MESSAGE, "PING_MESSAGE"},
 		{QUIT_MESSAGE, "QUIT_MESSAGE"},
 		{RAM_EVENT_MESSAGE, "RAM_EVENT_MESSAGE"},
+		{PLAYER_STATUS_MESSAGE, "PLAYER_STATUS_MESSAGE"},
 		{'x', "UNKNOWN(x)"},
 	}
 
@@ -34,12 +36,14 @@ func TestDecodeMessage(t *testing.T) {
 		want    Message
 	}{
 		{"cUser,Payload", Message{CONFIG_MESSAGE, "User", "Payload"}},
+		{"kUser,Payload", Message{KICK_PLAYER_MESSAGE, "User", "Payload"}},
 		{"lUser,Payload", Message{PLAYER_LIST_MESSAGE, "User", "Payload"}},
 		{"mUser,Payload", Message{MEMORY_MESSAGE, "User", "Payload"}},
 		{"nUser,Payload", Message{PLAYER_NUMBER_MESSAGE, "User", "Payload"}},
 		{"pUser,", Message{PING_MESSAGE, "User", ""}},
 		{"qUser,", Message{QUIT_MESSAGE, "User", ""}},
 		{"rUser,Payload", Message{RAM_EVENT_MESSAGE, "User", "Payload"}},
+		{"sUser,Payload", Message{PLAYER_STATUS_MESSAGE, "User", "Payload"}},
 	}
 
 	for _, tt := range tests {

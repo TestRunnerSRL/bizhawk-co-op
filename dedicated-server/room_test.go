@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -55,17 +56,25 @@ func (sc *FakeSyncConfig) ValidateClientConfig(msg *Message) (PlayerID, error) {
 }
 
 type FakePlayerList struct {
-	validateErr  error
-	playerNums   []*Message
-	releaseCalls int
+	statuses         []*Message
+	validateErr      error
+	playerNums       []*Message
+	releaseCalls     int
+	subscribers      []chan string
+	unsubscribeCalls int
 }
 
-func (pl *FakePlayerList) Playerlist() string         { return "playerListPayload" }
+func (pl *FakePlayerList) UpdateStatus(msg *Message)  { pl.statuses = append(pl.statuses, msg) }
 func (pl *FakePlayerList) ReleasePlayerNum(PlayerNum) { pl.releaseCalls++ }
 func (pl *FakePlayerList) ValidatePlayerNumber(msg *Message) (PlayerNum, error) {
 	pl.playerNums = append(pl.playerNums, msg)
 	return PlayerNum(len(pl.playerNums)), pl.validateErr
 }
+func (pl *FakePlayerList) Subscribe(c chan string) {
+	c <- "playerListPayload"
+	pl.subscribers = append(pl.subscribers, c)
+}
+func (pl *FakePlayerList) Unsubscribe(chan string) { pl.unsubscribeCalls++ }
 
 func TestMessagePropagation(t *testing.T) {
 	sc := &FakeSyncConfig{}
@@ -137,27 +146,12 @@ func TestMessagePropagation(t *testing.T) {
 	if _, err := fmt.Fprintf(writer2, "nP2,P2,2\n"); err != nil {
 		t.Errorf("conn2: failed to write player number: %v", err)
 	}
-	// The itemlist and playerlist are sent to both players, in any order.
-	wg.Add(2)
-	go func() {
-		if scanner1.Scan(); scanner1.Text() != itemList {
-			t.Errorf("conn1: got itemlist %s, want %s", scanner1.Text(), itemList)
-		}
-		if scanner1.Scan(); scanner1.Text() != playerList {
-			t.Errorf("conn1: got playerlist %s, want %s", scanner1.Text(), playerList)
-		}
-		wg.Done()
-	}()
-	go func() {
-		if scanner2.Scan(); scanner2.Text() != itemList {
-			t.Errorf("conn2: got itemlist %s, want %s", scanner2.Text(), itemList)
-		}
-		if scanner2.Scan(); scanner2.Text() != playerList {
-			t.Errorf("conn2: got playerlist %s, want %s", scanner2.Text(), playerList)
-		}
-		wg.Done()
-	}()
-	wg.Wait()
+	if scanner2.Scan(); scanner2.Text() != itemList {
+		t.Errorf("conn2: got itemlist %s, want %s", scanner2.Text(), itemList)
+	}
+	if scanner2.Scan(); scanner2.Text() != playerList {
+		t.Errorf("conn2: got playerlist %s, want %s", scanner2.Text(), playerList)
+	}
 
 	// Write a message to P1. It should be forwarded to P2.
 	want := "mP1,payload"
@@ -196,6 +190,126 @@ func TestMessagePropagation(t *testing.T) {
 	}
 }
 
+func TestStatusMessage(t *testing.T) {
+	pl := FakePlayerList{}
+	room := NewRoom(&FakeSyncConfig{}, &pl)
+	input := "cP,syncHash\nnP,P,\nsP,P,Ready\n"
+	conn := FakeConn{input: bytes.NewBufferString(input), output: new(bytes.Buffer)}
+	room.HandleConnection(&conn)
+	if len(pl.statuses) != 1 {
+		t.Fatalf("Unexpected number of status messages: got %d, want 1", len(pl.statuses))
+	}
+	want := &Message{
+		MessageType:  PLAYER_STATUS_MESSAGE,
+		FromUserName: "P",
+		Payload:      "P,Ready",
+	}
+	if !reflect.DeepEqual(pl.statuses[0], want) {
+		t.Errorf("got %v, want %v", pl.statuses[0], want)
+	}
+}
+
+func TestKick(t *testing.T) {
+	room := NewRoom(&FakeSyncConfig{}, &FakePlayerList{})
+	reader1, writer1 := io.Pipe()
+	var output1 bytes.Buffer
+	conn1 := FakeConn{input: reader1, output: &output1}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		room.HandleConnection(&conn1)
+		wg.Done()
+	}()
+	if _, err := fmt.Fprintf(writer1, "cP1,syncHash\n"); err != nil {
+		t.Errorf("conn1: failed to write config: %v", err)
+	}
+	if _, err := fmt.Fprintf(writer1, "nP1,P1,\n"); err != nil {
+		t.Errorf("conn1: failed to write player number: %v", err)
+	}
+
+	reader2, writer2 := io.Pipe()
+	var output2 bytes.Buffer
+	conn2 := FakeConn{input: reader2, output: &output2}
+	go room.HandleConnection(&conn2)
+	if _, err := fmt.Fprintf(writer2, "cP2,syncHash\n"); err != nil {
+		t.Errorf("conn2: failed to write config: %v", err)
+	}
+	if _, err := fmt.Fprintf(writer2, "nP2,P2,\n"); err != nil {
+		t.Errorf("conn2: failed to write player number: %v", err)
+	}
+
+	// Kicking an invalid player should fail.
+	if err := room.Kick("P3"); !errors.Is(err, ErrUnknownUser) {
+		t.Errorf("got %v, want %v", err, ErrUnknownUser)
+	}
+
+	// Kicking a valid player should cause the connection to close.
+	if err := room.Kick("P1"); err != nil {
+		t.Fatalf("kick failed: %v", err)
+	}
+	wg.Wait()
+
+	// P1 should have received a KICK_PLAYER_MESSAGE.
+	if want := "kServer,\n"; !strings.Contains(output1.String(), want) {
+		t.Errorf("%s didn't contain %s", output1.String(), want)
+	}
+	// P2 should have received a QUIT_MESSAGE with 'q:was_kicked'.
+	if want := "qP1,q:was_kicked\n"; !strings.Contains(output2.String(), want) {
+		t.Errorf("%s didn't contain %s", output2.String(), want)
+	}
+}
+
+func TestPlayerListSubscribe(t *testing.T) {
+	pl := FakePlayerList{}
+	room := NewRoom(&FakeSyncConfig{}, &pl)
+	r, writer := io.Pipe()
+	reader, w := io.Pipe()
+	conn := FakeConn{input: r, output: w}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		room.HandleConnection(&conn)
+		wg.Done()
+	}()
+
+	scanner := bufio.NewScanner(reader)
+	if _, err := fmt.Fprintf(writer, "cP1,syncHash\n"); err != nil {
+		t.Fatalf("failed to write config: %v", err)
+	}
+	if scanner.Scan(); !strings.HasPrefix(scanner.Text(), "c") {
+		t.Fatalf("got %s, wanted config message", scanner.Text())
+	}
+	if scanner.Scan(); !strings.HasPrefix(scanner.Text(), "n") {
+		t.Fatalf("got %s, wanted player number", scanner.Text())
+	}
+	if _, err := fmt.Fprintf(writer, "nP1,P1,\n"); err != nil {
+		t.Fatalf("failed to write player number: %v", err)
+	}
+	if scanner.Scan(); !strings.HasPrefix(scanner.Text(), "r") {
+		t.Fatalf("got %s, wanted itemlist", scanner.Text())
+	}
+	if scanner.Scan(); !strings.HasPrefix(scanner.Text(), "l") {
+		t.Fatalf("got %s, wanted playerlist", scanner.Text())
+	}
+
+	// Writing to the channel should cause the playerlist to be sent.
+	if len(pl.subscribers) != 1 {
+		t.Fatalf("Unexpected number of Subscribe calls: %d", len(pl.subscribers))
+	}
+	pl.subscribers[0] <- "NewPlayerList"
+	want := "lServer,NewPlayerList"
+	if scanner.Scan(); scanner.Text() != want {
+		t.Fatalf("got %s, want %s", scanner.Text(), want)
+	}
+
+	// Close the connection; the channel should be unsubscribed.
+	writer.Close()
+	wg.Wait()
+	if pl.unsubscribeCalls != 1 {
+		t.Errorf("got %d Unsubscribe() call, want 1", pl.unsubscribeCalls)
+	}
+}
+
 func TestClose(t *testing.T) {
 	room := NewRoom(&FakeSyncConfig{}, &FakePlayerList{})
 	reader, writer := io.Pipe()
@@ -222,7 +336,7 @@ func TestClose(t *testing.T) {
 		"nServer,Server,0\n" +
 		"rServer,itemPayload\n" +
 		"lServer,playerListPayload\n" +
-		"qServer,\n"
+		"qServer,q:\n"
 	if buf.String() != want {
 		t.Errorf("got %s, want %s", buf.String(), want)
 	}

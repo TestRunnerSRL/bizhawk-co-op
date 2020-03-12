@@ -16,6 +16,7 @@ const SERVER_USER_NAME = "Server"
 var (
 	ErrConnectionClosed  = errors.New("connection closed unexpectedly")
 	ErrSyncUserNameInUse = errors.New("user name already in use")
+	ErrUnknownUser       = errors.New("unknown user")
 )
 
 // Satisfied by SyncConfig. Allows dependency injection for testing.
@@ -28,9 +29,11 @@ type syncConfigInterface interface {
 
 // Satisfied by PlayerList. Allows dependency injection for testing.
 type playerListInterface interface {
-	Playerlist() string
+	UpdateStatus(*Message)
 	ValidatePlayerNumber(*Message) (PlayerNum, error)
 	ReleasePlayerNum(PlayerNum)
+	Subscribe(chan string)
+	Unsubscribe(chan string)
 }
 
 // A Room manages all of the connections and state for clients in a single
@@ -74,28 +77,45 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 		return
 	}
 	log.Printf("%s connected", userName)
+	playerlistChannel := make(chan string, 10)
 	defer func() {
 		r.mux.Lock()
 		delete(r.clients, userName)
 		r.mux.Unlock()
 		r.syncConfig.ReleasePlayerID(playerID)
+		r.playerList.Unsubscribe(playerlistChannel)
 		r.playerList.ReleasePlayerNum(playerNum)
-		r.sendPlayerList()
 	}()
 
 	// Start a goroutine that forwards messages to the client.
 	done := make(chan struct{})
 	defer close(done)
 	go func() {
+		// Send the itemlist as part of initialization. This must happen before
+		// all other messages in this loop or clients will disconnect.
+		if err := (<-channel).Send(conn); err != nil {
+			log.Printf("Failed to send itemlist to %s: %v", userName, err)
+		}
 		for {
 			select {
 			case msg := <-channel:
 				if err := msg.Send(conn); err != nil {
 					log.Printf("Failed to forward %s to %s: %v", msg, userName, err)
 				}
-				// If the server is quiting, close the connection.
-				if msg.MessageType == QUIT_MESSAGE && msg.FromUserName == SERVER_USER_NAME {
+				// If the server is quiting or if the player has been kicked,
+				// close the connection.
+				if (msg.MessageType == QUIT_MESSAGE && msg.FromUserName == SERVER_USER_NAME) ||
+					msg.MessageType == KICK_PLAYER_MESSAGE {
 					conn.Close()
+				}
+			case playerlist := <-playerlistChannel:
+				msg := Message{
+					MessageType:  PLAYER_LIST_MESSAGE,
+					FromUserName: SERVER_USER_NAME,
+					Payload:      playerlist,
+				}
+				if err := msg.Send(conn); err != nil {
+					log.Printf("Failed to send playerlist to %s: %v", userName, err)
 				}
 			case <-done:
 				return
@@ -133,10 +153,11 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 		conn.Close()
 	}()
 
-	// Send the item and player lists to all clients whenever a new client
-	// connects.
+	// Send the item list to all clients whenever a new client connects.
+	// Subscribing to the playerlist will also cause it to be sent to this
+	// client.
 	r.sendItemList()
-	r.sendPlayerList()
+	r.playerList.Subscribe(playerlistChannel)
 
 	for scanner.Scan() {
 		msg, err := DecodeMessage(scanner.Text())
@@ -148,6 +169,11 @@ func (r *Room) HandleConnection(conn io.ReadWriteCloser) {
 		switch msg.MessageType {
 		case PING_MESSAGE:
 			ping <- struct{}{}
+		case PLAYER_STATUS_MESSAGE:
+			r.playerList.UpdateStatus(msg)
+		// Suppress messages that should only be sent by the server.
+		case KICK_PLAYER_MESSAGE:
+		case PLAYER_LIST_MESSAGE:
 		// TODO(bmclarnon): Add extra processing for RAM_EVENT_MESSAGEs so we
 		// can display what items have been collected.
 		default:
@@ -169,6 +195,7 @@ func (r *Room) Close() error {
 	msg := &Message{
 		MessageType:  QUIT_MESSAGE,
 		FromUserName: SERVER_USER_NAME,
+		Payload:      "q:",
 	}
 	r.mux.RLock()
 	for _, channel := range r.clients {
@@ -177,6 +204,35 @@ func (r *Room) Close() error {
 	r.mux.RUnlock()
 	// Wait for all connections to be closed.
 	r.wg.Wait()
+	return nil
+}
+
+// Disconnects a single client from the room.
+func (r *Room) Kick(userName string) error {
+	kickMsg := &Message{
+		MessageType:  KICK_PLAYER_MESSAGE,
+		FromUserName: SERVER_USER_NAME,
+	}
+	// The quit message is sent to all other users to inform them that the user
+	// was removed.
+	quitMsg := &Message{
+		MessageType:  QUIT_MESSAGE,
+		FromUserName: userName,
+		Payload:      "q:was_kicked",
+	}
+	log.Printf("Kicking %s...", userName)
+	r.mux.RLock()
+	defer r.mux.RUnlock()
+	if _, ok := r.clients[userName]; !ok {
+		return fmt.Errorf("%w %s", ErrUnknownUser, userName)
+	}
+	for name, channel := range r.clients {
+		if name == userName {
+			channel <- kickMsg
+		} else {
+			channel <- quitMsg
+		}
+	}
 	return nil
 }
 
@@ -263,20 +319,6 @@ func (r *Room) sendItemList() {
 	r.mux.RLock()
 	for _, channel := range r.clients {
 		channel <- itemlist
-	}
-	r.mux.RUnlock()
-}
-
-// Sends the player list to all clients.
-func (r *Room) sendPlayerList() {
-	playerlist := &Message{
-		MessageType:  PLAYER_LIST_MESSAGE,
-		FromUserName: SERVER_USER_NAME,
-		Payload:      r.playerList.Playerlist(),
-	}
-	r.mux.RLock()
-	for _, channel := range r.clients {
-		channel <- playerlist
 	}
 	r.mux.RUnlock()
 }

@@ -43,6 +43,7 @@ func main() {
 	}
 	var port = flag.Int("port", 50000, "TCP/IP port on which the server runs.")
 	var upnpPort = flag.Int("upnpport", 0, "If non-zero, enables port forwarding from this external port using UPnP.")
+	var adminPort = flag.Int("adminport", 8080, "If non-zero, a web-based admin interface will run on this port.")
 	var roomName = flag.String("room", "", "If non-empty, registers a room with this name.")
 	var pass = flag.String("password", "", "Password for the registered room.")
 	var syncHash = flag.String("synchash", "", "Configuration hash to ensure consistent versions. If empty, the config will be inferred from the first client to connect.")
@@ -51,9 +52,6 @@ func main() {
 	flag.Parse()
 
 	rand.Seed(time.Now().UnixNano())
-
-	// TODO(bmclarnon): Add a flag-controlled admin interface to kick players
-	// from a room and see what items each player has collected.
 
 	// Create the server, which should be closed on shutdown.
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
@@ -91,7 +89,13 @@ func main() {
 	}
 
 	// Create the room, which should be closed on shutdown.
-	room := NewRoom(NewSyncConfig(*syncHash, *ramConfig, *itemCount), NewPlayerList())
+	pl := NewPlayerList()
+	room := NewRoom(NewSyncConfig(*syncHash, *ramConfig, *itemCount), pl)
+	if *adminPort > 0 {
+		log.Printf("Admin UI: http://localhost:%d", *adminPort)
+		admin := NewAdminServer(*adminPort, room, pl)
+		defer admin.Close()
+	}
 
 	// Run until the listener is closed due to the listener being closed.
 	log.Printf("Running on %s", hostPort)
