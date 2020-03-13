@@ -33,8 +33,9 @@ See `--help` for additional usage options.
 
 When using the dedicated server with games other than OoT, use the `--ramconfig`
 and `--itemcount` flags to configure the game-specific ramcontroller settings.
-Unfortunately, there isn't currently a convenient way to determine the right
-values without reading the ramcontroller's code.
+The correct values for these flags are printed when creating a room in BizHawk:
+
+> Dedicated server options: --itemcount=221 --ramconfig=boss:t,junk:f,ammo:t,skey:t,bkey:t
 
 ## Developing
 

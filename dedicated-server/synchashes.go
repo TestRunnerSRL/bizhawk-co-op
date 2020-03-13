@@ -2,7 +2,7 @@
 package main
 
 var SyncHashes = map[string]struct{}{
-	"2244ceb986b68c7126bb9f4c69f8da23b649d4d1": struct{}{}, // Link to the Past.lua
-	"67599396ae93c008cb34ca5977ece7b9b283e195": struct{}{}, // Metroid Zero Mission.lua
-	"8061040a0956f2ca01283d2be0ff0af751dd29e0": struct{}{}, // Ocarina of Time.lua
+	"eb792a6e16adb8a637b07581006bffb32b23b86f": struct{}{}, // Link to the Past.lua
+	"67888f31d681a850f04f17135bd100488fdec542": struct{}{}, // Metroid Zero Mission.lua
+	"929e2d3a9d4292ba73ab2cc855f49a1dc7400810": struct{}{}, // Ocarina of Time.lua
 }
