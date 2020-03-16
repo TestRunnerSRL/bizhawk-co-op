@@ -167,11 +167,17 @@ function host.listen()
 	printOutput("Player " .. clientID .. " connecting...")
 
 	-- make sure we don't block forever waiting for input
-	client:settimeout(5)
+	client:settimeout(0)
 	client:setoption('linger', {['on']=false, ['timeout']=0})
 
-	--sync the gameplay
-	local success, their_user = pcall(sync.syncconfig, client, clientID)
+	--sync the gameplay. use a coroutine because sync.syncconfig calls
+	--coroutine.yield(), which doesn't work properly with pcall.
+	local success, their_user
+	local co = coroutine.create(sync.syncconfig)
+	repeat
+		success, their_user = coroutine.resume(co, client, clientID)
+		coroutine.yield()
+	until coroutine.status(co) ~= "suspended"
 	if success and their_user then
 		host.clients[clientID] = client
 		host.users[their_user] = clientID
@@ -271,9 +277,21 @@ function host.join()
 		end
 	end
 
-	local client, err = socket.connect(config.hostname, config.port)
-	if (client == nil) then
+	--use a non-blocking connection so that frames can continue to be drawn
+	--while attempting to connect. DNS lookups still occur synchronously, so
+	--"host not found" errors will skip the while loop.
+	local client = socket.tcp()
+	client:settimeout(0)
+	client:setoption('linger', {['on']=false, ['timeout']=0})
+	local _, err = client:connect(config.hostname, config.port)
+	local init = os.time()
+	while err == 'timeout' and os.difftime(os.time(), init) < 2 do
+		coroutine.yield()
+		err = socket.skip(2, socket.select({client}, {client}, 0))
+	end
+	if err ~= nil then
 		printOutput("Connection failed: " .. err)
+		client:close()
 		host.status = 'Idle'
 		host.locked = false
 		updateGUI()
@@ -283,13 +301,6 @@ function host.join()
 	--display the server's information
 	local peername, peerport = client:getpeername()
 	printOutput("Joined room " .. config.room)
-
-	--make sure we don't block waiting for a response
-	client:settimeout(5)
-	client:setoption('linger', {['on']=false, ['timeout']=0})
-
-	coroutine.yield()
-	coroutine.yield()
 
 	--sync the gameplay
 	if (sync.syncconfig(client, nil)) then
