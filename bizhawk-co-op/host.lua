@@ -201,7 +201,6 @@ function host.listen()
 	end
 
 	local itemlist = {}
-	math.randomseed(os.time())
 	math.random(itemcount)
 	for i=0,(itemcount-1) do
 		itemlist[i] = clientMap[i % clientCount]
@@ -253,15 +252,16 @@ function host.join()
 		return false
 	end
 
+	local reconnect = host.reconnecting()
 	kicked = false
-	host.close()
+	host.close(reconnect)
 	host.status = 'Join'
 	host.locked = true
 	updateGUI()
 
 	coroutine.yield()
 
-	if config.room ~= '(Custom IP)' then
+	if not reconnect and config.room ~= '(Custom IP)' then
 		local err
 		config.hostname, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/join' ..
 				'?user=' .. config.room ..
@@ -292,8 +292,12 @@ function host.join()
 	if err ~= nil then
 		printOutput("Connection failed: " .. err)
 		client:close()
-		host.status = 'Idle'
-		host.locked = false
+		if reconnect then
+			host.status = 'Reconnecting'
+		else
+			host.status = 'Idle'
+			host.locked = false
+		end
 		updateGUI()
 		return
 	end
@@ -309,27 +313,39 @@ function host.join()
 		host.users[host.hostname] = 1
 	else
 		client:close()
-		host.close()
+		host.close(reconnect)
 		updateGUI()
 	end
 
 	forms.setproperty(readyToggle, "Enabled", true)
+
+	if reconnect then
+		gui.addmessage("Reconnected.")
+		--rather than implement a separate method to send our status, just
+		--toggle twice.
+		sync.readyToggle()
+		sync.readyToggle()
+	end
 
 	return
 end
 
 
 --when the script finishes, make sure to close the connection
-function host.close()
-	host.status = 'Idle'
-	host.locked = false
-
+function host.close(reconnect)
 	local changed = false
+	if reconnect then
+		host.status = 'Reconnecting'
+		forms.settext(formPlayerList, "")
+	elseif host.status ~= 'Idle' then
+		host.status = 'Idle'
+		host.locked = false
+		changed = true
+	end
 
 	for i,client in pairs(host.clients) do
 		client:close()
 		host.clients[i] = nil
-		changed = true
 	end
 	host.users = {}
 	host.playerlist = {}
@@ -337,7 +353,6 @@ function host.close()
 
 	if (server ~= nil) then
 		server:close()
-		changed = true
 
 		local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/destroy' ..
 				'?user=' .. config.user ..
@@ -357,18 +372,16 @@ function host.close()
 		else
 			printOutput("Server closed.")
 		end
-		forms.settext(formPlayerCount, "...")
-		forms.settext(formPlayerList, "")
 		forms.settext(formPlayerNumber, "")
-		forms.settext(formReadyCount, "...")
-		forms.setproperty(readyToggle, "Enabled", false)
-
 		if forms.gettext(readyToggle) == "Unready" then
 			forms.settext(readyToggle, "Ready")
 		end
-
-		updateGUI()
 	end
+	forms.settext(formPlayerCount, "...")
+	forms.settext(formPlayerList, "")
+	forms.settext(formReadyCount, "...")
+	forms.setproperty(readyToggle, "Enabled", false)
+	updateGUI()
 
 	if hostControls then
 		forms.destroy(hostControls)
@@ -381,6 +394,11 @@ function host.connected()
 		return true
 	end
 	return false
+end
+
+
+function host.reconnecting()
+	return host.status == 'Reconnecting'
 end
 
 

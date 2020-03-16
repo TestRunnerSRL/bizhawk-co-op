@@ -103,6 +103,30 @@ function printOutput(str)
 	forms.setproperty(text1, "SelectedText", str)
 end
 
+--Repeatedly tries to reconnect with the host using exponential backoff.
+function reconnectToHost()
+	local retry = 0
+	while host.reconnecting() do
+		local init = os.time()
+		local backoff = math.random(5, math.min(60, 5 * math.pow(2, retry)))
+		printOutput("Waiting " .. tostring(backoff) .. "s to reconnect.")
+		while os.difftime(os.time(), init) < backoff do
+			coroutine.yield()
+			if not host.reconnecting() then
+				return
+			end
+		end
+		--pcall doesn't work with functions that call coroutine.yield(), so we
+		--use a coroutine instead.
+		local thread = coroutine.create(host.join)
+		while coroutine.status(thread) == 'suspended' do
+		  coroutine.resume(thread)
+		  coroutine.yield()
+		end
+		retry = retry + 1
+	end
+end
+
 
 host = require("bizhawk-co-op\\host")
 
@@ -211,6 +235,8 @@ function os.dir(dir)
 end
 
 
+math.randomseed(os.time())
+
 --Create the form
 mainform = forms.newform(470, 375, "Bizhawk Co-op")
 
@@ -276,6 +302,7 @@ forms.setproperty(formPlayerList, "ReadOnly", true)
 
 sendMessage = {}
 local thread
+local reconnectThread
 
 updateGUI()
 
@@ -323,7 +350,7 @@ while 1 do
 	end
 
 	--If connected, run the syncinputs thread
-	if host.connected() then
+	if host.connected() or host.reconnecting() then
 		--If the thread didn't yield, then create a new one
 		if thread == nil or coroutine.status(thread) == "dead" then
 			thread = coroutine.create(sync.syncRAM)
@@ -336,6 +363,22 @@ while 1 do
 			else
 				kicked = false
 			end
+		end
+	end
+
+	--If we're reconnecting, run the reconnect thread. host.reconnecting() can
+	--temporarily become false during host.join(), so we continue running the
+	--thread until it exits.
+	if host.reconnecting() then
+		--If the thread didn't yield, create a new one
+		if reconnectThread == nil or coroutine.status(reconnectThread) == "dead" then
+			reconnectThread = coroutine.create(reconnectToHost)
+		end
+	end
+	if reconnectThread ~= nil and coroutine.status(reconnectThread) ~= "dead" then
+		local status, err = coroutine.resume(reconnectThread)
+		if (status == false and err ~= nil) then
+		  printOutput("Error during reconnect: " .. tostring(err))
 		end
 	end
 

@@ -77,7 +77,7 @@ function sync.syncconfig(client_socket, their_id)
     return false
   end
 
-  -- send their player number
+  -- send our player number
   messenger.send(client_socket, config.user, messenger.PLAYERNUMBER, config.user, forms.gettext(formPlayerNumber))
 
   -- receive their player number, if nil then it is taken already
@@ -86,8 +86,6 @@ function sync.syncconfig(client_socket, their_id)
   if (pnum_data == nil) then
     printOutput("Configuration consistency check failed: Player Number in use")
     return false
-  else
-    forms.settext(formPlayerNumber, pnum_received)
   end
 
 
@@ -181,12 +179,11 @@ local close_client = function(clientID, err)
 
   -- close sockets
   if clientID == 1 then
-    -- host sent the message, room is closed
-    gui.addmessage("The room is closed.")
-    host.close()
-    error("The room is closed.")
+	-- host disconnected, we'll try to reconnect
+    host.close(true)
+    error("Connection interrupted.")
   else
-    -- client sent the message, room is still open
+    -- client disconnected, room is still open
     gui.addmessage(their_user .. " left the room.")
     printOutput(their_user .. " left the room.")
     host.client_ping[clientID] = nil
