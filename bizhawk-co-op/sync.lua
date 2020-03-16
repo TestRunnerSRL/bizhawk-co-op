@@ -3,7 +3,9 @@
 local sync = {}
 
 local messenger = require("bizhawk-co-op\\messenger")
+local sha1 = require("bizhawk-co-op\\sha1")
 local ram_controller
+local sync_hashes = {}
 
 my_ID = nil
 
@@ -32,16 +34,23 @@ end
 function sync.syncconfig(client_socket, their_id)
   printOutput("Checking configuration consistency...")
 
-  local sha1 = require("bizhawk-co-op\\sha1")
-
-  --construct a value representing the sync code that is in use
-  local sync_code = ""
-  for line in io.lines("bizhawk-co-op.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("bizhawk-co-op\\host.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("bizhawk-co-op\\messenger.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("bizhawk-co-op\\sync.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("bizhawk-co-op\\ramcontroller\\" .. config.ramcode) do sync_code = sync_code .. line .. "\n" end
-  local sync_hash = sha1.sha1(sync_code)
+  --construct a value representing the sync code that is in use. result are
+  --cached to avoid recomputation when reconnecting.
+  if sync_hashes[config.ramcode] == nil then
+    local files = {
+      "bizhawk-co-op.lua",
+      "bizhawk-co-op\\host.lua",
+      "bizhawk-co-op\\messenger.lua",
+      "bizhawk-co-op\\sync.lua",
+      "bizhawk-co-op\\ramcontroller\\" .. config.ramcode,
+    }
+    local lines = {}
+    for _, file in ipairs(files) do
+      for line in io.lines(file) do lines[#lines + 1] = line end
+    end
+    sync_hashes[config.ramcode] = sha1.sha1(table.concat(lines, "\n") .. "\n")
+  end
+  local sync_hash = sync_hashes[config.ramcode]
 
   -- only host sends config
   if (their_id == nil) then
