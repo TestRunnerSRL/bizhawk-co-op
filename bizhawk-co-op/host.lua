@@ -9,6 +9,8 @@ local host = {}
 local server = nil
 host.clients = {}
 host.users = {}
+host.playerlist = {}
+host.playerstatus = {}
 host.status = 'Idle'
 host.locked = false
 host.hostname = nil
@@ -19,8 +21,8 @@ function host.start()
 	if (host.status == 'Host') then
 		if host.locked then
 			local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/create' ..
-				'?user=' .. config.user ..
-				'&pass=' .. config.pass)
+					'?user=' .. config.user ..
+					'&pass=' .. config.pass)
 			if (err == 200) then
 				host.locked = false
 				updateGUI()
@@ -30,8 +32,8 @@ function host.start()
 			end
 		else
 			local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/destroy' ..
-				'?user=' .. config.user ..
-				'&pass=' .. config.pass)
+					'?user=' .. config.user ..
+					'&pass=' .. config.pass)
 			if (err == 200) then
 				host.locked = true
 				updateGUI()
@@ -54,7 +56,7 @@ function host.start()
 		if (config.ramconfig == false) then
 			return
 		end
-	else 
+	else
 		config.ramconfig = {}
 	end
 
@@ -65,6 +67,14 @@ function host.start()
 
 	if not config.user or config.user == '' then
 		printOutput('Set your username before creating a room.')
+		return false
+	end
+
+	if forms.gettext(formPlayerNumber) ~= ''
+	and (tonumber(forms.gettext(formPlayerNumber)) == nil
+	or tonumber(forms.gettext(formPlayerNumber)) <= 0)
+	then
+		printOutput('Player Number must be above 0 or empty.')
 		return false
 	end
 
@@ -93,8 +103,8 @@ function host.start()
 	printOutput("Created server on port " .. setport)
 
 	local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/create' ..
-		'?user=' .. config.user ..
-		'&pass=' .. config.pass)
+			'?user=' .. config.user ..
+			'&pass=' .. config.pass)
 	if (err == 200) then
 		printOutput('Room initialized.')
 	else
@@ -103,10 +113,27 @@ function host.start()
 		return false
 	end
 
+	if (forms.gettext(formPlayerNumber) == '') then
+		forms.settext(formPlayerNumber, "1")
+	end
+
 	host.locked = false
 	host.users[config.user] = 1
-	updateGUI()
+	host.playerlist[config.user] = {['num'] = tonumber(forms.gettext(formPlayerNumber)), ['status'] = "Unready"}
 
+	forms.settext(formPlayerCount, "1")
+	forms.setproperty(formPlayerList, 'SelectionStart', 0)
+	forms.setproperty(formPlayerList, "SelectedText", "[ ] P"..tonumber(forms.gettext(formPlayerNumber))..": "..config.user.."\r\n")
+	forms.settext(formReadyCount, "0")
+	forms.setproperty(readyToggle, "Enabled", true)
+
+	hostControls = forms.newform(300, 88, "Host Controls")
+	kickPlayerLabel = forms.label(hostControls, "Kick Player", 4, 5, 290, 13)
+	kickPlayerSelect = forms.dropdown(hostControls, {['(Kick Player...)']='(Kick Player...)'}, 5, 20, 200, 5)
+	kickPlayerBtn = forms.button(hostControls, "Kick", sync.kickPlayer, 208, 19, 72, 23)
+	forms.setdropdownitems(kickPlayerSelect, invert_table(host.users))
+
+	updateGUI()
 	return true
 end
 
@@ -122,20 +149,20 @@ function host.listen()
 	--end execution if a client does not connect in time
 	if (client == nil) then
 		if err ~= "timeout" then
-            printOutput("Server error: ", err)
-	  		host.close()
-        end
-	  	return false
+			printOutput("Server error: ", err)
+			host.close()
+		end
+		return false
 	end
 
 	local clientID = 2
 	while (true) do
-	 	if (host.clients[clientID] == nil) then
-	 		break
-	 	end
+		if (host.clients[clientID] == nil) then
+			break
+		end
 		clientID = clientID + 1
 	end
-	
+
 	--display the client's information
 	printOutput("Player " .. clientID .. " connecting...")
 
@@ -180,7 +207,9 @@ function host.listen()
 	end
 
 	sync.sendItems(itemlist)
-
+	sync.sendPlayerList(host.playerlist)
+	sync.updatePlayerList(host.playerlist)
+	host.updateHostControls()
 	updateGUI()
 	return clientID
 end
@@ -210,6 +239,15 @@ function host.join()
 		config.port = 50000
 	end
 
+	if forms.gettext(formPlayerNumber) ~= ''
+	and (tonumber(forms.gettext(formPlayerNumber)) == nil
+	or tonumber(forms.gettext(formPlayerNumber)) <= 0)
+	then
+		printOutput('Player Number must be above 0 or empty.')
+		return false
+	end
+
+	kicked = false
 	host.close()
 	host.status = 'Join'
 	host.locked = true
@@ -220,8 +258,8 @@ function host.join()
 	if config.room ~= '(Custom IP)' then
 		local err
 		config.hostname, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/join' ..
-			'?user=' .. config.room ..
-			'&pass=' .. config.pass)
+				'?user=' .. config.room ..
+				'&pass=' .. config.pass)
 		if (err == 200) then
 			printOutput('Joining ' .. config.room)
 		else
@@ -254,7 +292,7 @@ function host.join()
 	coroutine.yield()
 
 	--sync the gameplay
-	if (sync.syncconfig(client, nil)) then	
+	if (sync.syncconfig(client, nil)) then
 		host.clients[1] = client
 		host.client_ping[1] = 4
 		host.users[host.hostname] = 1
@@ -263,6 +301,8 @@ function host.join()
 		host.close()
 		updateGUI()
 	end
+
+	forms.setproperty(readyToggle, "Enabled", true)
 
 	return
 end
@@ -281,6 +321,7 @@ function host.close()
 		changed = true
 	end
 	host.users = {}
+	host.playerlist = {}
 	host.client_ping = {}
 
 	if (server ~= nil) then
@@ -288,8 +329,8 @@ function host.close()
 		changed = true
 
 		local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/destroy' ..
-			'?user=' .. config.user ..
-			'&pass=' .. config.pass)
+				'?user=' .. config.user ..
+				'&pass=' .. config.pass)
 		if (err == 200) then
 			printOutput('Room closed.')
 		else
@@ -299,17 +340,36 @@ function host.close()
 	server = nil
 
 	if changed then
-		printOutput("Server closed.")
+		if kicked then
+			printOutput("You were kicked from the room.")
+			kicked = false
+		else
+			printOutput("Server closed.")
+		end
+		forms.settext(formPlayerCount, "...")
+		forms.settext(formPlayerList, "")
+		forms.settext(formPlayerNumber, "")
+		forms.settext(formReadyCount, "...")
+		forms.setproperty(readyToggle, "Enabled", false)
+
+		if forms.gettext(readyToggle) == "Unready" then
+			forms.settext(readyToggle, "Ready")
+		end
+
 		updateGUI()
+	end
+
+	if hostControls then
+		forms.destroy(hostControls)
 	end
 end
 
 
 function host.connected()
-    for _, _ in pairs(host.clients) do
-        return true
-    end
-    return false
+	for _, _ in pairs(host.clients) do
+		return true
+	end
+	return false
 end
 
 
@@ -319,7 +379,7 @@ end
 
 
 --Get the list of Rooms
-function host.getRooms() 
+function host.getRooms()
 	local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/getrooms')
 	if (err == 200) then
 		if (roomstr == '') then
@@ -333,5 +393,9 @@ function host.getRooms()
 	end
 end
 
+function host.updateHostControls()
+	-- update the kick player list
+	forms.setdropdownitems(kickPlayerSelect, invert_table(host.users))
+end
 
 return host
