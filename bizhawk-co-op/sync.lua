@@ -242,7 +242,7 @@ function sync.syncRAM()
     -- check for PING TIMEOUT and send PINGS
     if coroutine.status(ping_timer) == "dead" then
       ping_timer = coroutine.create(timer_coroutine)
-      coroutine.resume(ping_timer, 1, ping_func)
+      coroutine.resume(ping_timer, 10, ping_func)
     else
       local timer_status, err = coroutine.resume(ping_timer)
       if not timer_status then
