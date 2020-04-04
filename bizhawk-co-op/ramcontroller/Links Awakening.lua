@@ -47,6 +47,8 @@ local inventorySlotInfos = { --Order is important, since we want to add items to
     {address = 0xDB0B, name = 'Inv 10'},
 }
 
+local MAP_FLAGS_BASE_ADDR = 0xD800
+
 local gameStateAddr = 0xDB95
 -- Source https://github.com/zladx/LADX-Disassembly/blob/4ae748bd354f94ed2887f04d4014350d5a103763/src/constants/gameplay.asm#L22-L48
 local gameStateVals = { -- Only states where we can do events are listed
@@ -152,35 +154,37 @@ function readRAM(address, size)
     end
 end
 
-function giveInventoryItem(itemVal)
+function healthToString(val)
 
-    local firstEmptySlotAddr = nil
+    local whole = math.floor(val / 8)
+    val = val - (whole * 8)
 
-    for _, slotInfo in ipairs(inventorySlotInfos) do
-        local slotAddr = slotInfo['address']
-        local thisSlotsItem = readRAM(slotAddr, 1)
-        if thisSlotsItem == itemVal then
-            return -- We already have this item
+    local part = nil
+    if val > 0 then
+        if val % 4 == 0 then
+            part = (val / 4) .. '/2'
+        elseif val % 2 == 0 then
+            part = (val / 2) .. '/4'
+        else
+            part = val .. '/8'
         end
-        if thisSlotsItem == NO_ITEM_VALUE and not firstEmptySlotAddr then
-            firstEmptySlotAddr = slotAddr
-        end
     end
 
-    if not firstEmptySlotAddr then
-        console.log(string.format('ERROR: Attempt to award item %s, but all inventory slots are full!', inventoryItemVals[itemVal]))
-        return
+    if whole > 0 and part then
+        return whole .. ' ' .. part
+    elseif whole > 0 then
+        return whole
+    else
+        return part
     end
+end
 
-
-    if config.ramconfig.verbose then
-        printOutput(string.format('About to write item val %s (%s) to addr %s', asString(itemVal), asString(inventoryItemVals[itemVal]), asString(firstEmptySlotAddr)))
-    end
-
-    writeRAM(firstEmptySlotAddr, 1, itemVal)
+function reverseU16Int(value)
+    return ((value % 256) * 256) + math.floor(value / 256)
 end
 
 local ramItemAddrs = {
+    [0xCFF2] = {name = 'Overworld Sword', type = 'num'},
     [0xDB0C] = {name = 'Flippers', type = 'bool'},
     [0xDB0D] = {name = 'Potion', type = 'bool'},
     [0xDB0E] = {name = 'Trading Item', type = 'num', maxVal = MAX_TRADING_ITEM},
@@ -234,16 +238,11 @@ local ramItemAddrs = {
     [0xDB44] = {name = 'Shield level', type = 'num', maxVal = MAX_SHIELD_LEVEL},
     [0xDB45] = {name = 'Number of arrows', type = 'num', flag = 'ammo'},
     [0xDB49] = {name = {
-        [0] = 'unknown song',
-        [1] = 'unknown song',
-        [2] = 'unknown song',
-        [3] = 'unknown song',
-        [4] = 'unknown song',
-        [5] = 'Ballad of the Wind Fish',
-        [6] = 'Manbo Mambo',
-        [7] = 'Frog\'s Song of Soul',
+        [0] = 'Frog\'s Song of Soul',
+        [1] = 'Manbo Mambo',
+        [2] = 'Ballad of the Wind Fish'
     }, type = 'bitmask'},
-    [0xDB4A] = {name = 'Ocarina selected song', type = 'num'},
+    -- [0xDB4A] = {name = 'Ocarina selected song', type = 'num'}, Add only for inventory insanity
     [0xDB4B] = {name = 'Toadstool', type = 'bool'},
     [0xDB4C] = {name = 'Magic powder quantity', type = 'num', flag = 'ammo'},
     [0xDB4D] = {name = 'Number of bombs', type = 'num', flag = 'ammo'},
@@ -269,41 +268,27 @@ local ramItemAddrs = {
     -- Picking up rupees/health adds to the "add" buffers. Paying money/taking damage adds to the "subtract" buffers.
     -- The game subtracts from these buffers over time, applying their effect to your money/health totals
     -- Only additions to buffer values should be transmitted
-    [0xDB8F] = {name = 'Rupees Added', type = 'buffer', flag = 'rupees', size = 2},
-    [0xDB91] = {name = 'Rupees Spent', type = 'buffer', flag = 'rupees', size = 2},
-    [0xDB93] = {name = 'Health Added', type = 'buffer', flag = 'health'},
-    [0xDB94] = {name = 'Health Lost', type = 'buffer', flag = 'health'},
-    [0xDC04] = {name = 'Tunic Color', type = 'num'},
+    [0xDB8F] = {name = 'Rupees Added', type = 'buffer', flag = 'rupees', size = 2, displayFunc = function(user, val) return string.format("%s found %s rupees", user, val) end },
+    [0xDB91] = {name = 'Rupees Spent', type = 'buffer', flag = 'rupees', size = 2, displayFunc = function(user, val) return string.format("%s spent %s rupees", user, val) end },
+    [0xDB93] = {name = 'Health Added', type = 'buffer', flag = 'health', displayFunc = function(user, val) return string.format("%s got %s hearts of health", user, healthToString(val)) end },
+    [0xDB94] = {name = 'Health Lost', type = 'buffer', flag = 'health', displayFunc = function(user, val) return string.format("%s lost %s hearts of health", user, healthToString(val)) end },
+    [0xDBCC] = {name = 'Color Dungeon Map', type = 'bool'},
+    [0xDBCD] = {name = 'Color Dungeon Compass', type = 'bool'},
+    [0xDBCE] = {name = 'Color Dungeon Owl\'s Beak', type = 'bool'},
+    [0xDBCF] = {name = 'Color Dungeon Nightmare Key', type = 'bool'},
+    [0xDBD0] = {name = 'Color Dungeon Small Keys', type = 'num'},
+    [0xDC0F] = {name = 'Tunic Color', type = 'num'},
 }
 
 for _, slotInfo in pairs(inventorySlotInfos) do
     ramItemAddrs[slotInfo['address']] = {name = slotInfo['name'], type = 'Inventory Slot'}
 end
 
-
-function promoteItem(list, newItem) -- TODO
-    local index
-    if (list[newItem] == nil) then
-        index = math.huge
-    else
-        index = list[newItem]
-    end
-
-    local count = 0
-    for item,val in pairs(list) do
-        count = count + 1
-        if (val < index) then
-            list[item] = val + 1
-        end
-    end
-
-    list[newItem] = 0
-
-    if index == math.huge then
-        return count
-    else
-        return index
-    end
+-- Add each map tile's explored flag to the sync locations
+for mapTileIndex=0,256 do
+    ramItemAddrs[MAP_FLAGS_BASE_ADDR + mapTileIndex] = {name = {
+        [7] = 'Map tile explored'
+    }, type = 'bitmask', silent = true}
 end
 
 
@@ -311,7 +296,8 @@ end
 function getGUImessage(address, prevVal, newVal, user)
     -- Only display the message if there is a name for the address
     local name = ramItemAddrs[address].name
-    if name and prevVal ~= newVal then
+    local silent = ramItemAddrs[address].silent
+    if name and not silent and prevVal ~= newVal then
 
         local itemType = ramItemAddrs[address].type
 
@@ -338,11 +324,13 @@ function getGUImessage(address, prevVal, newVal, user)
         -- If bitflag, show each bit: the indexed name or bit index as a boolean
         elseif itemType == 'bitmask' then
             for b=0,7 do
-                local newBit = bit.check(newVal, b)
-                local prevBit = bit.check(prevVal, b)
+                if ramItemAddrs[address].name[b] then
+                    local newBit = bit.check(newVal, b)
+                    local prevBit = bit.check(prevVal, b)
 
-                if (newBit ~= prevBit) then
-                    gui.addmessage(string.format('%s: %s %s', user, (newBit and 'Added' or ' Removed'), name[b]))
+                    if (newBit ~= prevBit) then
+                        gui.addmessage(string.format('%s: %s %s', user, (newBit and 'Added' or ' Removed'), name[b]))
+                    end
                 end
             end
 
@@ -351,12 +339,45 @@ function getGUImessage(address, prevVal, newVal, user)
             gui.addmessage(string.format('%s: Found %s', user, inventoryItemVals[newVal]))
         elseif itemType == 'buffer' then
             if newVal > prevVal then
-                gui.addmessage(string.format('%s: %s %s', user, newVal, name))
+                gui.addmessage(ramItemAddrs[address].displayFunc(user, newVal - prevVal))
             end
-        else 
+        else
             gui.addmessage(string.format('Unknown item ram type %s', itemType))
         end
     end
+end
+
+function giveInventoryItem(itemVal, prevRAM, their_user)
+
+    local firstEmptySlotAddr = nil
+
+    for _, slotInfo in ipairs(inventorySlotInfos) do
+        local slotAddr = slotInfo['address']
+        local thisSlotsItem = readRAM(slotAddr, 1)
+        if thisSlotsItem == itemVal then
+            return -- We already have this item. Just ignore this request.
+        end
+        if thisSlotsItem == NO_ITEM_VALUE and not firstEmptySlotAddr then
+            firstEmptySlotAddr = slotAddr
+        end
+    end
+
+    if not firstEmptySlotAddr then
+        console.log(string.format('ERROR: Attempt to award item %s, but all inventory slots are full!', inventoryItemVals[itemVal]))
+        return
+    end
+
+
+    if config.ramconfig.verbose then
+        printOutput(string.format('About to write item val %s (%s) to addr %s', asString(itemVal), asString(inventoryItemVals[itemVal]), asString(firstEmptySlotAddr)))
+    end
+
+    writeRAM(firstEmptySlotAddr, 1, itemVal)
+
+    getGUImessage(firstEmptySlotAddr, prevRAM[address], itemVal, their_user)
+
+    -- Write the itemVal to the previous memory state so that the update check doesn't think we found this item
+    prevRAM[firstEmptySlotAddr] = itemVal
 end
 
 -- Reset this script's record of your possessed items to what's currently in memory, ignoring any previous state
@@ -412,6 +433,9 @@ function getTransmittableItemsState()
             end
 
             local ramval = readRAM(address, item.size)
+            if item.flag == 'rupees' then
+                ramval = reverseU16Int(ramval)
+            end
 
             transmittableTable[address] = ramval
         end
@@ -437,27 +461,31 @@ function getItemStateChanges(prevState, newState)
             if config.ramconfig.verbose then
                 printOutput(string.format('Updating address [%s] to value [%s].', asString(address), asString(val)))
             end
-            getGUImessage(address, prevVal, val, config.user)
 
             -- If boolean, get T/F
             if itemType == 'bool' then
+                getGUImessage(address, prevVal, val, config.user)
                 ramevents[address] = (val ~= 0)
                 changes = true
 
             -- If numeric, get value
             elseif itemType == 'num' then
+                getGUImessage(address, prevVal, val, config.user)
                 ramevents[address] = val
                 changes = true
 
             -- If bitmask, get the changed bits
             elseif itemType == 'bitmask' then
+                getGUImessage(address, prevVal, val, config.user)
                 local changedBits = {}
                 for b=0,7 do
-                    local newBit = bit.check(val, b)
-                    local prevBit = bit.check(prevVal, b)
+                    if ramItemAddrs[address].name[b] then
+                        local newBit = bit.check(val, b)
+                        local prevBit = bit.check(prevVal, b)
 
-                    if (newBit ~= prevBit) then
-                        changedBits[b] = newBit
+                        if (newBit ~= prevBit) then
+                            changedBits[b] = newBit
+                        end
                     end
                 end
                 ramevents[address] = changedBits
@@ -465,6 +493,7 @@ function getItemStateChanges(prevState, newState)
 
             -- Only transmit buffer increases
             elseif itemType == 'buffer' then
+                getGUImessage(address, prevVal, val, config.user)
                 if val > prevVal then
                     ramevents[address] = val - prevVal
                     changes = true
@@ -489,9 +518,12 @@ function getItemStateChanges(prevState, newState)
 
             if config.ramconfig.verbose then
                 printOutput(string.format('Discovered that item [%s] is newly possessed.', itemVal))
+                printOutput(string.format('Previous possessed table: %s', asString(prevPossessedItems)))
+                printOutput(string.format('New possessed table: %s', asString(newPossessedItems)))
             end
             changes = true
             table.insert(listOfNewlyAcquiredItemVals, itemVal)
+            getGUImessage(B_SLOT_ADDR, NO_ITEM_VALUE, itemVal, config.user)
         end
     end
 
@@ -520,7 +552,7 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
             if config.ramconfig.verbose then
                 printOutput(string.format('About to award item: %s', asString(inventoryItemVals[itemVal])))
             end
-            giveInventoryItem(itemVal)
+            giveInventoryItem(itemVal, prevRAM, their_user)
         end
     end
     newEvents[NEW_INV_ITEMS_KEY] = nil
@@ -547,7 +579,7 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
             end
 
         -- If bitflag update each bit
-        elseif itemType == 'bit' then
+        elseif itemType == 'bitmask' then
             newval = prevRAM[address]
             for b, bitval in pairs(val) do
                 if bitval then
@@ -570,7 +602,11 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
         prevRAM[address] = newval
         local gameLoaded = isGameLoadedWithFetch()
         if gameLoaded then
-            writeRAM(address, ramItemAddrs[address].size, newval)
+            local valToWrite = newval
+            if ramItemAddrs[address].flags == 'rupees' then
+                valToWrite = reverseU16Int(valToWrite)
+            end
+            writeRAM(address, ramItemAddrs[address].size, valToWrite)
         end
     end    
     return prevRAM
