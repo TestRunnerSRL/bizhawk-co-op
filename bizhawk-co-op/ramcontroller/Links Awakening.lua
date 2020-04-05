@@ -64,13 +64,26 @@ local menuStateVals = {
     [0xFF] = {desc = 'Death/Save+Quit Menu', transmitEvents = false}, 
 }
 
-function isGameLoaded(gameStateVal)
-    return gameStateVals[gameStateVal] ~= nil
-end
+-- There are 16 non-player entities that can be tracked on screen at once
+local ENTITY_TABLE_LENGTH = 0x10
 
-function isGameLoadedWithFetch() -- Grr. Why doesn't lua support function overloading??
-    return isGameLoaded(readRAM(gameStateAddr))
-end
+local ENTITY_STATUS_TABLE_START_ADDR = 0xC280
+local ENTITY_STATUS_ACTIVE_VAL = 0x05
+
+-- Entity state. Each entity has its own meaning for each value
+local ENTITY_STATE_1_TABLE_START_ADDR = 0xC290
+local ENTITY_STATE_1_BIG_FAIRY_INTERACTING_VAL = 0x01
+
+local ENTITY_STATE_2_TABLE_STRT_ADDR = 0xC2B0
+local ENTITY_STATE_2_BIG_FAIRY_HEAL_START_COUNTER_VAL = 0x04
+
+local ENTITY_TYPE_TABLE_START_ADDR = 0xC3A0
+local ENTITY_TYPE_BIG_FAIRY_VAL = 0x84
+
+local BIG_FAIRY_HEALING_KEY = 'Healing from big fairy'
+
+local ADD_HEALTH_BUFFER_ADDR = 0xDB93
+local BIG_FAIRY_HEALING_BUFFER_VAL = 0x04
 
 function tableCount(table)
     local count = 0
@@ -106,11 +119,11 @@ local prevRAM = nil
 
 local gameLoaded = false
 local prevGameLoaded = false
-local dying = false
-local prevmode = 0
+local prevBigFairyHealing = false
+
+-- keys: string of player name, value: true/false if they were previously fairy healing
+local prevRemotePlayerBigFairyHealing = {}
 local ramController = {}
-local playercount = 1
-local possessedInventoryItems = {}
 
 -- Writes value to RAM using little endian
 function writeRAM(address, size, value)
@@ -152,6 +165,14 @@ function readRAM(address, size)
     else
         console.log(string.format('ERROR: Attempt to read illegal length memory block [%s] from address [%s]. Legal lengths are 1, 2, 4.', size, address))
     end
+end
+
+function isGameLoaded(gameStateVal)
+    return gameStateVals[gameStateVal] ~= nil
+end
+
+function isGameLoadedWithFetch() -- Grr. Why doesn't lua support function overloading??
+    return isGameLoaded(readRAM(gameStateAddr))
 end
 
 function healthToString(val)
@@ -270,7 +291,7 @@ local ramItemAddrs = {
     -- Only additions to buffer values should be transmitted
     [0xDB8F] = {name = 'Rupees Added', type = 'buffer', flag = 'rupees', size = 2, displayFunc = function(user, val) return string.format("%s found %s rupees", user, val) end },
     [0xDB91] = {name = 'Rupees Spent', type = 'buffer', flag = 'rupees', size = 2, displayFunc = function(user, val) return string.format("%s spent %s rupees", user, val) end },
-    [0xDB93] = {name = 'Health Added', type = 'buffer', flag = 'health', displayFunc = function(user, val) return string.format("%s got %s hearts of health", user, healthToString(val)) end },
+    [ADD_HEALTH_BUFFER_ADDR] = {name = 'Health Added', type = 'buffer', flag = 'health', displayFunc = function(user, val) return string.format("%s got %s hearts of health", user, healthToString(val)) end },
     [0xDB94] = {name = 'Health Lost', type = 'buffer', flag = 'health', displayFunc = function(user, val) return string.format("%s lost %s hearts of health", user, healthToString(val)) end },
     [0xDBCC] = {name = 'Color Dungeon Map', type = 'bool'},
     [0xDBCD] = {name = 'Color Dungeon Compass', type = 'bool'},
@@ -444,11 +465,51 @@ function getTransmittableItemsState()
     return transmittableTable
 end
 
+function isBigFairyHealing()
+
+    for index = 0,(ENTITY_TABLE_LENGTH - 1) do
+
+        local entityType = readRAM(ENTITY_TYPE_TABLE_START_ADDR + index, 1)
+        if entityType == ENTITY_TYPE_BIG_FAIRY_VAL then
+
+            local bigFairyStatus = readRAM(ENTITY_STATUS_TABLE_START_ADDR + index, 1)
+            local bigFairyInteractingState = readRAM(ENTITY_STATE_1_TABLE_START_ADDR + index, 1)
+            local bigFairyHealCounter = readRAM(ENTITY_STATE_2_TABLE_STRT_ADDR + index, 1)
+
+            if bigFairyStatus == ENTITY_STATUS_ACTIVE_VAL and
+                bigFairyInteractingState == ENTITY_STATE_1_BIG_FAIRY_INTERACTING_VAL and
+                bigFairyHealCounter >= ENTITY_STATE_2_BIG_FAIRY_HEAL_START_COUNTER_VAL then
+
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
 
 -- Get a list of changed ram events
 function getItemStateChanges(prevState, newState)
     local ramevents = {}
     local changes = false
+
+    -- Big fairy healing needs a special event type.
+    -- For health buffers, we rely on increases to the buffer. The big fairy sets it to 4 and holds it there over time,
+    -- meaning only 4 (1/2 heart) gets transmitted, but the buffer drains/resets before we can check for events,
+    -- so it only gets set once.
+    if isBigFairyHealing() then
+        ramevents[BIG_FAIRY_HEALING_KEY] = true
+        if not prevBigFairyHealing then
+            gui.addmessage(string.format('%s: Started healing at a Great Fairy', config.user))
+        end
+        prevBigFairyHealing = true
+        changes = true
+        -- Suppress the normal add buffer event for big fairy healing
+        prevState[ADD_HEALTH_BUFFER_ADDR] = BIG_FAIRY_HEALING_BUFFER_VAL
+    else
+        prevBigFairyHealing = false
+    end
 
     for address, val in pairs(newState) do
 
@@ -557,6 +618,18 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
     end
     newEvents[NEW_INV_ITEMS_KEY] = nil
 
+    if newEvents[BIG_FAIRY_HEALING_KEY] then
+        prevRAM[ADD_HEALTH_BUFFER_ADDR] = BIG_FAIRY_HEALING_BUFFER_VAL
+        writeRAM(ADD_HEALTH_BUFFER_ADDR, ramItemAddrs[ADD_HEALTH_BUFFER_ADDR].size, BIG_FAIRY_HEALING_BUFFER_VAL)
+        if not prevRemotePlayerBigFairyHealing[their_user] then
+            gui.addmessage(string.format('%s: Started healing at a Great Fairy', their_user))
+        end
+        prevRemotePlayerBigFairyHealing[their_user] = true
+    else
+        prevRemotePlayerBigFairyHealing[their_user] = false
+    end
+    newEvents[BIG_FAIRY_HEALING_KEY] = nil
+
     for address, val in pairs(newEvents) do
 
         local itemType = ramItemAddrs[address].type
@@ -603,8 +676,15 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
         local gameLoaded = isGameLoadedWithFetch()
         if gameLoaded then
             local valToWrite = newval
-            if ramItemAddrs[address].flags == 'rupees' then
+            if ramItemAddrs[address].flag == 'rupees' then
+
+                if config.ramconfig.verbose then
+                    printOutput(string.format('About to reverse rupees: %s', asString(valToWrite)))
+                end
                 valToWrite = reverseU16Int(valToWrite)
+                if config.ramconfig.verbose then
+                    printOutput(string.format('About to write rupees: %s', asString(valToWrite)))
+                end
             end
             writeRAM(address, ramItemAddrs[address].size, valToWrite)
         end
