@@ -293,12 +293,12 @@ local ramItemAddrs = {
     [0xDB91] = {name = 'Rupees Spent', type = 'buffer', flag = 'rupees', size = 2, displayFunc = function(user, val) return string.format("%s spent %s rupees", user, val) end },
     [ADD_HEALTH_BUFFER_ADDR] = {name = 'Health Added', type = 'buffer', flag = 'health', displayFunc = function(user, val) return string.format("%s got %s hearts of health", user, healthToString(val)) end },
     [0xDB94] = {name = 'Health Lost', type = 'buffer', flag = 'health', displayFunc = function(user, val) return string.format("%s lost %s hearts of health", user, healthToString(val)) end },
-    [0xDBCC] = {name = 'Color Dungeon Map', type = 'bool'},
-    [0xDBCD] = {name = 'Color Dungeon Compass', type = 'bool'},
-    [0xDBCE] = {name = 'Color Dungeon Owl\'s Beak', type = 'bool'},
-    [0xDBCF] = {name = 'Color Dungeon Nightmare Key', type = 'bool'},
-    [0xDBD0] = {name = 'Color Dungeon Small Keys', type = 'num'},
     [0xDC0F] = {name = 'Tunic Color', type = 'num'},
+    [0xDDDA] = {name = 'Color Dungeon Map', type = 'bool'},
+    [0xDDDB] = {name = 'Color Dungeon Compass', type = 'bool'},
+    [0xDDDC] = {name = 'Color Dungeon Owl\'s Beak', type = 'bool'},
+    [0xDDDD] = {name = 'Color Dungeon Nightmare Key', type = 'bool'},
+    [0xDDDE] = {name = 'Color Dungeon Small Keys', type = 'num'},
 }
 
 for _, slotInfo in pairs(inventorySlotInfos) do

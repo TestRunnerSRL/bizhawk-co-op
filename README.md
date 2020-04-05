@@ -44,6 +44,8 @@ Additional Options:
 * **Ammo** Players' power, bomb, and arrow counts will all be synchronized
 * **Health** Any health pickups or damage taken will be applied to all players
 * **Rupees** Any rupees found or spend will be applied to all players
+* **Messages** Default/Verbose. Default is fine for most players. Verbose adds extra logging to the status window for debugging purposes.
+
 
 ## Setup
 There are two different methods to install.
