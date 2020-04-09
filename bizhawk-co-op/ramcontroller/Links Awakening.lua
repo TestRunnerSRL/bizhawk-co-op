@@ -571,7 +571,7 @@ function getItemStateChanges(prevState, newState)
     local prevPossessedItems = getPossessedItemsTable(prevState)
     local newPossessedItems = getPossessedItemsTable(newState)
 
-    local listOfNewlyAcquiredItemVals = {}
+    local invItemChanges = {}
 
     for itemVal, isPrevPossessed in pairs(prevPossessedItems) do
         local isNewPossessed = newPossessedItems[itemVal]
@@ -583,13 +583,23 @@ function getItemStateChanges(prevState, newState)
                 printOutput(string.format('New possessed table: %s', asString(newPossessedItems)))
             end
             changes = true
-            table.insert(listOfNewlyAcquiredItemVals, itemVal)
+            table.insert(invItemChanges, { [itemVal] = 'Added' })
             getGUImessage(B_SLOT_ADDR, NO_ITEM_VALUE, itemVal, config.user)
+        end
+        if isPrevPossessed and not isNewPossessed then
+            if config.ramconfig.verbose then
+                printOutput(string.format('Discovered that item [%s] was possessed, but has been lost (boomerang trade).', itemVal))
+                printOutput(string.format('Previous possessed table: %s', asString(prevPossessedItems)))
+                printOutput(string.format('New possessed table: %s', asString(newPossessedItems)))
+            end
+            changes = true
+            table.insert(invItemChanges, { [itemVal] = 'Removed' })
+            getGUImessage(B_SLOT_ADDR, itemVal, NO_ITEM_VALUE, config.user)
         end
     end
 
-    if table.getn(listOfNewlyAcquiredItemVals) > 0 then
-        ramevents[NEW_INV_ITEMS_KEY] = listOfNewlyAcquiredItemVals
+    if table.getn(invItemChanges) > 0 then
+        ramevents[NEW_INV_ITEMS_KEY] = invItemChanges
     end
 
     if (changes) then
@@ -607,11 +617,12 @@ end
 function applyItemStateChanges(prevRAM, their_user, newEvents)
 
     -- First, handle the newly acquired inventory items
-    local listOfNewlyAcquiredItemVals = newEvents[NEW_INV_ITEMS_KEY]
-    if listOfNewlyAcquiredItemVals then
-        for _,itemVal in ipairs(listOfNewlyAcquiredItemVals) do
+    local invItemChanges = newEvents[NEW_INV_ITEMS_KEY]
+    if invItemChanges then
+        for _,invItemEvent in ipairs(invItemChanges) do
+            for --TODO start here
             if config.ramconfig.verbose then
-                printOutput(string.format('About to award item: %s', asString(inventoryItemVals[itemVal])))
+                printOutput(string.format('From %s: Item: %s was %s', asString(inventoryItemVals[itemVal]), their_user, invItemEvent))
             end
             giveInventoryItem(itemVal, prevRAM, their_user)
         end
