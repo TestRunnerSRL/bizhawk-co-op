@@ -1,4 +1,5 @@
 local NO_ITEM_VALUE = 0x00
+local BOOMERANG_ITEM_VALUE = 0x0D
 
 local MAX_NUM_HEART_CONTAINERS = 0x0E -- 14
 local MAX_NUM_HEART_PIECES = 0x04
@@ -25,7 +26,7 @@ local inventoryItemVals = {
     [0x0A] = 'Feather',
     [0x0B] = 'Shovel',
     [0x0C] = 'Magic powder',
-    [0x0D] = 'Boomrang',
+    [BOOMERANG_ITEM_VALUE] = 'Boomrang',
 }
 
 local B_SLOT_ADDR = 0xDB00
@@ -630,8 +631,9 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
 
     -- First, handle the newly acquired inventory items
     local invItemChanges = newEvents[NEW_INV_ITEMS_KEY]
-    local itemRemoves = {}
+    local itemRemoved = nil
     local itemAdds = {}
+    local boomerangAdded = false
     if invItemChanges then
         for itemVal, eventType in pairs(invItemChanges) do
             if config.ramconfig.verbose then
@@ -639,16 +641,23 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
             end
             if eventType == 'Added' then
                 table.insert(itemAdds, itemVal)
+                if itemVal == BOOMERANG_ITEM_VALUE then
+                    boomerangAdded = true
+                end
+
             
-            elseif eventType == 'Removed' then
-                table.insert(itemRemoves, itemVal)
+            -- Only remove up to 1 item at a time, since it should only be from a boomerang swap
+            elseif eventType == 'Removed' and not itemRemoved then
+                itemRemoved = itemVal
             end
         end
     end
     newEvents[NEW_INV_ITEMS_KEY] = nil
 
-    for _,itemVal in pairs(itemRemoves) do
-        removeInventoryItem(itemVal, prevRAM, their_user)
+    -- Item removes should only be done to the boomerang or if the boomerang is received
+    if itemRemoved == BOOMERANG_ITEM_VALUE or boomerangAdded  then
+
+        removeInventoryItem(itemRemoved, prevRAM, their_user)
     end
 
     for _,itemVal in pairs(itemAdds) do
