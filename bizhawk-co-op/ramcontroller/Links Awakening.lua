@@ -401,6 +401,18 @@ function giveInventoryItem(itemVal, prevRAM, their_user)
     prevRAM[firstEmptySlotAddr] = itemVal
 end
 
+function removeInventoryItem(itemVal, prevRAM, their_user)
+
+    for _, slotInfo in ipairs(inventorySlotInfos) do
+        local slotAddr = slotInfo['address']
+        local thisSlotsItem = readRAM(slotAddr, 1)
+        if thisSlotsItem == itemVal then
+            writeRAM(slotAddr, 1, NO_ITEM_VALUE)
+            return
+        end
+    end
+end
+
 -- Reset this script's record of your possessed items to what's currently in memory, ignoring any previous state
 -- Used when entering into a playable state, such as when loading a save
 function getPossessedItemsTable(itemsState)
@@ -583,7 +595,7 @@ function getItemStateChanges(prevState, newState)
                 printOutput(string.format('New possessed table: %s', asString(newPossessedItems)))
             end
             changes = true
-            table.insert(invItemChanges, { [itemVal] = 'Added' })
+            invItemChanges[itemVal] = 'Added'
             getGUImessage(B_SLOT_ADDR, NO_ITEM_VALUE, itemVal, config.user)
         end
         if isPrevPossessed and not isNewPossessed then
@@ -593,12 +605,12 @@ function getItemStateChanges(prevState, newState)
                 printOutput(string.format('New possessed table: %s', asString(newPossessedItems)))
             end
             changes = true
-            table.insert(invItemChanges, { [itemVal] = 'Removed' })
+            invItemChanges[itemVal] = 'Removed'
             getGUImessage(B_SLOT_ADDR, itemVal, NO_ITEM_VALUE, config.user)
         end
     end
 
-    if table.getn(invItemChanges) > 0 then
+    if tableCount(invItemChanges) > 0 then
         ramevents[NEW_INV_ITEMS_KEY] = invItemChanges
     end
 
@@ -618,16 +630,30 @@ function applyItemStateChanges(prevRAM, their_user, newEvents)
 
     -- First, handle the newly acquired inventory items
     local invItemChanges = newEvents[NEW_INV_ITEMS_KEY]
+    local itemRemoves = {}
+    local itemAdds = {}
     if invItemChanges then
-        for _,invItemEvent in ipairs(invItemChanges) do
-            for --TODO start here
+        for itemVal, eventType in pairs(invItemChanges) do
             if config.ramconfig.verbose then
-                printOutput(string.format('From %s: Item: %s was %s', asString(inventoryItemVals[itemVal]), their_user, invItemEvent))
+                printOutput(string.format('From %s: Item: %s was %s', their_user, asString(inventoryItemVals[itemVal]), eventType))
             end
-            giveInventoryItem(itemVal, prevRAM, their_user)
+            if eventType == 'Added' then
+                table.insert(itemAdds, itemVal)
+            
+            elseif eventType == 'Removed' then
+                table.insert(itemRemoves, itemVal)
+            end
         end
     end
     newEvents[NEW_INV_ITEMS_KEY] = nil
+
+    for _,itemVal in pairs(itemRemoves) do
+        removeInventoryItem(itemVal, prevRAM, their_user)
+    end
+
+    for _,itemVal in pairs(itemAdds) do
+        giveInventoryItem(itemVal, prevRAM, their_user)
+    end
 
     if newEvents[BIG_FAIRY_HEALING_KEY] then
         prevRAM[ADD_HEALTH_BUFFER_ADDR] = BIG_FAIRY_HEALING_BUFFER_VAL
