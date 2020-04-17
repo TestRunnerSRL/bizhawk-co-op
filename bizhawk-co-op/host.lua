@@ -167,11 +167,17 @@ function host.listen()
 	printOutput("Player " .. clientID .. " connecting...")
 
 	-- make sure we don't block forever waiting for input
-	client:settimeout(5)
+	client:settimeout(0)
 	client:setoption('linger', {['on']=false, ['timeout']=0})
 
-	--sync the gameplay
-	local success, their_user = pcall(sync.syncconfig, client, clientID)
+	--sync the gameplay. use a coroutine because sync.syncconfig calls
+	--coroutine.yield(), which doesn't work properly with pcall.
+	local success, their_user
+	local co = coroutine.create(sync.syncconfig)
+	repeat
+		success, their_user = coroutine.resume(co, client, clientID)
+		coroutine.yield()
+	until coroutine.status(co) ~= "suspended"
 	if success and their_user then
 		host.clients[clientID] = client
 		host.users[their_user] = clientID
@@ -195,7 +201,6 @@ function host.listen()
 	end
 
 	local itemlist = {}
-	math.randomseed(os.time())
 	math.random(itemcount)
 	for i=0,(itemcount-1) do
 		itemlist[i] = clientMap[i % clientCount]
@@ -247,15 +252,16 @@ function host.join()
 		return false
 	end
 
+	local reconnect = host.reconnecting()
 	kicked = false
-	host.close()
+	host.close(reconnect)
 	host.status = 'Join'
 	host.locked = true
 	updateGUI()
 
 	coroutine.yield()
 
-	if config.room ~= '(Custom IP)' then
+	if not reconnect and config.room ~= '(Custom IP)' then
 		local err
 		config.hostname, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/join' ..
 				'?user=' .. config.room ..
@@ -271,11 +277,27 @@ function host.join()
 		end
 	end
 
-	local client, err = socket.connect(config.hostname, config.port)
-	if (client == nil) then
+	--use a non-blocking connection so that frames can continue to be drawn
+	--while attempting to connect. DNS lookups still occur synchronously, so
+	--"host not found" errors will skip the while loop.
+	local client = socket.tcp()
+	client:settimeout(0)
+	client:setoption('linger', {['on']=false, ['timeout']=0})
+	local _, err = client:connect(config.hostname, config.port)
+	local init = os.time()
+	while err == 'timeout' and os.difftime(os.time(), init) < 2 do
+		coroutine.yield()
+		err = socket.skip(2, socket.select({client}, {client}, 0))
+	end
+	if err ~= nil then
 		printOutput("Connection failed: " .. err)
-		host.status = 'Idle'
-		host.locked = false
+		client:close()
+		if reconnect then
+			host.status = 'Reconnecting'
+		else
+			host.status = 'Idle'
+			host.locked = false
+		end
 		updateGUI()
 		return
 	end
@@ -284,13 +306,6 @@ function host.join()
 	local peername, peerport = client:getpeername()
 	printOutput("Joined room " .. config.room)
 
-	--make sure we don't block waiting for a response
-	client:settimeout(5)
-	client:setoption('linger', {['on']=false, ['timeout']=0})
-
-	coroutine.yield()
-	coroutine.yield()
-
 	--sync the gameplay
 	if (sync.syncconfig(client, nil)) then
 		host.clients[1] = client
@@ -298,27 +313,39 @@ function host.join()
 		host.users[host.hostname] = 1
 	else
 		client:close()
-		host.close()
+		host.close(reconnect)
 		updateGUI()
 	end
 
 	forms.setproperty(readyToggle, "Enabled", true)
+
+	if reconnect then
+		gui.addmessage("Reconnected.")
+		--rather than implement a separate method to send our status, just
+		--toggle twice.
+		sync.readyToggle()
+		sync.readyToggle()
+	end
 
 	return
 end
 
 
 --when the script finishes, make sure to close the connection
-function host.close()
-	host.status = 'Idle'
-	host.locked = false
-
+function host.close(reconnect)
 	local changed = false
+	if reconnect then
+		host.status = 'Reconnecting'
+		forms.settext(formPlayerList, "")
+	elseif host.status ~= 'Idle' then
+		host.status = 'Idle'
+		host.locked = false
+		changed = true
+	end
 
 	for i,client in pairs(host.clients) do
 		client:close()
 		host.clients[i] = nil
-		changed = true
 	end
 	host.users = {}
 	host.playerlist = {}
@@ -326,7 +353,6 @@ function host.close()
 
 	if (server ~= nil) then
 		server:close()
-		changed = true
 
 		local roomstr, err = http.request('https://us-central1-mzm-coop.cloudfunctions.net/destroy' ..
 				'?user=' .. config.user ..
@@ -346,18 +372,16 @@ function host.close()
 		else
 			printOutput("Server closed.")
 		end
-		forms.settext(formPlayerCount, "...")
-		forms.settext(formPlayerList, "")
 		forms.settext(formPlayerNumber, "")
-		forms.settext(formReadyCount, "...")
-		forms.setproperty(readyToggle, "Enabled", false)
-
 		if forms.gettext(readyToggle) == "Unready" then
 			forms.settext(readyToggle, "Ready")
 		end
-
-		updateGUI()
 	end
+	forms.settext(formPlayerCount, "...")
+	forms.settext(formPlayerList, "")
+	forms.settext(formReadyCount, "...")
+	forms.setproperty(readyToggle, "Enabled", false)
+	updateGUI()
 
 	if hostControls then
 		forms.destroy(hostControls)
@@ -370,6 +394,11 @@ function host.connected()
 		return true
 	end
 	return false
+end
+
+
+function host.reconnecting()
+	return host.status == 'Reconnecting'
 end
 
 

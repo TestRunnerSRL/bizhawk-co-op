@@ -264,18 +264,19 @@ local decode_message = {
 
 --recieves a message from the other client, returning the message type
 --along with a table containing the message type-specific information
---if nonblocking not set then this will block until a message is received
---or timeouts. Otheriwse it will return nil if no message is receive.
+--if nonblocking not set then this will yield regularly until a message is
+--received or timeouts. Otheriwse it will return nil if no message is receive.
 function messenger.receive(client_socket, nonblocking)
-  if nonblocking then
-    client_socket:settimeout(0)
-  end
-
   --get the next message
-  local message, err = client_socket:receive()
-
+  local message, err
   if nonblocking then
-    client_socket:settimeout(config.input_timeout)
+    message, err = client_socket:receive()
+  else
+    local init = os.time()
+    repeat
+      message, err = client_socket:receive()
+      coroutine.yield()
+    until err == nil or err ~= "timeout" or os.difftime(os.time(), init) >= 5
   end
 
   if(message == nil) then
