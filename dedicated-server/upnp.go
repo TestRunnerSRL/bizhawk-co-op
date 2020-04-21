@@ -23,7 +23,7 @@ type wanConnection interface {
 type TCPPortForwarder struct {
 	// The router's external IP address.
 	ExternalIP string
-	internalIP string
+	InternalIP string
 	client     wanConnection
 	ports      []uint16
 }
@@ -81,7 +81,7 @@ func newPortForwarder(f func() (wanConnection, error)) (*TCPPortForwarder, error
 
 // Add enables port forwarding from the external port to the internal port.
 func (pf *TCPPortForwarder) Add(externalPort uint16, internalPort uint16, desc string) error {
-	if err := pf.client.AddPortMapping("", externalPort, "TCP", internalPort, pf.internalIP, true, desc, 0); err != nil {
+	if err := pf.client.AddPortMapping("", externalPort, "TCP", internalPort, pf.InternalIP, true, desc, 0); err != nil {
 		return err
 	}
 	pf.ports = append(pf.ports, externalPort)

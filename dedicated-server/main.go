@@ -25,15 +25,15 @@ different server (e.g., AWS EC2 or GCP).
 
 `
 
-func addPortForwarding(externalPort int, internalPort int) (string, io.Closer, error) {
+func addPortForwarding(externalPort int, internalPort int) (string, string, io.Closer, error) {
 	pf, err := NewPortForwarder()
 	if err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
 	if err := pf.Add(uint16(externalPort), uint16(internalPort), "BizHawk co-op"); err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
-	return pf.ExternalIP, pf, nil
+	return pf.InternalIP, pf.ExternalIP, pf, nil
 }
 
 func main() {
@@ -70,11 +70,11 @@ func main() {
 	hostPort := fmt.Sprintf("localhost:%d", actualPort)
 	if *upnpPort > 0 {
 		log.Print("Setting up port forwarding...")
-		externalIP, closer, err := addPortForwarding(*upnpPort, actualPort)
+		internalIP, externalIP, closer, err := addPortForwarding(*upnpPort, actualPort)
 		if err != nil {
 			log.Printf("Port forwarding failed: %v", err)
 		} else {
-			hostPort = fmt.Sprintf("%s:%d", externalIP, *upnpPort)
+			hostPort = fmt.Sprintf("%s:%d (internal) and %s:%d (external)", internalIP, actualPort, externalIP, *upnpPort)
 			defer func() {
 				if err := closer.Close(); err != nil {
 					log.Printf("Failed to remove port forwarding: %v", err)

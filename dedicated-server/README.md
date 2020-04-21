@@ -27,6 +27,11 @@ If you have multiple routers or if your router doesn't support UPnP port
 forwarding, the `--upnpport` option may fail. In that case, port forwarding
 must be set up manually.
 
+Depending on your router, it may not be possible to use the room name to connect 
+to a server running on your local network. If you run into issues, try
+connecting using the server's local IP address and port, which are printed when
+the dedicated server starts.
+
 See `--help` for additional usage options.
 
 ## Games Other Than OoT

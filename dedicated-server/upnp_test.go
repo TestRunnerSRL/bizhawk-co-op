@@ -96,6 +96,31 @@ func TestExternalIP(t *testing.T) {
 	}
 }
 
+func TestInternalIP(t *testing.T) {
+	conn, err := net.ListenPacket("udp", ":0")
+	if err != nil {
+		t.Errorf("listen failed: %v", err)
+	}
+	defer conn.Close()
+
+	sc := &goupnp.ServiceClient{
+		Location: &url.URL{Host: conn.LocalAddr().String()},
+	}
+	wc := &FakeWanConnection{
+		getExternalIPAddress: func() (string, error) { return "", nil },
+		getServiceClient:     func() *goupnp.ServiceClient { return sc },
+	}
+	f := func() (wanConnection, error) { return wc, nil }
+	pf, err := newPortForwarder(f)
+	if err != nil {
+		t.Errorf("newPortForwarder failed: %v", err)
+	}
+	internalIP := "127.0.0.1"
+	if pf.InternalIP != internalIP {
+		t.Errorf("got %s, want %s", pf.InternalIP, internalIP)
+	}
+}
+
 func TestAddFailure(t *testing.T) {
 	conn, err := net.ListenPacket("udp", ":0")
 	if err != nil {
