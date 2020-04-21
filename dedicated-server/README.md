@@ -4,6 +4,9 @@
 bizhawk-co-op Lua script. Running the server in a separate process reduces the
 load on BizHawk and leads to more stable games for tens or hundreds of players.
 
+**The dedicated server is still experimental as is subject to change or
+removal.**
+
 ## Building
 
 Download [go](https://golang.org/dl/) and run `go build` in this directory.
