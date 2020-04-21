@@ -3,7 +3,9 @@
 local sync = {}
 
 local messenger = require("bizhawk-co-op\\messenger")
+local sha1 = require("bizhawk-co-op\\sha1")
 local ram_controller
+local sync_hashes = {}
 
 my_ID = nil
 
@@ -32,16 +34,23 @@ end
 function sync.syncconfig(client_socket, their_id)
   printOutput("Checking configuration consistency...")
 
-  local sha1 = require("bizhawk-co-op\\sha1")
-
-  --construct a value representing the sync code that is in use
-  local sync_code = ""
-  for line in io.lines("bizhawk-co-op.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("bizhawk-co-op\\host.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("bizhawk-co-op\\messenger.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("bizhawk-co-op\\sync.lua") do sync_code = sync_code .. line .. "\n" end
-  for line in io.lines("bizhawk-co-op\\ramcontroller\\" .. config.ramcode) do sync_code = sync_code .. line .. "\n" end
-  local sync_hash = sha1.sha1(sync_code)
+  --construct a value representing the sync code that is in use. result are
+  --cached to avoid recomputation when reconnecting.
+  if sync_hashes[config.ramcode] == nil then
+    local files = {
+      "bizhawk-co-op.lua",
+      "bizhawk-co-op\\host.lua",
+      "bizhawk-co-op\\messenger.lua",
+      "bizhawk-co-op\\sync.lua",
+      "bizhawk-co-op\\ramcontroller\\" .. config.ramcode,
+    }
+    local lines = {}
+    for _, file in ipairs(files) do
+      for line in io.lines(file) do lines[#lines + 1] = line end
+    end
+    sync_hashes[config.ramcode] = sha1.sha1(table.concat(lines, "\n") .. "\n")
+  end
+  local sync_hash = sync_hashes[config.ramcode]
 
   -- only host sends config
   if (their_id == nil) then
@@ -68,7 +77,7 @@ function sync.syncconfig(client_socket, their_id)
     return false
   end
 
-  -- send their player number
+  -- send our player number
   messenger.send(client_socket, config.user, messenger.PLAYERNUMBER, config.user, forms.gettext(formPlayerNumber))
 
   -- receive their player number, if nil then it is taken already
@@ -77,8 +86,6 @@ function sync.syncconfig(client_socket, their_id)
   if (pnum_data == nil) then
     printOutput("Configuration consistency check failed: Player Number in use")
     return false
-  else
-    forms.settext(formPlayerNumber, pnum_received)
   end
 
 
@@ -172,12 +179,11 @@ local close_client = function(clientID, err)
 
   -- close sockets
   if clientID == 1 then
-    -- host sent the message, room is closed
-    gui.addmessage("The room is closed.")
-    host.close()
-    error("The room is closed.")
+	-- host disconnected, we'll try to reconnect
+    host.close(true)
+    error("Connection interrupted.")
   else
-    -- client sent the message, room is still open
+    -- client disconnected, room is still open
     gui.addmessage(their_user .. " left the room.")
     printOutput(their_user .. " left the room.")
     host.client_ping[clientID] = nil
@@ -236,7 +242,7 @@ function sync.syncRAM()
     -- check for PING TIMEOUT and send PINGS
     if coroutine.status(ping_timer) == "dead" then
       ping_timer = coroutine.create(timer_coroutine)
-      coroutine.resume(ping_timer, 1, ping_func)
+      coroutine.resume(ping_timer, 10, ping_func)
     else
       local timer_status, err = coroutine.resume(ping_timer)
       if not timer_status then
