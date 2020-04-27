@@ -829,10 +829,14 @@ function applyItemStateChanges(prevRAM, theirUser, newEvents)
             if maxVal and val > maxVal then
                 newval = maxVal
             else
-                if increaseOnly and val > prevval then
+                if increaseOnly then
+                    if val > prevval then
+                        newval = val
+                    elseif config.ramconfig.verbose then
+                        printOutput(string.format('Refused to downgrade number %s from %s to %s', asString(itemName), asString(prevval), asString(val)))
+                    end
+                else
                     newval = val
-                elseif config.ramconfig.verbose then
-                    printOutput(string.format('Refused to downgrade number %s from %s to %s', asString(itemName), asString(prevval), asString(val)))
                 end
             end
 
@@ -982,15 +986,16 @@ function ramController.getMessage()
     local newItemState = getTransmittableItemsState()
     local message = getItemStateChanges(prevItemState, newItemState)
 
-    local currentTime = os.time()
-    if currentTime > lastReconcileTime + RECONCILE_PERIOD_SECONDS then
-        -- message is false if there are otherwise no changes
-        if not message then
-            message = {}
-        end
-        lastReconcileTime = currentTime
-        message[RECONCILILIATION_MESSAGE_KEY] = newItemState
-    end
+    -- Reconciliation was a neat idea, but performs badly
+    -- local currentTime = os.time()
+    -- if currentTime > lastReconcileTime + RECONCILE_PERIOD_SECONDS then
+    --     -- message is false if there are otherwise no changes
+    --     if not message then
+    --         message = {}
+    --     end
+    --     lastReconcileTime = currentTime
+    --     message[RECONCILILIATION_MESSAGE_KEY] = newItemState
+    -- end
 
     -- Update the RAM frame pointer
     prevItemState = newItemState
