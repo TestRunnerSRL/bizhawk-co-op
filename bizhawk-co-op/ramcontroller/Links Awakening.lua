@@ -890,8 +890,6 @@ function applyItemStateChanges(prevRAM, theirUser, newEvents)
     return prevRAM
 end
 
-
-client.reboot_core()
 ramController.itemcount = tableCount(ramItemAddrs)
 
 local messageQueue = {first = 0, last = -1}
