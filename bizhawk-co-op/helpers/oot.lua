@@ -627,7 +627,7 @@ local Save_Context = Layout:create {
 	magic_meter_size = e( 0x13F4, Int_16 ),
 
 	-- ex: oot.sav.triforce_pieces = 0x01 - doesn't seem to work with decimal vals
-	triforce_pieces = e( 0xD4 + 0x1C * 0x48 + 0x10, Int_32)
+	triforce_pieces = e( 0xD4 + 0x1C * 0x48 + 0x10, Int_32),
 
 }
 
