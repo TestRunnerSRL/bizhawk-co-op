@@ -1,7 +1,7 @@
 #Download and move files for mzm-coop
 
 $shell_app=new-object -com shell.application
-$version=2.7
+$version=2.8
 mkdir BizHawk-$version
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12

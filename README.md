@@ -43,7 +43,7 @@ There are two different methods to install.
 
 ### You will need the following:
 
-* (1) [BizHawk 2.7](https://github.com/TASVideos/BizHawk/releases/tag/2.7)
+* (1) [BizHawk 2.8](https://github.com/TASVideos/BizHawk/releases/tag/2.8)
 - The co-op script should be compatible for Bizhawk `1.12.0+` and `2.2.2+`
 * (2) [BizHawk prerequisite installer](https://github.com/TASEmulators/BizHawk-Prereqs/releases/tag/2.4.8_1) (run this)
 * (3) [luasocket](http://files.luaforge.net/releases/luasocket/luasocket/luasocket-2.0.2/luasocket-2.0.2-lua-5.1.2-Win32-vc8.zip)
