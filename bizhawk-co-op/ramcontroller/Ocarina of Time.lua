@@ -35,11 +35,15 @@ local save_context = 0x11A5D0
 local internal_count_addr = save_context + 0x90
 
 -- check protocol version
-local script_protocol_version = 2
+local script_protocol_version_min = 2
+local script_protocol_version_max = 3
 local rom_protocol_version = mainmemory.read_u32_be(protocol_version_addr)
-if (rom_protocol_version ~= script_protocol_version) then
+if (rom_protocol_version < script_protocol_version_min) then
 	setmetatable(_G, old_global_metatable)
-	error("This ROM is not compatible with this version of the co-op script\nScript protocol version: "..script_protocol_version.."\nROM protocol version: "..rom_protocol_version)
+	error("This ROM is not compatible with this version of the co-op script\nMinimum script protocol version: "..script_protocol_version_min.."\nROM protocol version: "..rom_protocol_version)
+elseif (rom_protocol_version > script_protocol_version_max) then
+	setmetatable(_G, old_global_metatable)
+	error("This ROM is not compatible with this version of the co-op script\nMaximum script protocol version: "..script_protocol_version_max.."\nROM protocol version: "..rom_protocol_version)
 end
 
 -- get your player num
