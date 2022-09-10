@@ -27,7 +27,7 @@ $destination.Copyhere($zip_file.items())
 Remove-Item $filename
 
 #Download luasocket
-$url = "http://files.luaforge.net/releases/luasocket/luasocket/luasocket-2.0.2/luasocket-2.0.2-lua-5.1.2-Win32-vc8.zip"
+$url = "https://www.zeldaspeedruns.com/assets/luasocket-2.0.2-lua-5.1.2-Win32-vc8.zip"
 $filename = "luasocket-2.0.2-lua-5.1.2-Win32-vc8.zip"
 Invoke-WebRequest -Uri $url -OutFile $filename
 #unzip
