@@ -109,8 +109,8 @@ function host.start()
 		printOutput('Room initialized.')
 	else
 		printOutput('Error creating room [Code: ' .. (err or '') .. ']')
-		host.close()
-		return false
+		--host.close()
+		--return false
 	end
 
 	if (forms.gettext(formPlayerNumber) == '') then

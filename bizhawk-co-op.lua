@@ -20,7 +20,7 @@ function strsplit(inputstr, sep, max)
 	if not sep then
 		sep = ","
 	end
-	local t={} ; i=1
+	local t={} ; local i=1
 	for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
 		if max and i > max then
 			if t[i] then
@@ -203,7 +203,7 @@ function prepareConnection()
 	if roomlist then
 		config.room = forms.gettext(ddRooms)
 	else
-		config.room = ''
+		config.room = '(Custom IP)'
 	end
 	config.ramcode = forms.gettext(ddRamCode)
 	config.user = forms.gettext(txtUser)
