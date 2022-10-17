@@ -2,6 +2,7 @@
 
 $shell_app=new-object -com shell.application
 $version=2.7
+$branch=master
 mkdir BizHawk-$version
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -38,7 +39,7 @@ $destination.Copyhere($zip_file.items())
 Remove-Item $filename
 
 #download bizhawk-co-op
-$url = "https://github.com/TestRunnerSRL/bizhawk-co-op/archive/dev.zip"
+$url = "https://github.com/TestRunnerSRL/bizhawk-co-op/archive/$branch.zip"
 $filename = "bizhawk-co-op.zip"
 Invoke-WebRequest -Uri $url -OutFile $filename
 #unzip
@@ -48,8 +49,8 @@ $destination.Copyhere($zip_file.items())
 Remove-Item $filename
 
 #Copy files into Bizhawk
-Move-Item -Path .\bizhawk-co-op-dev\* -Destination .\BizHawk-$version\
-Remove-Item .\bizhawk-co-op-dev -Recurse
+Move-Item -Path .\bizhawk-co-op-$branch\* -Destination .\BizHawk-$version\
+Remove-Item .\bizhawk-co-op-$branch -Recurse
 
 Move-Item -Path .\luasocket\mime -Destination .\BizHawk-$version\
 Move-Item -Path .\luasocket\socket -Destination .\BizHawk-$version\
