@@ -2,7 +2,7 @@
 
 $shell_app=new-object -com shell.application
 $version=2.8
-$branch=dev
+$branch="dev"
 mkdir BizHawk-$version
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
