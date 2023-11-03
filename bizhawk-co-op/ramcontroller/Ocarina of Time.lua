@@ -36,7 +36,7 @@ local internal_count_addr = save_context + 0x90
 
 -- check protocol version
 local script_protocol_version_min = 2
-local script_protocol_version_max = 6
+local script_protocol_version_max = 7
 local rom_protocol_version = mainmemory.read_u32_be(protocol_version_addr)
 if (rom_protocol_version < script_protocol_version_min) then
 	setmetatable(_G, old_global_metatable)
@@ -44,6 +44,12 @@ if (rom_protocol_version < script_protocol_version_min) then
 elseif (rom_protocol_version > script_protocol_version_max) then
 	setmetatable(_G, old_global_metatable)
 	error("This ROM is not compatible with this version of the co-op script\nMaximum script protocol version: "..script_protocol_version_max.."\nROM protocol version: "..rom_protocol_version)
+end
+
+-- build version dependent addresses
+-- outgoing_key_addr is moved towards to end of COOP_CONTEXT in version 7
+if (rom_protocol_version >= 7) then
+	outgoing_key_addr  = coop_context + 3100
 end
 
 -- get your player num
@@ -256,13 +262,18 @@ function oot_rom.getMessage()
 	end
 
 	-- if there is a item pending to give to another player, make a message for it and clear it
-	local key = mainmemory.read_u32_be(outgoing_key_addr)
-	if key ~= 0 then
+	local key_upper = 0
+	local key_lower = 0
+	key_upper = mainmemory.read_u32_be(outgoing_key_addr)
+	if rom_protocol_version >= 7 then
+		key_lower = mainmemory.read_u32_be(outgoing_key_addr + 4)
+	end
+	if key_upper ~= 0 or key_lower ~= 0 then
 		-- create the message
 		local item = mainmemory.read_u16_be(outgoing_item_addr)
 		local player = mainmemory.read_u16_be(outgoing_player_addr)
 		has_content = true
-		message["m"] = {[0] = { f = player_num, t = player, k = key, i = item } }
+		message["m"] = {[0] = { f = player_num, t = player, ku = key_upper, kl = key_lower, i = item } }
 
 		if not table_has_key(sent_items, message.m) then
 			table.insert(sent_items, message.m)
@@ -271,6 +282,7 @@ function oot_rom.getMessage()
 
 		-- clear the pending item data
 		mainmemory.write_u32_be(outgoing_key_addr, 0)
+		mainmemory.write_u32_be(outgoing_key_addr + 4, 0)
 		mainmemory.write_u16_be(outgoing_item_addr, 0)
 		mainmemory.write_u16_be(outgoing_player_addr, 0)
 	end
